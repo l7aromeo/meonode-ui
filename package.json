@@ -1,7 +1,7 @@
 {
   "name": "@meonode/ui",
   "description": "`@meonode/ui` is a lightweight yet powerful utility for the programmatic creation and manipulation of React elements. It offers an enhanced, structured way to define components, manage props (separating CSS from DOM attributes), handle theming, and compose children *before* they are rendered by React. This provides greater control and flexibility, especially for dynamic UIs and design systems.",
-  "version": "0.0.1-alpha.13",
+  "version": "0.0.1-alpha.14",
   "type": "module",
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
@@ -65,5 +65,5 @@
     "access": "public"
   },
   "license": "MIT",
-  "stableVersion": "0.0.1-alpha.12"
+  "stableVersion": "0.0.1-alpha.13"
 }
