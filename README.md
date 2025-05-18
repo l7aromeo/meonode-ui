@@ -2,7 +2,6 @@
 
 [![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-<!-- Add other badges as needed: build status, coverage, etc. -->
 
 `@meonode/ui` is a lightweight yet powerful utility for the programmatic creation and manipulation of React elements. It
 offers an enhanced, structured way to define components, manage props (separating CSS from DOM attributes), handle
@@ -24,10 +23,12 @@ especially for dynamic UIs and design systems.
 * **Seamless Integration:** Works with existing React components and fits naturally into any React workflow.
 * **`Component` HOC:** A higher-order component to easily wrap functions that return `@meonode/ui` instances, making
   them standard React components.
+* **Pre-built HTML Element Components:** Offers a suite of convenience functions (e.g., `Div`, `Span`, `H1`, `Button`) that wrap `Node()` for common HTML tags, streamlining development.
 
 ## Installation
 
 First, ensure you have `react` installed as a dependency.
+
 
 ```shell
 yarn add react @meonode/ui
@@ -90,6 +91,93 @@ The `Component` HOC simplifies creating standard React components from functions
 ### 6. Using with Existing React Components
 
 You can easily incorporate existing React components into your `@meonode/ui` structures.
+
+
+### 7. Using Pre-built HTML Components
+
+`@meonode/ui` includes a set of pre-built components for common HTML elements, making it even quicker to construct your UI. These are essentially convenience wrappers around the `Node()` factory, accepting the same props (including direct CSS styles, `theme` references, and `children`).
+
+Examples include: `Div`, `Span`, `P`, `H1`-`H6`, `Img`, `Button`, `Input`, `Form`, layout components like `Column`, `Row`, `Grid`, `Center`, and many more.
+
+```ts
+import { Component, Div, H1, P, Button } from '@meonode/ui';
+
+// Define a simple theme (for example purposes)
+const myTheme = {
+  colors: {
+    primary: 'dodgerblue',
+    secondary: 'lightgray',
+    surface: '#ffffff',
+    text: '#333333',
+    textOnPrimary: 'white',
+  },
+  spacing: {
+    small: '8px',
+    medium: '16px',
+    large: '24px',
+  },
+  typography: {
+    h1Size: '2.5rem',
+    pSize: '1rem',
+  },
+  borders: {
+    radius: '4px',
+    thin: '1px solid #cccccc',
+  }
+};
+
+const MyStyledCard = Component(() => {
+  return Div({
+    theme: myTheme, // Apply the theme to this node and its descendants
+    padding: 'theme.spacing.large',
+    backgroundColor: 'theme.colors.surface',
+    borderRadius: 'theme.borders.radius',
+    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+    maxWidth: '400px',
+    margin: 'theme.spacing.medium auto', // Center the card
+    border: 'theme.borders.thin',
+    children: [
+      H1({
+        fontSize: 'theme.typography.h1Size',
+        color: 'theme.colors.primary',
+        marginBottom: 'theme.spacing.medium',
+        children: 'Interactive Card',
+      }),
+      P({
+        fontSize: 'theme.typography.pSize',
+        color: 'theme.colors.text',
+        lineHeight: '1.6',
+        marginBottom: 'theme.spacing.large',
+        children: 'This card is built using pre-built HTML components from @meonode/ui, styled with a custom theme.',
+      }),
+      Button({
+        backgroundColor: 'theme.colors.primary',
+        color: 'theme.colors.textOnPrimary',
+        padding: 'theme.spacing.small theme.spacing.medium',
+        border: 'none',
+        borderRadius: 'theme.borders.radius',
+        fontSize: 'theme.typography.pSize',
+        cursor: 'pointer',
+        children: 'Learn More',
+        onClick: () => alert('Button clicked!'),
+        // Example of hover style (though direct CSS-in-JS hover is more complex without a helper)
+        // For simple cases, you might rely on global CSS or a more advanced styling solution.
+        // This is a placeholder to show where you might think about interactions.
+        // Real hover effects would typically be handled by CSS classes or a more robust styling library.
+      }),
+    ],
+  });
+});
+```
+
+To use it in a React application (example):
+```ts
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(MyStyledCard());
+```
 
 ---
 
