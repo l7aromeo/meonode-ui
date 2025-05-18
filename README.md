@@ -3,284 +3,294 @@
 [![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`@meonode/ui` is a lightweight yet powerful utility for the programmatic creation and manipulation of React elements. It
-offers an enhanced, structured way to define components, manage props (separating CSS from DOM attributes), handle
-theming, and compose children *before* they are rendered by React. This provides greater control and flexibility,
-especially for dynamic UIs and design systems.
+**Build React UIs with Type-Safe Fluency**  
+A structured approach to component composition with built-in theming, prop separation, and dynamic children handling.
 
----
+```tsx
+// Quick Start Example
+import { Component, Div, H1, Button } from '@meonode/ui';
 
-## Key Features
+const BlueButton = Component((props) => 
+  Button({
+    padding: '12px 24px',
+    borderRadius: '8px',
+    backgroundColor: 'dodgerblue',
+    color: 'white',
+    ...props
+  })
+);
 
-* **Programmatic React Element Construction:** Create complex React element trees using a fluent and intuitive API.
-* **Advanced Prop Handling:** Automatically separates CSS style properties from other DOM attributes, simplifying
-  component logic.
-* **Integrated Theming System:** Pass theme objects down the tree and reference theme values (e.g.,
-  `theme.colors.primary`) directly in style properties.
-* **Flexible Children Management:** Supports various child types, including primitives, other `@meonode/ui` nodes,
-  standard React elements, and functions for dynamic rendering (function-as-child pattern).
-* **Type-Safe:** Written entirely in TypeScript, providing excellent autocompletion and compile-time safety.
-* **Seamless Integration:** Works with existing React components and fits naturally into any React workflow.
-* **`Component` HOC:** A higher-order component to easily wrap functions that return `@meonode/ui` instances, making
-  them standard React components.
-* **Pre-built HTML Element Components:** Offers a suite of convenience functions (e.g., `Div`, `Span`, `H1`, `Button`) that wrap `Node()` for common HTML tags, streamlining development.
+const App = Component(() =>
+  Div({
+    padding: '40px',
+    children: [
+      H1({ fontSize: '2rem' }, 'Welcome to Meonode'),
+      BlueButton({ 
+        onClick: () => alert('Hello World!'),
+        children: 'Get Started'
+      })
+    ]
+  })
+);
+```
+
+## Why @meonode/ui?
+
+- 🎯 **Type-Safe Design** - Full TypeScript support with autocomplete for styles and themes
+- 🎨 **CSS-in-JS Without Runtime** - Write styles directly in props with theme references
+- 🧩 **Component-First Architecture** - Compose UIs from structured nodes instead of JSX
+- 🌐 **Theme Propagation** - Contextual theming that works with any component structure
+- ⚡ **Zero Dependencies** - Lightweight core (under 15kb gzipped)
 
 ## Installation
 
-First, ensure you have `react` installed as a dependency.
-
-
-```shell
-yarn add react @meonode/ui
+```bash
+npm install @meonode/ui react
+# or
+yarn add @meonode/ui react
 ```
-
-To use the built-in integration with Material UI, install the following:
-
-```shell
-yarn add react @mui/material @meonode/ui @meonode/mui
-```
-
----
 
 ## Core Concepts
 
-### `Node(element, props)`
+### 1. Component Creation
 
-The primary factory function to create `@meonode/ui` instances (internally `BaseNode`).
+Create elements using the `Node` factory or pre-built components:
 
-*   `element`: The React element type (e.g., `'div'`, `MyReactComponent`, another `Node` instance).
-*   `props`: An object containing properties for the element, including standard HTML attributes, event handlers, `children`, `theme`, and direct CSS style properties.
+```tsx
+import { Node, Div, H1 } from '@meonode/ui';
 
-### `BaseNode`
+// Using Node factory
+const Card = Node('div', {
+  padding: '20px',
+  borderRadius: '8px',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
+});
 
-The internal representation of a React element within `@meonode/ui`. It holds the element type, processed props (with styles and DOM attributes separated), and processed children. You typically don't interact with `BaseNode` directly but through the `Node` factory. Each `BaseNode` instance has a `render()` method to convert it into a renderable React element.
+// Using pre-built components
+const Header = () => 
+  Div({
+    padding: '20px',
+    backgroundColor: 'navy',
+    children: H1({ color: 'white' }, 'App Header')
+  });
+```
 
-### `Component(componentFunction)`
+### 2. Theming System
 
-A Higher-Order Component (HOC) that wraps a function. This function receives props and should return either a `@meonode/ui` instance (created via `Node()`) or a standard `ReactNode`. The `Component` HOC ensures that if a `@meonode/ui` instance is returned, its `render()` method is called, making it renderable by React.
+Define and consume themes with dot-notation:
 
-### Theming
-
-Pass a `theme` object via the `theme` prop to any `Node`. This theme becomes available to that `Node` and its descendants. Style properties can then reference theme values using a dot-path string:
-
----
-
-## Usage Examples
-
-### 1. Basic Usage with `Node()`
-
-### 2. Applying Styles Directly root Prop
-
-`@meonode/ui` intelligently separates CSS properties from other props. You can provide CSS properties directly at the root of the `props` object.
-
-
-### 3. Using Themes
-
-Themes allow for centralized styling and easy reuse of design tokens.
-
-### 4. Handling Children
-
-`@meonode/ui` offers flexible ways to define children:
-
-**Note on Function Children and Themes:** When a function child returns a `BaseNode` instance (e.g., `() => Node(...)`), `@meonode/ui` ensures that the parent's theme is propagated to this returned `BaseNode` if it doesn't already have its own theme. This allows `BaseNode`s created within the function to resolve theme-based styles like `color: 'theme.colors.highlight'`.
-
-### 5. Creating Reusable Components with `Component` HOC
-
-The `Component` HOC simplifies creating standard React components from functions that return `@meonode/ui` nodes.
-
-### 6. Using with Existing React Components
-
-You can easily incorporate existing React components into your `@meonode/ui` structures.
-
-
-### 7. Using Pre-built HTML Components
-
-`@meonode/ui` includes a set of pre-built components for common HTML elements, making it even quicker to construct your UI. These are essentially convenience wrappers around the `Node()` factory, accepting the same props (including direct CSS styles, `theme` references, and `children`).
-
-Examples include: `Div`, `Span`, `P`, `H1`-`H6`, `Img`, `Button`, `Input`, `Form`, layout components like `Column`, `Row`, `Grid`, `Center`, and many more.
-
-```ts
-import { Component, Div, H1, P, Button } from '@meonode/ui';
-
-// Define a simple theme (for example purposes)
-const myTheme = {
+```tsx
+const theme = {
   colors: {
-    primary: 'dodgerblue',
-    secondary: 'lightgray',
-    surface: '#ffffff',
-    text: '#333333',
-    textOnPrimary: 'white',
+    primary: '#2196F3',
+    text: {
+      primary: '#1A237E',
+      secondary: '#455A64'
+    }
   },
   spacing: {
-    small: '8px',
-    medium: '16px',
-    large: '24px',
-  },
-  typography: {
-    h1Size: '2.5rem',
-    pSize: '1rem',
-  },
-  borders: {
-    radius: '4px',
-    thin: '1px solid #cccccc',
+    md: '16px',
+    lg: '24px'
   }
 };
 
-const MyStyledCard = Component(() => {
-  return Div({
-    theme: myTheme, // Apply the theme to this node and its descendants
-    padding: 'theme.spacing.large',
-    backgroundColor: 'theme.colors.surface',
-    borderRadius: 'theme.borders.radius',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-    maxWidth: '400px',
-    margin: 'theme.spacing.medium auto', // Center the card
-    border: 'theme.borders.thin',
+const ThemedCard = Component(() => 
+  Div({
+    theme,
+    padding: 'theme.spacing.lg',
+    backgroundColor: 'theme.colors.primary',
     children: [
-      H1({
-        fontSize: 'theme.typography.h1Size',
-        color: 'theme.colors.primary',
-        marginBottom: 'theme.spacing.medium',
-        children: 'Interactive Card',
-      }),
-      P({
-        fontSize: 'theme.typography.pSize',
-        color: 'theme.colors.text',
-        lineHeight: '1.6',
-        marginBottom: 'theme.spacing.large',
-        children: 'This card is built using pre-built HTML components from @meonode/ui, styled with a custom theme.',
-      }),
-      Button({
-        backgroundColor: 'theme.colors.primary',
-        color: 'theme.colors.textOnPrimary',
-        padding: 'theme.spacing.small theme.spacing.medium',
-        border: 'none',
-        borderRadius: 'theme.borders.radius',
-        fontSize: 'theme.typography.pSize',
-        cursor: 'pointer',
-        children: 'Learn More',
-        onClick: () => alert('Button clicked!'),
-        // Example of hover style (though direct CSS-in-JS hover is more complex without a helper)
-        // For simple cases, you might rely on global CSS or a more advanced styling solution.
-        // This is a placeholder to show where you might think about interactions.
-        // Real hover effects would typically be handled by CSS classes or a more robust styling library.
-      }),
-    ],
-  });
-});
+      H1({ color: 'theme.colors.text.primary' }, 'Themed Title'),
+      P({ color: 'theme.colors.text.secondary' }, 'Content...')
+    ]
+  })
+);
 ```
 
-To use it in a React application (example):
+### 3. Prop Handling
+
+Automatic separation of CSS props from DOM attributes:
+
+```tsx
+const ProfileCard = Component(({ user }) =>
+  Div({
+    // CSS Props
+    padding: '20px',
+    borderRadius: '8px',
+    // DOM Props
+    ariaRole: 'article',
+    tabIndex: 0,
+    // Children
+    children: `Welcome ${user.name}!`
+  })
+);
+```
+
+## Key Features
+
+| Feature                | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| **Smart Prop Merge**   | CSS properties are automatically merged with style object                   |
+| **Theme Resolution**   | `theme.` references resolve through component hierarchy                     |
+| **Type Safety**        | Autocomplete for CSS properties and theme paths                            |
+| **HOC Support**        | Wrap existing components with `Component()` for seamless integration        |
+| **Dynamic Children**   | Function-as-child pattern with automatic theme propagation                  |
+
+## Advanced Usage
+
+### Component Composition
+
+```tsx
+const Dashboard = Component(() => 
+  Div({
+    display: 'grid',
+    gridTemplateColumns: '1fr 3fr',
+    gap: '20px',
+    children: [
+      Sidebar({
+        width: '240px',
+        items: navItems
+      }),
+      MainContent({
+        padding: '40px',
+        children: AnalyticsChart({ dataset })
+      })
+    ]
+  })
+);
+```
+
+### With Conditional Children That Contains Hook
+
+also add this
+
 ```ts
-import React from 'react';
-import ReactDOM from 'react-dom/client';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(MyStyledCard());
+// Wraps a hook-capable component into a BaseNode-compatible Client Component
+import { Component, Column, Row, Div, P  } from '@meonode/ui'
+import { useState, useEffect } from 'react'
+
+// Shared theme object passed into components. This may be written in a different file and imported.
+const theme = {
+  background: { primary: 'lightgreen', secondary: 'lightyellow' },
+}
+
+// Exported component rendered via <Component /> (client wrapper)
+export default Component(() => {
+  // React hook for conditional UI
+  const [showDetails, setShowDetails] = useState(false)
+
+  // Declarative layout using Column as root container
+  return Column({
+    theme,
+    padding: 20,
+    gap: 15,
+    children: [
+      // Header row with a toggle button
+      Row({
+        gap: 10,
+        children: [
+          Div({
+            onClick: () => setShowDetails(prev => !prev),
+            style: {
+              cursor: 'pointer',
+              userSelect: 'none',
+              padding: '10px 20px',
+              backgroundColor: 'theme.background.primary', // Node engine will handle this
+              borderRadius: 5,
+              fontWeight: 'bold',
+            },
+            children: showDetails ? 'Hide Details' : 'Show Details',
+          }),
+        ],
+      }),
+
+      // Conditionally render DetailComponent via function wrapper
+      // Ensures it's treated as a renderable function (deferred React class or element that is NOT called directly)
+      // Node engine will handle this like magic
+      showDetails && (() => DetailComponent({ info: 'Here are some details!' })), // Works like `Component(() => DetailComponent({ info: 'Here some details!' }))`,
+      showDetails && DetailComponent({ info: 'Here are some details!' })).render() // Works
+    ],
+  })
+})
+
+// A stateful detail section using useEffect and styled Div
+const DetailComponent = ({ info }: { info: string }) => {
+  useEffect(() => {
+    console.log('DetailComponent mounted')
+    return () => {
+      console.log('DetailComponent unmounted')
+    }
+  }, [])
+
+  return Div({
+    padding: 15,
+    border: '1px solid green',
+    borderRadius: 6,
+    backgroundColor: 'theme.background.secondary', // Node engine will handle this
+    children: P({ children: info }),
+  })
+}
+
 ```
 
----
+### Material UI Integration
 
-## Usage Implementation
+```bash
+yarn add @meonode/mui @mui/material
+```
 
-The example implementation can be seen in the docs folder:
-1. [Basic Usage](./docs/basic-usage.md)
-2. [Conditional Component With Hook](./docs/conditional-component-with-hook.md)
+```ts
+import { MuiButton, MuiTextField } from '@meonode/mui';
 
----
+const MuiLoginForm = Component(() =>
+  Div({
+    maxWidth: '400px',
+    margin: '0 auto',
+    children: [
+      MuiTextField({
+        label: 'Email',
+        fullWidth: true,
+        margin: 'normal'
+      }),
+      MuiTextField({
+        label: 'Password',
+        type: 'password',
+        fullWidth: true,
+        margin: 'normal'
+      }),
+      MuiButton({
+        variant: 'contained',
+        color: 'primary',
+        children: 'Sign In'
+      })
+    ]
+  })
+);
+```
 
-## API Overview
+## API Reference
 
-### `Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): BaseNodeInstance<E>`
+### Core Functions
 
-*   The main factory function to create `BaseNode` instances.
-*   `element`: A string (e.g., 'div'), a React component, or another `BaseNodeInstance`.
-*   `props`: Object containing element properties, styles, `children`, and `theme`.
-*   Returns: A `BaseNodeInstance`. Call `.render()` on it to get a renderable React element.
+| Function       | Parameters                              | Description                                     |
+|----------------|-----------------------------------------|-------------------------------------------------|
+| `Node`         | `element: string \| Component`, `props` | Creates a new UI node                           |
+| `Component`    | `(props) => Node \| ReactNode`          | Converts node trees to React components         |
 
-### `Component<T extends Record<string, any>>(component: (props: T) => BaseNodeInstance<any> | ReactNode): (props: T) => ReactNode`
-
-*   A Higher-Order Component.
-*   `component`: A function that accepts props and returns a `BaseNodeInstance` or any `ReactNode`.
-*   Returns: A standard React functional component.
-
-### `BaseNodeInstance.render(): ReactNode`
-
-*   A method on `BaseNodeInstance` (the object returned by `Node()`).
-*   Converts the internal `BaseNode` representation into a standard, renderable React Node tree using `React.createElement`.
-
----
-
-## How It Works (Briefly)
-
-1. **Node Creation:**
-  - When you call `Node(element, props)`, a `BaseNode` instance is created.
-
-2. **Props Processing:**
-  - The `BaseNode` constructor analyzes the `props`
-  - It uses helper functions (`getCSSProps`, `getDOMProps`) to separate valid CSS style properties from other DOM
-    attributes
-  - If a `theme` (or `nodeTheme`) is provided, style values like `'theme.colors.primary'` are resolved against this
-    theme object using `getValueByPath`
-
-3. **Children Processing:**
-  - Children are recursively processed
-  - If a child is a primitive, React element, or another `BaseNode`, it's adapted
-  - Function children are wrapped in a special internal `_functionRenderer` `BaseNode`. This renderer calls the function
-    during the render phase and ensures that if the function returns a `BaseNode`, the parent's theme is correctly
-    propagated to it
-
-4. **Rendering:**
-  - The `render()` method on a `BaseNode` instance recursively traverses its structure
-  - Calls `render()` on any child `BaseNode`s
-  - Ultimately uses `React.createElement` to construct the final tree of React elements
-  - The `nodeTheme` prop is removed before passing props to `createElement`
-
----
-
-## TypeScript Support
-
-`@meonode/ui` is written in TypeScript and exports all necessary types for a robust development experience. You'll get autocompletion for props, style properties, and theme usage.
-
-Key types like `NodeElement`, `NodeProps`, and `BaseNodeInstance` are available if you need to work with them directly, though typically `Node` and `Component` are sufficient.
-
----
-
-## When to Use `@meonode/ui`?
-
-* Perfect for design systems and UI libraries requiring consistent structure, theming, and maintainable patterns
-* Ideal for generating dynamic UIs from configurations, metadata, schemas or API responses
-* Powerful solution for centralized styling logic, prop transformations and runtime customization
-* Excellent choice for complex component hierarchies needing programmatic manipulation
-* Great alternative to JSX when you prefer a more functional programming approach
-
----
 
 ## Contributing
 
-Contributions are welcome! Please feel free to contact me on discord: **[l7aromeo](https://discordapp.com/users/704803255561224264)**.
+We welcome contributions! Please follow these steps:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+Contact me on [Discord](https://discordapp.com/users/704803255561224264) for discussions.
 
 ---
 
-## [License](https://github.com/l7aromeo/meonode-ui/blob/main/LICENSE)
-
-The MIT License (MIT)
-Copyright (c) 2025 Ukasyah Rahmatullah Zada
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+**MIT Licensed** | Copyright © 2024 Ukasyah Rahmatullah Zada  
+*Empowering developers to build better UIs*
