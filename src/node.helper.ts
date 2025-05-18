@@ -45,7 +45,6 @@ export const getComponentType = (
   | 'forwardRef'
   | 'memo'
   | 'object'
-  | 'object-with-render'
   | 'function'
   | 'fragment'
   | 'portal'
@@ -77,51 +76,100 @@ export const getComponentType = (
 }
 
 /**
- * Generates a string name for an ElementType.
+ * Generates a string name for an ElementType or ReactElement.
  *
- * This function attempts to extract a meaningful name from a React ElementType,
- * which can be a string (for intrinsic elements like 'div'), a function (for
- * functional components), or an object (for components created with `React.memo`,
- * `React.forwardRef`, etc.). It prioritizes `displayName` and `name` properties
- * for functions and unwraps higher-order components to get the underlying name.
+ * This function attempts to extract a meaningful name from a React ElementType
+ * (string, function, class, HOC) or a ReactElement instance.
+ * It prioritizes `displayName` and `name` properties and unwraps HOCs like
+ * `React.memo` and `React.forwardRef` to get the underlying component name.
  *
- * If a name cannot be determined, it returns 'UnknownElementType'.
- * @typeParam ElementType - The type of the React element.
- * @param elementType The ElementType (e.g., 'div', MyComponent function/class).
- * @returns A string representation of the element type.
+ * If a name cannot be determined, it returns a fallback like 'UnknownElementType' or 'AnonymousComponent'.
+ * @param node The ElementType or ReactElement (e.g., 'div', MyComponent, <MyComponent />).
+ * @returns A string representation of the element type's name.
  */
-export function getElementTypeName(elementType: NodeElement): string {
-  switch (true) {
-    case typeof elementType === 'string':
-      return elementType
+export function getElementTypeName(node: unknown): string {
+  function getDisplayName(component: any, fallback: string): string {
+    return component?.displayName || component?.name || fallback
+  }
 
-    case typeof elementType === 'function' && 'displayName' in elementType:
-      return elementType.displayName || elementType.name || 'AnonymousComponent'
+  if (node === null || node === undefined) return 'UnknownElementType'
 
-    case typeof elementType === 'object' && elementType !== null: {
-      if ((elementType as any).displayName) {
-        return (elementType as any).displayName
+  const anyNode = node as any
+  const type = getComponentType(anyNode)
+
+  switch (type) {
+    case 'string':
+      return node as string
+
+    case 'class':
+      return getDisplayName(anyNode, 'ClassComponent')
+
+    case 'function':
+      return getDisplayName(anyNode, 'AnonymousFunctionComponent')
+
+    case 'forwardRef':
+      return getDisplayName(anyNode, '') || getDisplayName(anyNode.render, '') || 'ForwardRefComponent'
+
+    case 'memo':
+      return getDisplayName(anyNode, '') || (anyNode.type ? getElementTypeName(anyNode.type) : 'MemoComponent')
+
+    case 'element':
+      return getElementTypeName(anyNode.type)
+
+    case 'fragment':
+      return 'Fragment'
+
+    case 'portal':
+      return 'Portal'
+
+    case 'profiler':
+      return getDisplayName(anyNode, 'Profiler')
+
+    case 'strict-mode':
+      return 'StrictMode'
+
+    case 'suspense':
+      return getDisplayName(anyNode, 'Suspense')
+
+    case 'suspense-list':
+      return 'SuspenseList'
+
+    case 'context-consumer':
+      return anyNode._context?.displayName ? `${anyNode._context.displayName}.Consumer` : 'ContextConsumer'
+
+    case 'context-provider':
+      return anyNode._context?.displayName ? `${anyNode._context.displayName}.Provider` : 'ContextProvider'
+
+    case 'lazy':
+      return getDisplayName(anyNode, 'LazyComponent')
+
+    case 'object':
+      if (getDisplayName(anyNode, '')) return getDisplayName(anyNode, '')
+      if (typeof anyNode.render === 'function') {
+        return getDisplayName(anyNode.render, 'ObjectWithRender')
       }
-
-      const innerType = (elementType as any).type || (elementType as any).render
-
-      switch (true) {
-        case typeof innerType === 'function':
-          return innerType.displayName || innerType.name || 'WrappedComponent'
-
-        case typeof innerType === 'string':
-          return innerType
-
-        case typeof (elementType as any).render === 'function' && (elementType as any).prototype?.isReactComponent:
-          return (elementType as any).name || 'ClassComponent'
-
-        default:
-          return 'ObjectComponent'
+      if (anyNode.type && anyNode.type !== node) {
+        return `Wrapped<${getElementTypeName(anyNode.type)}>`
       }
-    }
+      return getDisplayName(anyNode, 'ObjectComponent')
+
+    case 'symbol':
+      if (typeof node === 'symbol') {
+        return (
+          node.description
+            ?.replace(/^react\./, '')
+            .split('.')
+            .map(part => part[0]?.toUpperCase() + part.slice(1))
+            .join('') || node.toString()
+        )
+      }
+      return 'SymbolComponent'
+
+    case 'unknown':
+      return 'UnknownElementType'
 
     default:
-      return 'UnknownElementType'
+      return `UnsupportedType<${type}>`
   }
 }
 
