@@ -100,170 +100,170 @@ export const Static = (props?: NodeProps<'div'>) => Div({ position: 'static', ..
 
 /**
  * Creates an h1 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h1 element.
  * @returns An h1 element node.
  */
-export const H1 = (children?: string | number, props?: Omit<NodeProps<'h1'>, 'children'>) =>
+export const H1 = (text?: string | number | bigint, props?: Omit<NodeProps<'h1'>, 'children'>) =>
   Node('h1', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an h2 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h2 element.
  * @returns An h2 element node.
  */
-export const H2 = (children?: string | number, props?: Omit<NodeProps<'h2'>, 'children'>) =>
+export const H2 = (text?: string | number | bigint, props?: Omit<NodeProps<'h2'>, 'children'>) =>
   Node('h2', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an h3 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h3 element.
  * @returns An h3 element node.
  */
-export const H3 = (children?: string | number, props?: Omit<NodeProps<'h3'>, 'children'>) =>
+export const H3 = (text?: string | number | bigint, props?: Omit<NodeProps<'h3'>, 'children'>) =>
   Node('h3', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an h4 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h4 element.
  * @returns An h4 element node.
  */
-export const H4 = (children?: string | number, props?: Omit<NodeProps<'h4'>, 'children'>) =>
+export const H4 = (text?: string | number | bigint, props?: Omit<NodeProps<'h4'>, 'children'>) =>
   Node('h4', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an h5 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h5 element.
  * @returns An h5 element node.
  */
-export const H5 = (children?: string | number, props?: Omit<NodeProps<'h5'>, 'children'>) =>
+export const H5 = (text?: string | number | bigint, props?: Omit<NodeProps<'h5'>, 'children'>) =>
   Node('h5', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an h6 heading element node.
- * @param children Optional text or number content for the heading.
+ * @param text Optional text, number or bigint content for the heading.
  * @param props Optional properties for the h6 element.
  * @returns An h6 element node.
  */
-export const H6 = (children?: string | number, props?: Omit<NodeProps<'h6'>, 'children'>) =>
+export const H6 = (text?: string | number | bigint, props?: Omit<NodeProps<'h6'>, 'children'>) =>
   Node('h6', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a strong element node for important text.
- * @param children Optional text or number content to emphasize.
+ * @param text Optional text, number or bigint content to emphasize.
  * @param props Optional properties for the strong element.
  * @returns A strong element node.
  */
-export const Strong = (children?: string | number, props?: Omit<NodeProps<'strong'>, 'children'>) =>
+export const Strong = (text?: string | number | bigint, props?: Omit<NodeProps<'strong'>, 'children'>) =>
   Node('strong', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates an em element node for emphasized text.
- * @param children Optional text or number content to emphasize.
+ * @param text Optional text, number or bigint content to emphasize.
  * @param props Optional properties for the em element.
  * @returns An em element node.
  */
-export const Em = (children?: string | number, props?: Omit<NodeProps<'em'>, 'children'>) =>
+export const Em = (text?: string | number | bigint, props?: Omit<NodeProps<'em'>, 'children'>) =>
   Node('em', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a small element node for side-comments and small print.
- * @param children Optional text or number content to display smaller.
+ * @param text Optional text, number or bigint content to display smaller.
  * @param props Optional properties for the small element.
  * @returns A small element node.
  */
-export const Small = (children?: string | number, props?: Omit<NodeProps<'small'>, 'children'>) =>
+export const Small = (text?: string | number | bigint, props?: Omit<NodeProps<'small'>, 'children'>) =>
   Node('small', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a mark element node for highlighted text.
- * @param children Optional text or number content to highlight.
+ * @param text Optional text, number or bigint content to highlight.
  * @param props Optional properties for the mark element.
  * @returns A mark element node.
  */
-export const Mark = (children?: string | number, props?: Omit<NodeProps<'mark'>, 'children'>) =>
+export const Mark = (text?: string | number | bigint, props?: Omit<NodeProps<'mark'>, 'children'>) =>
   Node('mark', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a span element node.
- * @param children Optional text or number content for the span.
+ * @param text Optional text, number or bigint content for the span.
  * @param props Optional properties for the span element.
  * @returns A span element node.
  */
-export const Span = (children?: string | number, props?: Omit<NodeProps<'span'>, 'children'>) =>
+export const Span = (text?: string | number | bigint, props?: Omit<NodeProps<'span'>, 'children'>) =>
   Node('span', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a paragraph element node.
- * @param children Optional text or number content for the paragraph.
+ * @param text Optional text, number or bigint content for the paragraph.
  * @param props Optional properties for the p element.
  * @returns A paragraph element node.
  */
-export const P = (children?: string | number, props?: Omit<NodeProps<'p'>, 'children'>) =>
+export const P = (text?: string | number | bigint, props?: Omit<NodeProps<'p'>, 'children'>) =>
   Node('p', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a preformatted text element node.
- * @param children Optional text or number content for the pre element.
+ * @param text Optional text, number or bigint content for the pre element.
  * @param props Optional properties for the pre element.
  * @returns A pre element node.
  */
-export const Pre = (children?: string | number, props?: Omit<NodeProps<'pre'>, 'children'>) =>
+export const Pre = (text?: string | number | bigint, props?: Omit<NodeProps<'pre'>, 'children'>) =>
   Node('pre', {
     ...props,
-    children,
+    children: text,
   })
 
 /**
  * Creates a code element node for displaying code snippets.
- * @param children Optional text or number content for the code.
+ * @param text Optional text, number or bigint content for the code.
  * @param props Optional properties for the code element.
  * @returns A code element node.
  */
-export const Code = (children?: string | number, props?: Omit<NodeProps<'code'>, 'children'>) =>
+export const Code = (text?: string | number | bigint, props?: Omit<NodeProps<'code'>, 'children'>) =>
   Node('code', {
     ...props,
-    children,
+    children: text,
   })
 
 // Lists
