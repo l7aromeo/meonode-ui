@@ -239,25 +239,25 @@ yarn add @meonode/mui @mui/material
 ```
 
 ```ts
-import { MuiButton, MuiTextField } from '@meonode/mui';
+import { Button, TextField } from '@meonode/mui';
 
 const MuiLoginForm = Component(() =>
   Div({
     maxWidth: '400px',
     margin: '0 auto',
     children: [
-      MuiTextField({
+      TextField({
         label: 'Email',
         fullWidth: true,
         margin: 'normal'
       }),
-      MuiTextField({
+      TextField({
         label: 'Password',
         type: 'password',
         fullWidth: true,
         margin: 'normal'
       }),
-      MuiButton({
+      Button({
         variant: 'contained',
         color: 'primary',
         children: 'Sign In'
