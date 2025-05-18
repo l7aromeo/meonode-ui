@@ -225,5 +225,9 @@ export const isValidElementType = <T>(type: T): boolean => {
  * @returns {boolean} - True if component is a React class component
  */
 export const isReactClassComponent = (component: unknown): component is { prototype: { isReactComponent: any } } => {
-  return typeof component === 'function' && !!(component as any).prototype && !!(component as any).prototype.isReactComponent
+  try {
+    return typeof component === 'function' && !!(component as any).prototype && !!(component as any).prototype.isReactComponent
+  } catch {
+    return false
+  }
 }
