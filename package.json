@@ -13,7 +13,6 @@
   },
   "files": [
     "dist",
-    "docs",
     "package.json",
     "LICENSE",
     "README.md"
