@@ -1,22 +1,8 @@
 'use strict'
-import type { NodeProps } from '@src/node.type.js'
+import type { NodeElement, NodeProps } from '@src/node.type.js'
 import { Node } from '@src/core.node.js'
 
-// Basic HTML elements
-
-/**
- * Represents the root HTML element.
- * @param props Optional properties for the HTML element.
- * @returns An HTML element node.
- */
-export const Html = (props?: NodeProps<'html'>) => Node('html', props)
-
-/**
- * Represents the body element of an HTML document.
- * @param props Optional properties for the body element.
- * @returns A body element node.
- */
-export const Body = (props?: NodeProps<'body'>) => Node('body', props)
+// Layout components
 
 /**
  * Represents a div element.
@@ -24,8 +10,6 @@ export const Body = (props?: NodeProps<'body'>) => Node('body', props)
  * @returns A div element node.
  */
 export const Div = (props?: NodeProps<'div'>) => Node('div', props)
-
-// Layout components
 
 /**
  * Represents a column layout using flexbox.
@@ -47,13 +31,6 @@ export const Row = (props?: NodeProps<'div'>) => Div({ display: 'flex', flexDire
  * @returns A div element node with grid layout.
  */
 export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...props })
-
-/**
- * Represents the main content of a document.
- * @param props Optional properties for the main element.
- * @returns A main element node.
- */
-export const Main = (props?: NodeProps<'main'>) => Node('main', props)
 
 /**
  * Represents a centered layout using flexbox.
@@ -100,171 +77,178 @@ export const Static = (props?: NodeProps<'div'>) => Div({ position: 'static', ..
 
 /**
  * Creates an h1 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h1 element.
  * @returns An h1 element node.
  */
-export const H1 = (text?: string | number | bigint, props?: Omit<NodeProps<'h1'>, 'children'>) =>
+export const H1 = (children: NodeElement, props?: Omit<NodeProps<'h1'>, 'children'>) =>
   Node('h1', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an h2 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h2 element.
  * @returns An h2 element node.
  */
-export const H2 = (text?: string | number | bigint, props?: Omit<NodeProps<'h2'>, 'children'>) =>
+export const H2 = (children: NodeElement, props?: Omit<NodeProps<'h2'>, 'children'>) =>
   Node('h2', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an h3 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h3 element.
  * @returns An h3 element node.
  */
-export const H3 = (text?: string | number | bigint, props?: Omit<NodeProps<'h3'>, 'children'>) =>
+export const H3 = (children: NodeElement, props?: Omit<NodeProps<'h3'>, 'children'>) =>
   Node('h3', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an h4 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h4 element.
  * @returns An h4 element node.
  */
-export const H4 = (text?: string | number | bigint, props?: Omit<NodeProps<'h4'>, 'children'>) =>
+export const H4 = (children: NodeElement, props?: Omit<NodeProps<'h4'>, 'children'>) =>
   Node('h4', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an h5 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h5 element.
  * @returns An h5 element node.
  */
-export const H5 = (text?: string | number | bigint, props?: Omit<NodeProps<'h5'>, 'children'>) =>
+export const H5 = (children: NodeElement, props?: Omit<NodeProps<'h5'>, 'children'>) =>
   Node('h5', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an h6 heading element node.
- * @param text Optional text, number or bigint content for the heading.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the heading.
  * @param props Optional properties for the h6 element.
  * @returns An h6 element node.
  */
-export const H6 = (text?: string | number | bigint, props?: Omit<NodeProps<'h6'>, 'children'>) =>
+export const H6 = (children: NodeElement, props?: Omit<NodeProps<'h6'>, 'children'>) =>
   Node('h6', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a strong element node for important text.
- * @param text Optional text, number or bigint content to emphasize.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) to emphasize.
  * @param props Optional properties for the strong element.
  * @returns A strong element node.
  */
-export const Strong = (text?: string | number | bigint, props?: Omit<NodeProps<'strong'>, 'children'>) =>
+export const Strong = (children: NodeElement, props?: Omit<NodeProps<'strong'>, 'children'>) =>
   Node('strong', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates an em element node for emphasized text.
- * @param text Optional text, number or bigint content to emphasize.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) to emphasize.
  * @param props Optional properties for the em element.
  * @returns An em element node.
  */
-export const Em = (text?: string | number | bigint, props?: Omit<NodeProps<'em'>, 'children'>) =>
+export const Em = (children: NodeElement, props?: Omit<NodeProps<'em'>, 'children'>) =>
   Node('em', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a small element node for side-comments and small print.
- * @param text Optional text, number or bigint content to display smaller.
- * @param props Optional properties for the small element.
- * @returns A small element node.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for styling and configuring the small element.
+ * @returns A small element node that can be rendered in React.
  */
-export const Small = (text?: string | number | bigint, props?: Omit<NodeProps<'small'>, 'children'>) =>
+export const Small = (children: NodeElement, props?: Omit<NodeProps<'small'>, 'children'>) =>
   Node('small', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a mark element node for highlighted text.
- * @param text Optional text, number or bigint content to highlight.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) to highlight.
  * @param props Optional properties for the mark element.
  * @returns A mark element node.
  */
-export const Mark = (text?: string | number | bigint, props?: Omit<NodeProps<'mark'>, 'children'>) =>
+export const Mark = (children: NodeElement, props?: Omit<NodeProps<'mark'>, 'children'>) =>
   Node('mark', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a span element node.
- * @param text Optional text, number or bigint content for the span.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the span.
  * @param props Optional properties for the span element.
  * @returns A span element node.
  */
-export const Span = (text?: string | number | bigint, props?: Omit<NodeProps<'span'>, 'children'>) =>
+export const Span = (children: NodeElement, props?: Omit<NodeProps<'span'>, 'children'>) =>
   Node('span', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a paragraph element node.
- * @param text Optional text, number or bigint content for the paragraph.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the paragraph.
  * @param props Optional properties for the p element.
  * @returns A paragraph element node.
  */
-export const P = (text?: string | number | bigint, props?: Omit<NodeProps<'p'>, 'children'>) =>
+export const P = (children: NodeElement, props?: Omit<NodeProps<'p'>, 'children'>) =>
   Node('p', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a preformatted text element node.
- * @param text Optional text, number or bigint content for the pre element.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the pre element.
  * @param props Optional properties for the pre element.
  * @returns A pre element node.
  */
-export const Pre = (text?: string | number | bigint, props?: Omit<NodeProps<'pre'>, 'children'>) =>
+export const Pre = (children: NodeElement, props?: Omit<NodeProps<'pre'>, 'children'>) =>
   Node('pre', {
     ...props,
-    children: text,
+    children,
   })
 
 /**
  * Creates a code element node for displaying code snippets.
- * @param text Optional text, number or bigint content for the code.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the code.
  * @param props Optional properties for the code element.
  * @returns A code element node.
  */
-export const Code = (text?: string | number | bigint, props?: Omit<NodeProps<'code'>, 'children'>) =>
+export const Code = (children: NodeElement, props?: Omit<NodeProps<'code'>, 'children'>) =>
   Node('code', {
     ...props,
-    children: text,
+    children,
   })
+
+/**
+ * Represents a line break element.
+ * @param props Optional properties for the br element.
+ * @returns A br element node.
+ */
+export const Br = (props?: Omit<NodeProps<'br'>, 'children'>) => Node('br', props)
 
 // Lists
 
@@ -331,14 +315,19 @@ export const Label = (props?: NodeProps<'label'>) => Node('label', props)
  * @param props Optional properties for the input element.
  * @returns An input element node.
  */
-export const Input = (props?: NodeProps<'input'>) => Node('input', props)
+export const Input = (props?: Omit<NodeProps<'input'>, 'children'>) => Node('input', props)
 
 /**
- * Represents a button element.
+ * Creates a button element node.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the button.
  * @param props Optional properties for the button element.
  * @returns A button element node.
  */
-export const Button = (props?: NodeProps<'button'>) => Node('button', props)
+export const Button = (children: NodeElement, props?: Omit<NodeProps<'button'>, 'children'>) =>
+  Node('button', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents a textarea element for multiline text input.
@@ -356,10 +345,15 @@ export const Select = (props?: NodeProps<'select'>) => Node('select', props)
 
 /**
  * Represents an option within a select element.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the option.
  * @param props Optional properties for the option element.
  * @returns An option element node.
  */
-export const Option = (props?: NodeProps<'option'>) => Node('option', props)
+export const Option = (children: NodeElement, props?: Omit<NodeProps<'option'>, 'children'>) =>
+  Node('option', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents a fieldset element for grouping form elements.
@@ -370,10 +364,15 @@ export const Fieldset = (props?: NodeProps<'fieldset'>) => Node('fieldset', prop
 
 /**
  * Represents a legend for a fieldset.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the legend.
  * @param props Optional properties for the legend element.
  * @returns A legend element node.
  */
-export const Legend = (props?: NodeProps<'legend'>) => Node('legend', props)
+export const Legend = (children: NodeElement, props?: Omit<NodeProps<'legend'>, 'children'>) =>
+  Node('legend', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents an option group within a select element.
@@ -435,10 +434,15 @@ export const Td = (props?: NodeProps<'td'>) => Node('td', props)
 
 /**
  * Represents a table caption.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the caption.
  * @param props Optional properties for the caption element.
  * @returns A caption element node.
  */
-export const Caption = (props?: NodeProps<'caption'>) => Node('caption', props)
+export const Caption = (children: NodeElement, props?: Omit<NodeProps<'caption'>, 'children'>) =>
+  Node('caption', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents a table column group.
@@ -452,23 +456,16 @@ export const Colgroup = (props?: NodeProps<'colgroup'>) => Node('colgroup', prop
  * @param props Optional properties for the col element.
  * @returns A col element node.
  */
-export const Col = (props?: NodeProps<'col'>) => Node('col', props)
+export const Col = (props?: Omit<NodeProps<'col'>, 'children'>) => Node('col', props)
 
 // Media elements
-
-/**
- * Represents an image element (alias for Img).
- * @param props Optional properties for the img element.
- * @returns An img element node.
- */
-export const Image = (props?: NodeProps<'img'>) => Node('img', props)
 
 /**
  * Represents an image element.
  * @param props Optional properties for the img element.
  * @returns An img element node.
  */
-export const Img = (props?: NodeProps<'img'>) => Node('img', props)
+export const Img = (props?: Omit<NodeProps<'img'>, 'children'>) => Node('img', props)
 
 /**
  * Represents a video element.
@@ -496,14 +493,14 @@ export const Picture = (props?: NodeProps<'picture'>) => Node('picture', props)
  * @param props Optional properties for the source element.
  * @returns A source element node.
  */
-export const Source = (props?: NodeProps<'source'>) => Node('source', props)
+export const Source = (props?: Omit<NodeProps<'source'>, 'children'>) => Node('source', props)
 
 /**
  * Represents a text track element.
  * @param props Optional properties for the track element.
  * @returns A track element node.
  */
-export const Track = (props?: NodeProps<'track'>) => Node('track', props)
+export const Track = (props?: Omit<NodeProps<'track'>, 'children'>) => Node('track', props)
 
 /**
  * Represents a canvas element.
@@ -659,6 +656,20 @@ export const Nav = (props?: NodeProps<'nav'>) => Node('nav', props)
 // Document structure
 
 /**
+ * Represents the body element of an HTML document.
+ * @param props Optional properties for the body element.
+ * @returns A body element node.
+ */
+export const Body = (props?: NodeProps<'body'>) => Node('body', props)
+
+/**
+ * Represents the main content of a document.
+ * @param props Optional properties for the main element.
+ * @returns A main element node.
+ */
+export const Main = (props?: NodeProps<'main'>) => Node('main', props)
+
+/**
  * Represents a header element.
  * @param props Optional properties for the header element.
  * @returns A header element node.
@@ -702,10 +713,15 @@ export const Figure = (props?: NodeProps<'figure'>) => Node('figure', props)
 
 /**
  * Represents a figure caption element.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the figcaption.
  * @param props Optional properties for the figcaption element.
  * @returns A figcaption element node.
  */
-export const Figcaption = (props?: NodeProps<'figcaption'>) => Node('figcaption', props)
+export const Figcaption = (children: NodeElement, props?: Omit<NodeProps<'figcaption'>, 'children'>) =>
+  Node('figcaption', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents a blockquote element.
@@ -736,11 +752,16 @@ export const Dialog = (props?: NodeProps<'dialog'>) => Node('dialog', props)
 export const Details = (props?: NodeProps<'details'>) => Node('details', props)
 
 /**
- * Represents a summary element.
+ * Represents a summary element for a details disclosure box.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the summary.
  * @param props Optional properties for the summary element.
  * @returns A summary element node.
  */
-export const Summary = (props?: NodeProps<'summary'>) => Node('summary', props)
+export const Summary = (children: NodeElement, props?: Omit<NodeProps<'summary'>, 'children'>) =>
+  Node('summary', {
+    ...props,
+    children,
+  })
 
 // Document head elements
 
@@ -752,43 +773,424 @@ export const Summary = (props?: NodeProps<'summary'>) => Node('summary', props)
 export const Head = (props?: NodeProps<'head'>) => Node('head', props)
 
 /**
+ * Represents the root HTML element.
+ * @param props Optional properties for the HTML element.
+ * @returns An HTML element node.
+ */
+export const Html = (props?: NodeProps<'html'>) => Node('html', props)
+
+/**
  * Represents a meta element.
  * @param props Optional properties for the meta element.
  * @returns A meta element node.
  */
-export const Meta = (props?: NodeProps<'meta'>) => Node('meta', props)
+export const Meta = (props?: Omit<NodeProps<'meta'>, 'children'>) => Node('meta', props)
 
 /**
  * Represents a link element.
  * @param props Optional properties for the link element.
  * @returns A link element node.
  */
-export const Link = (props?: NodeProps<'link'>) => Node('link', props)
+export const Link = (props?: Omit<NodeProps<'link'>, 'children'>) => Node('link', props)
 
 /**
- * Represents a style element.
+ * Represents a style element. Its content should be CSS text.
+ * @param cssText Optional CSS code as a string.
  * @param props Optional properties for the style element.
  * @returns A style element node.
  */
-export const Style = (props?: NodeProps<'style'>) => Node('style', props)
+export const Style = (cssText?: string, props?: Omit<NodeProps<'style'>, 'children'>) =>
+  Node('style', {
+    ...props,
+    children: cssText,
+  })
 
 /**
- * Represents a script element.
- * @param props Optional properties for the script element.
+ * Represents a script element. For inline scripts, its content should be JavaScript text.
+ * @param scriptContent Optional JavaScript code as a string for inline scripts.
+ * @param props Optional properties for the script element (e.g., src, type, async, defer).
  * @returns A script element node.
  */
-export const Script = (props?: NodeProps<'script'>) => Node('script', props)
+export const Script = (scriptContent?: string, props?: Omit<NodeProps<'script'>, 'children'>) =>
+  Node('script', {
+    ...props,
+    children: scriptContent,
+  })
 
 /**
- * Represents a title element.
+ * Creates a title element node for document head title.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the title.
  * @param props Optional properties for the title element.
  * @returns A title element node.
  */
-export const Title = (props?: NodeProps<'title'>) => Node('title', props)
+export const Title = (children: NodeElement, props?: Omit<NodeProps<'title'>, 'children'>) =>
+  Node('title', {
+    ...props,
+    children,
+  })
 
 /**
  * Represents a base element.
  * @param props Optional properties for the base element.
  * @returns A base element node.
  */
-export const Base = (props?: NodeProps<'base'>) => Node('base', props)
+export const Base = (props?: Omit<NodeProps<'base'>, 'children'>) => Node('base', props)
+
+// --- Additional Text-Level Semantics ---
+
+/**
+ * Represents an abbreviation or acronym.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the abbreviation.
+ * @param props Optional properties for the abbr element.
+ * @returns An abbr element node.
+ */
+export const Abbr = (children: NodeElement, props?: Omit<NodeProps<'abbr'>, 'children'>) =>
+  Node('abbr', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents text that should be stylistically offset from normal prose (traditionally bold).
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the b element.
+ * @returns A b element node.
+ */
+export const B = (children: NodeElement, props?: Omit<NodeProps<'b'>, 'children'>) =>
+  Node('b', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents text that is isolated from its surroundings for bidirectional text formatting.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the bdi element.
+ * @returns A bdi element node.
+ */
+export const Bdi = (children: NodeElement, props?: Omit<NodeProps<'bdi'>, 'children'>) =>
+  Node('bdi', {
+    ...props,
+    children,
+  })
+
+/**
+ * Overrides the current text directionality.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the bdo element.
+ * @returns A bdo element node.
+ */
+export const Bdo = (children: NodeElement, props?: Omit<NodeProps<'bdo'>, 'children'>) =>
+  Node('bdo', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents the title of a work (e.g., a book, a song, an essay).
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the citation.
+ * @param props Optional properties for the cite element.
+ * @returns A cite element node.
+ */
+export const Cite = (children: NodeElement, props?: Omit<NodeProps<'cite'>, 'children'>) =>
+  Node('cite', {
+    ...props,
+    children,
+  })
+
+/**
+ * Links a piece of content with a machine-readable translation.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the data element.
+ * @returns A data element node.
+ */
+export const Data = (children: NodeElement, props?: Omit<NodeProps<'data'>, 'children'>) =>
+  Node('data', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents a definition of a term.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the definition.
+ * @param props Optional properties for the dfn element.
+ * @returns A dfn element node.
+ */
+export const Dfn = (children: NodeElement, props?: Omit<NodeProps<'dfn'>, 'children'>) =>
+  Node('dfn', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents text in an alternate voice or mood (traditionally italic).
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the i element.
+ * @returns An i element node.
+ */
+export const I = (children: NodeElement, props?: Omit<NodeProps<'i'>, 'children'>) =>
+  Node('i', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents user input (typically keyboard input).
+ * @param children The content to be rendered within the element (text, numbers, components, etc) representing keyboard input.
+ * @param props Optional properties for the kbd element.
+ * @returns A kbd element node.
+ */
+export const Kbd = (children: NodeElement, props?: Omit<NodeProps<'kbd'>, 'children'>) =>
+  Node('kbd', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents an inline quotation.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the quotation.
+ * @param props Optional properties for the q element.
+ * @returns A q element node.
+ */
+export const Q = (children: NodeElement, props?: Omit<NodeProps<'q'>, 'children'>) =>
+  Node('q', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents fallback parenthesis for ruby annotations.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the rp element.
+ * @returns An rp element node.
+ */
+export const Rp = (children: NodeElement, props?: Omit<NodeProps<'rp'>, 'children'>) =>
+  Node('rp', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents the ruby text component of a ruby annotation.
+ * @param children The content to be rendered within the element (text, numbers, components, etc).
+ * @param props Optional properties for the rt element.
+ * @returns An rt element node.
+ */
+export const Rt = (children: NodeElement, props?: Omit<NodeProps<'rt'>, 'children'>) =>
+  Node('rt', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents a ruby annotation.
+ * @param props Optional properties for the ruby element.
+ * @returns A ruby element node.
+ */
+export const Ruby = (props?: NodeProps<'ruby'>) => Node('ruby', props)
+
+/**
+ * Represents text that is no longer accurate or relevant (strikethrough).
+ * @param children The content to be rendered within the element (text, numbers, components, etc) to be struck through.
+ * @param props Optional properties for the s element.
+ * @returns An s element node.
+ */
+export const S = (children: NodeElement, props?: Omit<NodeProps<'s'>, 'children'>) =>
+  Node('s', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents sample output from a computer program.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) representing sample output.
+ * @param props Optional properties for the samp element.
+ * @returns A samp element node.
+ */
+export const Samp = (children: NodeElement, props?: Omit<NodeProps<'samp'>, 'children'>) =>
+  Node('samp', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents subscript text.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the subscript.
+ * @param props Optional properties for the sub element.
+ * @returns A sub element node.
+ */
+export const Sub = (children: NodeElement, props?: Omit<NodeProps<'sub'>, 'children'>) =>
+  Node('sub', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents superscript text.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) for the superscript.
+ * @param props Optional properties for the sup element.
+ * @returns A sup element node.
+ */
+export const Sup = (children: NodeElement, props?: Omit<NodeProps<'sup'>, 'children'>) =>
+  Node('sup', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents a specific period in time or a date.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) representing the time/date.
+ * @param props Optional properties for the time element.
+ * @returns A time element node.
+ */
+export const Time = (children: NodeElement, props?: Omit<NodeProps<'time'>, 'children'>) =>
+  Node('time', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents text that should be rendered with an unarticulated, non-textual annotation (traditionally underline).
+ * @param children The content to be rendered within the element (text, numbers, components, etc) to be underlined.
+ * @param props Optional properties for the u element.
+ * @returns A u element node.
+ */
+export const U = (children: NodeElement, props?: Omit<NodeProps<'u'>, 'children'>) =>
+  Node('u', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents a variable in a mathematical expression or programming context.
+ * @param children The content to be rendered within the element (text, numbers, components, etc) representing a variable.
+ * @param props Optional properties for the var element.
+ * @returns A var element node.
+ */
+export const Var = (children: NodeElement, props?: Omit<NodeProps<'var'>, 'children'>) =>
+  Node('var', {
+    ...props,
+    children,
+  })
+
+/**
+ * Represents a word break opportunity. This is a void element.
+ * @param props Optional properties for the wbr element.
+ * @returns A wbr element node.
+ */
+export const Wbr = (props?: Omit<NodeProps<'wbr'>, 'children'>) => Node('wbr', props)
+
+// --- Additional Grouping Content ---
+
+/**
+ * Represents a thematic break between paragraph-level elements (e.g., a scene change in a story, or a shift of topic). This is a void element.
+ * @param props Optional properties for the hr element.
+ * @returns An hr element node.
+ */
+export const Hr = (props?: Omit<NodeProps<'hr'>, 'children'>) => Node('hr', props)
+
+/**
+ * Represents a group of commands that a user can perform or activate.
+ * @param props Optional properties for the menu element.
+ * @returns A menu element node.
+ */
+export const Menu = (props?: NodeProps<'menu'>) => Node('menu', props)
+
+/**
+ * Represents the parts of a document or application that contain search or filtering controls.
+ * @param props Optional properties for the search element.
+ * @returns A search element node.
+ */
+export const Search = (props?: NodeProps<'search'>) => Node('search', props)
+
+// --- Additional Embedded Content ---
+
+/**
+ * Represents an integration point for an external application or interactive content (a plug-in). This is a void element.
+ * @param props Optional properties for the embed element.
+ * @returns An embed element node.
+ */
+export const Embed = (props?: Omit<NodeProps<'embed'>, 'children'>) => Node('embed', props)
+
+/**
+ * Represents an external resource, which can be treated as an image, a nested browsing context, or content to be handled by a plugin.
+ * @param props Optional properties for the object element.
+ * @returns An object element node.
+ */
+export const ObjectElement = (props?: NodeProps<'object'>) => Node('object', props) // Renamed to ObjectElement to avoid conflict with JavaScript's Object
+
+/**
+ * Defines parameters for an <object> element. This is a void element.
+ * @param props Optional properties for the param element.
+ * @returns A param element node.
+ */
+export const Param = (props?: Omit<NodeProps<'param'>, 'children'>) => Node('param', props)
+
+/**
+ * Represents an image map, with clickable areas.
+ * @param props Optional properties for the map element.
+ * @returns A map element node.
+ */
+export const MapElement = (props?: NodeProps<'map'>) => Node('map', props) // Renamed to MapElement to avoid conflict with JavaScript's Map
+
+/**
+ * Defines a client-side image map area. This is a void element.
+ * @param props Optional properties for the area element.
+ * @returns An area element node.
+ */
+export const Area = (props?: Omit<NodeProps<'area'>, 'children'>) => Node('area', props)
+
+// --- Additional Forms Elements ---
+
+/**
+ * Contains a set of <option> elements that represent predefined options for other controls.
+ * @param props Optional properties for the datalist element.
+ * @returns A datalist element node.
+ */
+export const Datalist = (props?: NodeProps<'datalist'>) => Node('datalist', props)
+
+/**
+ * Represents the result of a calculation or user action.
+ * @param props Optional properties for the output element.
+ * @returns An output element node.
+ */
+export const Output = (props?: NodeProps<'output'>) => Node('output', props)
+
+/**
+ * Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.
+ * @param props Optional properties for the progress element.
+ * @returns A progress element node.
+ */
+export const Progress = (props?: NodeProps<'progress'>) => Node('progress', props)
+
+/**
+ * Represents either a scalar value within a known range or a fractional value.
+ * @param props Optional properties for the meter element.
+ * @returns A meter element node.
+ */
+export const Meter = (props?: NodeProps<'meter'>) => Node('meter', props)
+
+// --- Additional Scripting & Document Elements ---
+
+/**
+ * Defines a section of HTML to be inserted if a script type on the page is unsupported or if scripting is currently turned off in the browser.
+ * @param props Optional properties for the noscript element.
+ * @returns A noscript element node.
+ */
+export const Noscript = (props?: NodeProps<'noscript'>) => Node('noscript', props)
+
+/**
+ * A mechanism for holding HTML that is not to be rendered immediately when a page is loaded but may be instantiated subsequently during runtime using JavaScript.
+ * @param props Optional properties for the template element.
+ * @returns A template element node.
+ */
+export const Template = (props?: NodeProps<'template'>) => Node('template', props)
+
+// --- Additional Sections Elements ---
+
+/**
+ * Represents a heading group. It is used to group a set of <h1>–<h6> elements.
+ * @param props Optional properties for the hgroup element.
+ * @returns An hgroup element node.
+ */
+export const Hgroup = (props?: NodeProps<'hgroup'>) => Node('hgroup', props)
