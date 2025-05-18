@@ -11,7 +11,7 @@ A structured approach to component composition with built-in theming, prop separ
 import { Component, Div, H1, Button } from '@meonode/ui';
 
 const BlueButton = Component((props) =>
-  Button({
+  Button('Blue', {
     padding: '12px 24px',
     borderRadius: '8px',
     backgroundColor: 'dodgerblue',
@@ -44,7 +44,7 @@ const App = Component(() =>
 
 ## Installation
 
-```bash
+```shell
 npm install @meonode/ui react
 # or
 yarn add @meonode/ui react
@@ -56,7 +56,7 @@ yarn add @meonode/ui react
 
 Create elements using the `Node` factory or pre-built components:
 
-```tsx
+```ts
 import { Node, Div, H1 } from '@meonode/ui';
 
 // Using Node factory
@@ -79,7 +79,7 @@ const Header = () =>
 
 Define and consume themes with dot-notation:
 
-```tsx
+```ts
 const theme = {
   colors: {
     primary: '#2196F3',
@@ -126,15 +126,16 @@ const ProfileCard = Component(({ user }) =>
 );
 ```
 
+
 ## Key Features
 
-| Feature                | Description                                                                 |
-|------------------------|-----------------------------------------------------------------------------|
-| **Smart Prop Merge**   | CSS properties are automatically merged with style object                   |
-| **Theme Resolution**   | `theme.` references resolve through component hierarchy                     |
-| **Type Safety**        | Autocomplete for CSS properties and theme paths                            |
-| **HOC Support**        | Wrap existing components with `Component()` for seamless integration        |
-| **Dynamic Children**   | Function-as-child pattern with automatic theme propagation                  |
+| Feature              | Description                                                          |
+|----------------------|----------------------------------------------------------------------|
+| **Smart Prop Merge** | CSS properties are automatically merged with style object            |
+| **Theme Resolution** | `theme.` references resolve through component hierarchy              |
+| **Type Safety**      | Autocomplete for CSS properties and theme paths                      |
+| **HOC Support**      | Wrap existing components with `Component()` for seamless integration |
+| **Dynamic Children** | Function-as-child pattern with automatic theme propagation           |
 
 ## Advanced Usage
 
@@ -234,7 +235,7 @@ const DetailComponent = ({ info }: { info: string }) => {
 
 ### Material UI Integration
 
-```bash
+```shell
 yarn add @meonode/mui @mui/material
 ```
 
@@ -257,10 +258,9 @@ const MuiLoginForm = Component(() =>
         fullWidth: true,
         margin: 'normal'
       }),
-      Button({
+      Button('Sign In', {
         variant: 'contained',
-        color: 'primary',
-        children: 'Sign In'
+        color: 'primary'
       })
     ]
   })
