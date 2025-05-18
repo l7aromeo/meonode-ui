@@ -1,8 +1,19 @@
 'use strict'
-import type { Attributes as ReactAttributes, ComponentProps, CSSProperties, ReactNode, JSX, ElementType, ComponentType, JSXElementConstructor } from 'react'
+import type {
+  Attributes as ReactAttributes,
+  ComponentProps,
+  CSSProperties,
+  ReactNode,
+  JSX,
+  ElementType,
+  ComponentType,
+  JSXElementConstructor,
+  ReactInstance,
+} from 'react'
 
 export type NodeElement =
   | ReactNode
+  | ReactInstance
   | ElementType
   | ComponentType
   | BaseNodeInstance<any>
@@ -15,7 +26,7 @@ export type NodeElement =
  * - BaseNodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | NodeElement | BaseNodeInstance<any>
+export type Children = ReactNode | ReactInstance | NodeElement | BaseNodeInstance<any>
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
@@ -27,7 +38,7 @@ export interface BaseNodeInstance<T extends NodeElement = NodeElement> {
   readonly element: T
 
   /** Original props passed during node construction, preserved for cloning/recreation */
-  readonly initialRawProps?: BaseNodeProps<T>
+  readonly rawProps?: BaseNodeProps<T>
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactNode
@@ -62,7 +73,7 @@ export interface Theme {
  * All dynamic/function children are converted to concrete nodes or React elements.
  * Ensures consistent handling of children during the render phase.
  */
-export type ProcessedChild = BaseNodeInstance | ReactNode
+export type ProcessedChild = BaseNodeInstance | ReactNode | ReactInstance
 
 /**
  * Internal props type used by BaseNode instances after initial processing.
@@ -126,7 +137,7 @@ export type BaseNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nod
  */
 export interface FunctionRendererProps<E extends NodeElement> {
   /** Function that returns the child content to render */
-  render: (props?: any) => BaseNodeInstance<E> | ReactNode
+  render: (props?: NodeProps<E>) => ReactNode | BaseNodeInstance<E>
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme
