@@ -171,7 +171,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
       }
       if (childIndex !== undefined) {
         const elementName = getElementTypeName(element)
-        return `${elementName}_child_${childIndex}`
+        return `${elementName}-${childIndex}`
       }
       return undefined // No explicit key, and not an array child, so BaseNode constructor will handle.
     }
@@ -213,16 +213,13 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     // Case 4: Child is a React Element (JSX element)
     if (isValidElement(rawChild)) {
       // Extract props from the JSX element
-      const childElementProps = rawChild.props as any
+      const childElementProps = rawChild.props as ComponentProps<any>
 
       // Prefer nodeTheme from child's props, fallback to parent theme
       const themeForChild = childElementProps?.nodeTheme || parentTheme
 
       // Generate a stable key based on element type and index if needed
       const keyForChildNode = generateIndexedKeyIfNeeded(rawChild.type as ElementType, rawChild.key)
-
-      // Remove original key since we'll be using the generated/existing key
-      delete childElementProps.key
 
       // Create new BaseNode with props from JSX element
       return new BaseNode(rawChild.type as ElementType, {

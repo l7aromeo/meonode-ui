@@ -19,6 +19,7 @@
     "README.md"
   ],
   "scripts": {
+    "watch:build": "nodemon --watch src --ext ts,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
     "build": "rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.js\" && tsc && tsc-alias && copyfiles -u 1 \"src/**/*.json\" dist",
     "publish:pre": "./prepublish.sh && yarn version -i prerelease && yarn npm publish --tag next",
@@ -43,6 +44,7 @@
     "eslint-plugin-jsdoc": "^50.6.17",
     "eslint-plugin-prettier": "^5.4.0",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "nodemon": "^3.1.10",
     "prettier": "^3.5.3",
     "tsc-alias": "^1.8.16",
     "typescript": "^5.8.3",
