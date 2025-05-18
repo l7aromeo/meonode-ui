@@ -4,6 +4,8 @@
  * Inspired by react-is package but implemented in TypeScript with type safety.
  */
 
+import React from 'react'
+
 /**
  * Symbol identifiers for React internal component types
  * These are used to identify different kinds of React elements and components
@@ -224,9 +226,12 @@ export const isValidElementType = <T>(type: T): boolean => {
  * @param {unknown} component Component to check
  * @returns {boolean} - True if component is a React class component
  */
-export const isReactClassComponent = (component: unknown): component is { prototype: { isReactComponent: any } } => {
+export const isReactClassComponent = (component: unknown): component is React.ComponentType => {
+  if (typeof component !== 'function') return false
+
   try {
-    return typeof component === 'function' && !!(component as any).prototype && !!(component as any).prototype.isReactComponent
+    const proto = Object.getPrototypeOf(component)
+    return proto === React.Component || proto === React.PureComponent || proto instanceof React.Component
   } catch {
     return false
   }
