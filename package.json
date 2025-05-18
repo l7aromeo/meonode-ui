@@ -1,7 +1,7 @@
 {
   "name": "@meonode/ui",
   "description": "`@meonode/ui` is a lightweight yet powerful utility for the programmatic creation and manipulation of React elements. It offers an enhanced, structured way to define components, manage props (separating CSS from DOM attributes), handle theming, and compose children *before* they are rendered by React. This provides greater control and flexibility, especially for dynamic UIs and design systems.",
-  "version": "0.0.1-alpha.7",
+  "version": "0.0.1-alpha.8",
   "type": "module",
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
@@ -21,7 +21,7 @@
   "scripts": {
     "lint": "eslint --fix",
     "build": "rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.js\" && tsc && tsc-alias && copyfiles -u 1 \"src/**/*.json\" dist",
-    "publish": "npm publish"
+    "publish": "yarn version prerelease --deferred && yarn version apply && yarn npm publish"
   },
   "devDependencies": {
     "@babel/cli": "^7.0.0",
@@ -57,5 +57,9 @@
   "bugs": {
     "url": "https://github.com/l7aromeo/meonode-ui/issues"
   },
-  "license": "MIT"
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "stableVersion": "0.0.1-alpha.7"
 }
