@@ -27,7 +27,17 @@ especially for dynamic UIs and design systems.
 
 ## Installation
 
-You'll also need `react` as a peer dependency.
+First, ensure you have `react` installed as a dependency.
+
+```shell
+yarn add react @meonode/ui
+```
+
+To use the built-in integration with Material UI, install the following:
+
+```shell
+yarn add react @mui/material @meonode/ui @meonode/mui
+```
 
 ---
 
