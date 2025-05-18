@@ -1,10 +1,7 @@
 ```ts
 
 // Wraps a hook-capable component into a BaseNode-compatible Client Component
-import { Component } from '@src/lib/node/core.node'
-
-// Layout primitives (synthetic components for JSX-less DOM generation)
-import { Column, Row, Div, P } from '@src/lib/node/html.node'
+import { Component, Column, Row, Div, P  } from '@meonode/ui'
 import { useState, useEffect } from 'react'
 
 // Shared theme object passed into components. This may be written in a different file and imported.

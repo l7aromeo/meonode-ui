@@ -1,10 +1,7 @@
 ```ts
 // Component wraps a React Server Component into a Client Component
 // Think of it like a factory that transforms JSX-like node definitions into actual React components
-import { Component } from '@src/lib/node/core.node'
-
-// These are layout/HTML helpers that render to real DOM elements (e.g., <div>, <img>, <p>)
-import { Column, Row, Div, Img, P } from '@src/lib/node/html.node'
+import { Component, Column, Row, Div, Img, P } from '@meonode/ui'
 
 const theme = { background: { primary: 'red', secondary: 'blue' } }
 
