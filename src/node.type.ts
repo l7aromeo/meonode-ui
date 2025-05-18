@@ -17,7 +17,7 @@ export type NodeElement =
   | ElementType
   | ComponentType
   | BaseNodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | BaseNodeInstance<any>)
+  | ((props?: any) => ReactNode | Promise<ReactNode> | ReactInstance | BaseNodeInstance<any>)
 
 /**
  * Defines valid child types that can be passed to a node:
@@ -67,13 +67,6 @@ export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElemen
 export interface Theme {
   [key: string]: string | number | boolean | null | undefined | any | Theme | Record<string, Theme | string | number | boolean | null | undefined | any>
 }
-
-/**
- * Internal representation of processed children after BaseNode handles them.
- * All dynamic/function children are converted to concrete nodes or React elements.
- * Ensures consistent handling of children during the render phase.
- */
-export type ProcessedChild = BaseNodeInstance | ReactNode | ReactInstance
 
 /**
  * Internal props type used by BaseNode instances after initial processing.
@@ -144,4 +137,6 @@ export interface FunctionRendererProps<E extends NodeElement> {
 
   /** Optional key prop to help React identify unique instances in lists */
   passedKey?: string
+
+  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => BaseNodeInstance<E>
 }
