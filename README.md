@@ -6,11 +6,11 @@
 **Build React UIs with Type-Safe Fluency**  
 A structured approach to component composition with built-in theming, prop separation, and dynamic children handling.
 
-```tsx
+```ts
 // Quick Start Example
 import { Component, Div, H1, Button } from '@meonode/ui';
 
-const BlueButton = Component((props) => 
+const BlueButton = Component((props) =>
   Button({
     padding: '12px 24px',
     borderRadius: '8px',
@@ -24,8 +24,8 @@ const App = Component(() =>
   Div({
     padding: '40px',
     children: [
-      H1({ fontSize: '2rem' }, 'Welcome to Meonode'),
-      BlueButton({ 
+      H1('Welcome to Meonode', { fontSize: '2rem' }),
+      BlueButton({
         onClick: () => alert('Hello World!'),
         children: 'Get Started'
       })
@@ -67,11 +67,11 @@ const Card = Node('div', {
 });
 
 // Using pre-built components
-const Header = () => 
+const Header = () =>
   Div({
     padding: '20px',
     backgroundColor: 'navy',
-    children: H1({ color: 'white' }, 'App Header')
+    children: H1('App Header', { color: 'white' })
   });
 ```
 
@@ -94,14 +94,14 @@ const theme = {
   }
 };
 
-const ThemedCard = Component(() => 
+const ThemedCard = Component(() =>
   Div({
     theme,
     padding: 'theme.spacing.lg',
     backgroundColor: 'theme.colors.primary',
     children: [
-      H1({ color: 'theme.colors.text.primary' }, 'Themed Title'),
-      P({ color: 'theme.colors.text.secondary' }, 'Content...')
+      H1('Themed Title', { color: 'theme.colors.text.primary' }),
+      P('Content...', { color: 'theme.colors.text.secondary' }) 
     ]
   })
 );
@@ -111,7 +111,7 @@ const ThemedCard = Component(() =>
 
 Automatic separation of CSS props from DOM attributes:
 
-```tsx
+```ts
 const ProfileCard = Component(({ user }) =>
   Div({
     // CSS Props
@@ -140,7 +140,7 @@ const ProfileCard = Component(({ user }) =>
 
 ### Component Composition
 
-```tsx
+```ts
 const Dashboard = Component(() => 
   Div({
     display: 'grid',
@@ -192,14 +192,12 @@ export default Component(() => {
         children: [
           Div({
             onClick: () => setShowDetails(prev => !prev),
-            style: {
-              cursor: 'pointer',
-              userSelect: 'none',
-              padding: '10px 20px',
-              backgroundColor: 'theme.background.primary', // Node engine will handle this
-              borderRadius: 5,
-              fontWeight: 'bold',
-            },
+            cursor: 'pointer',
+            userSelect: 'none',
+            padding: '10px 20px',
+            backgroundColor: 'theme.background.primary', // Node engine will handle this
+            borderRadius: 5,
+            fontWeight: 'bold',
             children: showDetails ? 'Hide Details' : 'Show Details',
           }),
         ],
@@ -209,7 +207,7 @@ export default Component(() => {
       // Ensures it's treated as a renderable function (deferred React class or element that is NOT called directly)
       // Node engine will handle this like magic
       showDetails && (() => DetailComponent({ info: 'Here are some details!' })), // Works like `Component(() => DetailComponent({ info: 'Here some details!' }))`,
-      showDetails && DetailComponent({ info: 'Here are some details!' })).render() // Works
+      showDetails && DetailComponent({ info: 'Here are some details!' }).render() // Works
     ],
   })
 })
@@ -228,7 +226,7 @@ const DetailComponent = ({ info }: { info: string }) => {
     border: '1px solid green',
     borderRadius: 6,
     backgroundColor: 'theme.background.secondary', // Node engine will handle this
-    children: P({ children: info }),
+    children: P(info),
   })
 }
 
