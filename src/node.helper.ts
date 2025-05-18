@@ -89,7 +89,9 @@ export const getComponentType = (
  */
 export function getElementTypeName(node: unknown): string {
   function getDisplayName(component: any, fallback: string): string {
-    return component?.displayName || component?.name || fallback
+    const name = component?.displayName || component?.name
+    if (!!name && name !== 'render') return name
+    return fallback
   }
 
   if (node === null || node === undefined) return 'UnknownElementType'
