@@ -147,9 +147,15 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
       return bnResult.render()
     }
 
+    const processedResult = processRawNode(result, passedTheme)
+
+    if (processedResult instanceof BaseNode) {
+      return processedResult.render()
+    }
+
     // If the result is not a BaseNode (e.g., JSX, string, etc.), return it directly.
     // Note: Non-BaseNode results will not automatically receive the theme.
-    return result as ReactNode
+    return result
   }
 
   /**
@@ -219,7 +225,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     if (isValidElement(rawNode)) {
       // Extract and merge props from the JSX element, flattening style props
       let childElementProps = { ...(rawNode.props as ComponentProps<any>) }
-      childElementProps = { ...childElementProps.style, ...childElementProps } // Merge style props into main props
+      childElementProps = { ...childElementProps.style, ...childElementProps } // Merge main props into style props
       delete childElementProps.style // Remove original style object after merging
 
       // Handle theme by preferring nodeTheme from child's props, falling back to parent theme if not set
