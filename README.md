@@ -163,8 +163,6 @@ const Dashboard = Component(() =>
 
 ### With Conditional Children That Contains Hook
 
-also add this
-
 ```ts
 // Wraps a hook-capable component into a BaseNode-compatible Client Component
 'use client'
