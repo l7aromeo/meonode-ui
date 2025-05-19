@@ -166,37 +166,52 @@ const Dashboard = Component(() =>
 also add this
 
 ```ts
-
 // Wraps a hook-capable component into a BaseNode-compatible Client Component
-import { Component, Column, Row, Div, P  } from '@meonode/ui'
+'use client'
+/**
+ * This file demonstrates integration between React hooks and BaseNode components
+ * using the @meonode/ui library for declarative UI construction
+ */
+import { Component, Column, Row, Div, P, Node } from '@meonode/ui'
 import { useState, useEffect } from 'react'
 
-// Shared theme object passed into components. This may be written in a different file and imported.
+/**
+ * Global theme configuration
+ * Contains color palette definitions used throughout components
+ * Can be extracted to separate theme file if needed
+ */
 const theme = {
   background: { primary: 'lightgreen', secondary: 'lightyellow' },
 }
 
-// Exported component rendered via <Component /> (client wrapper)
+/**
+ * Main page component wrapped in Component HOC to enable client-side features
+ * Demonstrates conditional rendering and component composition patterns
+ */
 export default Component(() => {
-  // React hook for conditional UI
+  // Controls visibility of detail sections
   const [showDetails, setShowDetails] = useState(false)
 
-  // Declarative layout using Column as root container
+  /**
+   * Main layout structured as a Column with:
+   * - Header row containing toggle button
+   * - Conditional detail sections using different rendering approaches
+   */
   return Column({
     theme,
     padding: 20,
     gap: 15,
     children: [
-      // Header row with a toggle button
+      // Interactive header section
       Row({
         gap: 10,
         children: [
           Div({
-            onClick: () => setShowDetails(prev => !prev),
+            onClick: () => setShowDetails(prev => !prev), // Toggle detail visibility
             cursor: 'pointer',
-            userSelect: 'none',
+            userSelect: 'none', // Prevent text selection
             padding: '10px 20px',
-            backgroundColor: 'theme.background.primary', // Node engine will handle this
+            backgroundColor: 'theme.background.primary', // Themed background
             borderRadius: 5,
             fontWeight: 'bold',
             children: showDetails ? 'Hide Details' : 'Show Details',
@@ -204,17 +219,31 @@ export default Component(() => {
         ],
       }),
 
-      // Conditionally render DetailComponent via function wrapper
-      // Ensures it's treated as a renderable function (deferred React class or element that is NOT called directly)
-      // Node engine will handle this like magic
-      showDetails && (() => DetailComponent({ info: 'Here are some details!' })), // Works like `Component(() => DetailComponent({ info: 'Here some details!' }))`,
-      showDetails && DetailComponent({ info: 'Here are some details!' }).render() // Works
+      /**
+       * Multiple approaches to conditional detail rendering:
+       * 1. Direct function wrapping
+       * 2. Component HOC wrapping
+       * 3. Node with ReturnRenderedDetailComponent
+       * 4. Non-working example with raw Node usage
+       */
+      showDetails && (() => DetailComponent({ info: 'Here are some details 1!' })), // Method 1
+      showDetails && Component(() => DetailComponent({ info: 'Here are some details 2!' })), // Method 2
+      showDetails && Node(ReturnRenderedDetailComponent, { info: 'Here are some details 2!' }).render(), // Method 3
+
+      // Fails because DetailComponent returns Node instance instead of ReactNode
+      showDetails && Node(DetailComponent, { info: 'Here are some details 2!' }).render(), // ❌ Invalid
     ],
   })
 })
 
-// A stateful detail section using useEffect and styled Div
+/**
+ * Displays a styled detail section with lifecycle logging
+ * @param {Object} props - Component properties
+ * @param {string} props.info - Text content to display
+ * @returns {Node} Rendered Div Node instance
+ */
 const DetailComponent = ({ info }: { info: string }) => {
+  // Log component lifecycle for debugging
   useEffect(() => {
     console.log('DetailComponent mounted')
     return () => {
@@ -222,13 +251,42 @@ const DetailComponent = ({ info }: { info: string }) => {
     }
   }, [])
 
+  // Themed container with text content
   return Div({
     padding: 15,
     border: '1px solid green',
     borderRadius: 6,
-    backgroundColor: 'theme.background.secondary', // Node engine will handle this
+    color: 'red',
+    backgroundColor: 'theme.background.secondary', // Theme-aware background
     children: P(info),
   })
+}
+
+/**
+ * Alternative implementation that explicitly returns rendered content
+ * Functionally identical to DetailComponent but compatible with Node wrapper
+ * @param {Object} props - Component properties
+ * @param {string} props.info - Text content to display
+ * @returns {ReactNode} Rendered React element
+ */
+const ReturnRenderedDetailComponent = ({ info }: { info: string }) => {
+  // Log component lifecycle for debugging
+  useEffect(() => {
+    console.log('DetailComponent mounted')
+    return () => {
+      console.log('DetailComponent unmounted')
+    }
+  }, [])
+
+  // Themed container with text content
+  return Div({
+    padding: 15,
+    border: '1px solid green',
+    borderRadius: 6,
+    color: 'red',
+    backgroundColor: 'theme.background.secondary', // Theme-aware background
+    children: P(info),
+  }).render()
 }
 
 ```
