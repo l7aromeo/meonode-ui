@@ -8,16 +8,16 @@ import type {
   ElementType,
   ComponentType,
   JSXElementConstructor,
-  ReactInstance,
+  Component,
 } from 'react'
 
 export type NodeElement =
   | ReactNode
-  | ReactInstance
+  | Component<any, any>
   | ElementType
   | ComponentType<any>
   | BaseNodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | ReactInstance | BaseNodeInstance<any>)
+  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | BaseNodeInstance<any>)
 
 /**
  * Defines valid child types that can be passed to a node:
@@ -26,7 +26,7 @@ export type NodeElement =
  * - BaseNodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | ReactInstance | NodeElement | BaseNodeInstance<any>
+export type Children = ReactNode | Component<any> | NodeElement | BaseNodeInstance<any>
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
