@@ -1,6 +1,6 @@
 'use strict'
-import React, { ComponentProps, createElement, CSSProperties, ElementType, isValidElement, Key, ReactNode } from 'react'
-import { BaseNodeInstance, BaseNodeProps, FunctionRendererProps, NodeElement, NodeProps, OriginalNodeProps, Theme } from '@src/node.type.js'
+import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import type { BaseNodeInstance, BaseNodeProps, FunctionRendererProps, NodeElement, NodeProps, OriginalNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 
@@ -181,7 +181,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     }
 
     // Case 1: Child is already a BaseNode instance
-    if (rawNode instanceof BaseNode || (typeof rawNode === 'object' && rawNode !== null && (rawNode as any)._isBaseNode === true)) {
+    if (rawNode instanceof BaseNode) {
       const childInstance = rawNode as BaseNode<any>
       const childsInitialRawProps = childInstance.rawProps || {}
       const childsOwnInitialTheme = childsInitialRawProps.nodeTheme
@@ -247,8 +247,8 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     }
 
     // Case 6: Handle instances of React.Component
-    if (rawNode instanceof React.Component) {
-      const element = rawNode.render()
+    if ((rawNode as unknown as React.Component) instanceof React.Component) {
+      const element = (rawNode as unknown as React.Component).render()
       // Recursively process the rendered element with parent theme and index
       return this._processRawNode(element, parentTheme, childIndex)
     }
@@ -345,7 +345,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
 export function Component<T extends Record<string, any>>(component: (props: T) => BaseNodeInstance<any> | ReactNode) {
   return (props: T) => {
     const c = component(props)
-    if (c instanceof BaseNode || (typeof c === 'object' && c !== null && (c as any)._isBaseNode === true)) {
+    if (c instanceof BaseNode) {
       return (c as BaseNodeInstance<any>).render()
     }
     return c

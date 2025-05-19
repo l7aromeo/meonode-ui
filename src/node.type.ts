@@ -15,7 +15,7 @@ export type NodeElement =
   | ReactNode
   | ReactInstance
   | ElementType
-  | ComponentType
+  | ComponentType<any>
   | BaseNodeInstance<any>
   | ((props?: any) => ReactNode | Promise<ReactNode> | ReactInstance | BaseNodeInstance<any>)
 
