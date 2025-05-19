@@ -411,9 +411,9 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  *   })
  * })
  */
-export function Component<T extends Record<string, any>>(component: (props: T) => BaseNodeInstance<any> | ReactNode) {
+export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => BaseNodeInstance<any> | ReactNode) {
   // Create wrapper component that handles theme and rendering
-  return (props: T & { theme?: Theme }) => {
+  return (props: T = {} as T) => {
     const result = component({ ...props }) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
