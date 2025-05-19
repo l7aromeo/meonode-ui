@@ -15,12 +15,12 @@
   "plugins": [
     ["module-resolver", {
       "root": [
-        "./src"
+        "./"
       ],
       "alias": {
         "@src": "./src"
       },
-      "extensions": [".js", ".ts"]
+      "extensions": [".js", ".ts", ".json"]
     }]
   ],
   "generatorOpts": {

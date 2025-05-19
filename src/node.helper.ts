@@ -1,7 +1,7 @@
 'use strict'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
 import type { NodeElement, OriginalNodeProps } from '@src/node.type.js'
-import cssPropertiesJson from '@src/json/css-properties.json' with { type: 'json' }
+import cssPropertiesJson from '@src/json/css-properties.json'
 import {
   isContextConsumer,
   isContextProvider,
