@@ -351,9 +351,10 @@ const MuiLoginForm = Component(() =>
         fullWidth: true,
         margin: 'normal'
       }),
-      Button('Sign In', {
+      Button({
         variant: 'contained',
-        color: 'primary'
+        color: 'primary',
+        children: 'Sign In'
       })
     ]
   })
