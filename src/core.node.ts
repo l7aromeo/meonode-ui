@@ -1,6 +1,6 @@
 'use strict'
 import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { BaseNodeInstance, RawNodeProps, FunctionRendererProps, NodeElement, NodeProps, FinalNodeProps, Theme } from '@src/node.type.js'
+import type { BaseNodeInstance, ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 
@@ -182,7 +182,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
    * @param childIndex Optional index of the child if it's part of an array.
    * @returns The processed child.
    */
-  private _processRawNode(
+  public _processRawNode(
     rawNode: NodeElement,
     parentTheme?: Theme,
     childIndex?: number, // Index for generating stable keys for array children
@@ -410,15 +410,14 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  * @example
  * ```ts
  * // Basic usage
- * const Button = Component((props) => {
- *   return Node('button', {
- *     ...props,
+ * const App = Component(() => {
+ *   return Div({
  *     theme: { color: 'blue' }
  *   })
  * })
  * ```
  */
-export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => BaseNodeInstance<any> | ReactNode) {
+export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
   return (props: T = {} as T) => {
     const result = component({ ...props }) // Execute wrapped component
@@ -433,10 +432,10 @@ export function Component<T extends Record<string, any> & { theme?: Theme }>(com
           nodeTheme: props?.theme || result.rawProps?.theme || result.rawProps?.nodeTheme,
         }).render()
       }
+
       return result.render() // No theme to handle, just render
     }
 
-    // Direct return for non-BaseNode results (standard React nodes)
     return result
   }
 }

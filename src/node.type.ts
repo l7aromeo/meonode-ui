@@ -17,7 +17,7 @@ export type NodeElement =
   | ElementType
   | ComponentType<any>
   | BaseNodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | BaseNodeInstance<any>)
+  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | BaseNodeInstance<any> | ComponentNode)
 
 /**
  * Defines valid child types that can be passed to a node:
@@ -26,7 +26,7 @@ export type NodeElement =
  * - BaseNodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | Component<any> | NodeElement | BaseNodeInstance<any>
+export type Children = ReactNode | Component<any> | NodeElement | BaseNodeInstance<any> | ComponentNode
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
@@ -140,3 +140,5 @@ export interface FunctionRendererProps<E extends NodeElement> {
 
   processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => BaseNodeInstance<E>
 }
+
+export type ComponentNode = (BaseNodeInstance<any> | ReactNode) | (() => BaseNodeInstance<any> | ReactNode)
