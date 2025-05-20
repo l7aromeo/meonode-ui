@@ -204,14 +204,13 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     // Case 1: Child is already a BaseNode instance
     if (rawNode instanceof BaseNode) {
       const childInstance = rawNode as BaseNode<any>
-      const childsInitialRawProps = childInstance.rawProps || {} // Get initial raw props of the child
-      const childsOwnInitialTheme = childsInitialRawProps.nodeTheme // Get the child's own theme
-      const themeForNewNode = childsOwnInitialTheme || parentTheme || {} // Prefer child's own theme
+      const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
+      const themeForNewNode = childRawProps.nodeTheme || parentTheme || {} // Prefer child's own theme
 
-      const keyForChildNode = generateIndexedKeyIfNeeded(childInstance.element, childsInitialRawProps.key)
+      const keyForChildNode = generateIndexedKeyIfNeeded(childInstance.element, childRawProps.key)
 
       return new BaseNode(childInstance.element, {
-        ...childsInitialRawProps,
+        ...childRawProps,
         nodeTheme: themeForNewNode, // Use the determined theme for the new node
         key: keyForChildNode,
       }) // Create a new BaseNode with merged props and theme
