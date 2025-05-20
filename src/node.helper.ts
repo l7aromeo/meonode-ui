@@ -1,6 +1,6 @@
 'use strict'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
-import type { NodeElement, OriginalNodeProps } from '@src/node.type.js'
+import type { NodeElement, FinalNodeProps } from '@src/node.type.js'
 import cssPropertiesJson from '@src/json/css-properties.json'
 import {
   isContextConsumer,
@@ -233,12 +233,12 @@ export function getCSSProps<T extends Record<string, any>>(props: T): Partial<CS
  * @param props The component props to filter.
  * @returns An object containing only valid DOM props.
  */
-export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(props: T): Partial<OriginalNodeProps> {
-  const result: Partial<OriginalNodeProps> = {}
+export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(props: T): Partial<FinalNodeProps> {
+  const result: Partial<FinalNodeProps> = {}
 
   for (const key in props) {
     if (!cssPropertySet.has(key)) {
-      result[key as keyof NonNullable<OriginalNodeProps>] = props[key]
+      result[key as keyof NonNullable<FinalNodeProps>] = props[key]
     }
   }
 

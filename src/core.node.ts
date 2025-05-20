@@ -1,62 +1,68 @@
 'use strict'
 import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { BaseNodeInstance, BaseNodeProps, FunctionRendererProps, NodeElement, NodeProps, OriginalNodeProps, Theme } from '@src/node.type.js'
+import type { BaseNodeInstance, RawNodeProps, FunctionRendererProps, NodeElement, NodeProps, FinalNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 
 /**
- * Represents a node in a React component tree, providing a structured way to define and manipulate
- * React elements before they are rendered. Handles props processing, theme application, and child node management.
- * @template E The type of the React element this node represents (e.g., 'div', a custom component).
+ * Represents a node in a React component tree with theme and styling capabilities.
+ * This class wraps React elements and handles:
+ * - Props processing and normalization
+ * - Theme inheritance and resolution
+ * - Child node processing and management
+ * - Style processing with theme variables
+ * @template E The type of React element or component this node represents
  */
 class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
-  /** The React element type for this node. */
+  /** The underlying React element or component type that this node represents */
   public element: E
 
-  /** The original, unprocessed props passed to this node during construction. */
-  public rawProps?: BaseNodeProps<E> // Initial props before processing
+  /** Original props passed during construction, preserved for cloning/recreation */
+  public rawProps?: RawNodeProps<E>
 
-  /** The processed props for this node, including styles, DOM attributes, and children. */
-  public props: OriginalNodeProps
+  /** Processed props after theme resolution, style processing, and child normalization */
+  public props: FinalNodeProps
 
   /**
-   * Constructs a new BaseNode instance.
-   * @param element The React element type.
-   * @param rawProps The raw props for the node.
+   * Creates a new BaseNode instance that wraps a React element.
+   * Processes raw props by:
+   * - Extracting and resolving theme-aware styles
+   * - Processing DOM-related props
+   * - Normalizing children with theme inheritance
+   * @param element The React element/component to wrap
+   * @param rawProps Initial props including theme, styles, and children
    */
-  constructor(element: E, rawProps?: BaseNodeProps<E>) {
+  constructor(element: E, rawProps?: RawNodeProps<E>) {
     this.element = element
     this.rawProps = rawProps
 
-    const { children: rawNoderen, nodeTheme: currentTheme, ...otherRawProps } = rawProps || {} // Extract children and theme
+    const { children: rawNoderen, nodeTheme: currentTheme, ...otherRawProps } = rawProps || {}
 
-    // 1. Resolve styles and DOM props for this node
+    // Process styles with theme variables
     const ownCssProps = getCSSProps(otherRawProps as Record<string, any>)
     let resolvedStyle = this._resolveStyleWithTheme(ownCssProps, currentTheme)
     resolvedStyle = Object.keys(resolvedStyle).length > 0 ? resolvedStyle : {}
 
-    const domProps = getDOMProps(otherRawProps as Record<string, any>) // Extract DOM-related props
+    // Extract non-style DOM props
+    const domProps = getDOMProps(otherRawProps as Record<string, any>)
 
-    // 2. Process rawNoderen into BaseNode instances or primitives, passing down the currentTheme
+    // Process children with theme inheritance
     let processedChildrenResult: NodeElement | NodeElement[] = undefined
     if (rawNoderen !== undefined && rawNoderen !== null) {
       if (Array.isArray(rawNoderen)) {
         const childrenArray = rawNoderen as NodeElement[]
-        processedChildrenResult = childrenArray.map(
-          (child, index) => this._processRawNode(child, currentTheme, index), // Process each child, passing index
-        )
+        processedChildrenResult = childrenArray.map((child, index) => this._processRawNode(child, currentTheme, index))
       } else {
-        // For a single child, no index is passed; existing key logic in _processRawNode will apply
         processedChildrenResult = this._processRawNode(rawNoderen, currentTheme)
       }
     }
 
-    // 3. Construct final this.props
+    // Build final normalized props
     this.props = {
       ...domProps,
       style: resolvedStyle,
       nodeTheme: currentTheme,
-      children: processedChildrenResult, // Assign processed children
+      children: processedChildrenResult,
     }
   }
 
@@ -379,7 +385,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
  * @returns BaseNodeInstance<E> - A new BaseNode instance.
  */
 export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): BaseNodeInstance<E> {
-  const finalProps: BaseNodeProps<E> = { ...props } // Ensure we are working with a mutable copy
+  const finalProps: RawNodeProps<E> = { ...props } // Ensure we are working with a mutable copy
   if (finalProps.theme && finalProps.nodeTheme === undefined) {
     // If theme is provided but nodeTheme is not
     // Prefer explicit nodeTheme if provided
@@ -387,7 +393,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
   }
   // 'theme' prop itself is not directly used by BaseNode after this, nodeTheme is used.
   // We can keep `theme` in rawProps if needed for cloning or inspection.
-  return new BaseNode(element, finalProps as BaseNodeProps<E>)
+  return new BaseNode(element, finalProps as RawNodeProps<E>)
 }
 
 /**

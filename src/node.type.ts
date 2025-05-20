@@ -38,7 +38,7 @@ export interface BaseNodeInstance<T extends NodeElement = NodeElement> {
   readonly element: T
 
   /** Original props passed during node construction, preserved for cloning/recreation */
-  readonly rawProps?: BaseNodeProps<T>
+  readonly rawProps?: RawNodeProps<T>
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactNode
@@ -76,7 +76,7 @@ export interface Theme {
  * - Handles theme context propagation
  * @template E - The element type these props apply to
  */
-export type OriginalNodeProps = ReactAttributes & {
+export type FinalNodeProps = ReactAttributes & {
   style?: CSSProperties
   children?: Children | Children[]
   theme?: Theme
@@ -119,7 +119,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'style' | 'child
  * - Used for both initial construction and internal state
  * @template E - The element type these props apply to
  */
-export type BaseNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodeTheme?: Theme }
+export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodeTheme?: Theme }
 
 /**
  * Props interface for the internal FunctionRenderer component.
