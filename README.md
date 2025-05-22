@@ -171,7 +171,7 @@ const Dashboard = Component(() =>
  * It explores various rendering patterns, Higher-Order Component (HOC) usage,
  * and theme propagation with @meonode/ui components.
  */
-import { Component, Column, Row, Div, P, Node } from '@meonode/ui' // Theme type is not explicitly imported or used as a prop type in this file's components.
+import { Component, Column, Row, P, Node, Button } from '@meonode/ui'
 import { useState, useEffect } from 'react'
 import { CssBaseline, TextField } from '@meonode/mui'
 
@@ -213,7 +213,7 @@ export default Component(() => {
       Row({
         gap: 10,
         children: [
-          Div({
+          Button(showMore ? 'Hide' : 'Show More', {
             onClick: () => setShowDetails(prev => !prev), // Click handler to toggle the 'showMore' state.
             cursor: 'pointer', // Visual cue for clickability.
             userSelect: 'none', // Prevents text selection on the button.
@@ -221,7 +221,6 @@ export default Component(() => {
             backgroundColor: 'theme.background.primary', // Background color sourced from the theme context.
             borderRadius: 5,
             fontWeight: 'bold',
-            children: showMore ? 'Hide' : 'Show More', // Dynamically sets button text based on 'showMore' state.
           }),
         ],
       }),
