@@ -1,5 +1,5 @@
 'use strict'
-import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type { BaseNodeInstance, ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
@@ -32,80 +32,104 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
    * @param element The React element/component to wrap
    * @param rawProps Initial props including theme, styles, and children
    */
-  constructor(element: E, rawProps?: RawNodeProps<E>) {
+  constructor(element: E, rawProps: RawNodeProps<E> = {}) {
     this.element = element
     this.rawProps = rawProps
 
-    const { children: rawNoderen, nodeTheme: currentTheme, ...otherRawProps } = rawProps || {}
+    // Destructure raw props into relevant parts
+    const { children, nodeTheme, theme, ...remainingRawProps } = rawProps
 
-    // Process styles with theme variables
-    const ownCssProps = getCSSProps(otherRawProps as Record<string, any>)
-    let resolvedStyle = this._resolveStyleWithTheme(ownCssProps, currentTheme)
-    resolvedStyle = Object.keys(resolvedStyle).length > 0 ? resolvedStyle : {}
+    // Resolve any theme variables in the remaining props
+    const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, nodeTheme)
 
-    // Extract non-style DOM props
-    const domProps = getDOMProps(otherRawProps as Record<string, any>)
+    // Extract style-related props that match valid CSS properties
+    const processedStyleProps = getCSSProps(propsWithResolvedTheme)
 
-    // Process children with theme inheritance
-    let processedChildrenResult: NodeElement | NodeElement[] = undefined
-    if (rawNoderen !== undefined && rawNoderen !== null) {
-      if (Array.isArray(rawNoderen)) {
-        const childrenArray = rawNoderen as NodeElement[]
-        processedChildrenResult = childrenArray.map((child, index) => this._processRawNode(child, currentTheme, index))
+    // Extract remaining props that are valid DOM attributes
+    const processedDOMProps = getDOMProps(propsWithResolvedTheme)
+
+    // Process children while maintaining theme inheritance
+    let normalizedChildren: NodeElement | NodeElement[] = undefined
+    if (children) {
+      if (Array.isArray(children)) {
+        // Process array of children with index for stable keys
+        normalizedChildren = (children as NodeElement[]).map((child, index) => this._processRawNode(child, nodeTheme, index))
       } else {
-        processedChildrenResult = this._processRawNode(rawNoderen, currentTheme)
+        // Process single child
+        normalizedChildren = this._processRawNode(children, nodeTheme)
       }
     }
 
-    // Build final normalized props
+    // Combine processed props into final normalized form
     this.props = {
-      ...domProps,
-      style: resolvedStyle,
-      nodeTheme: currentTheme,
-      children: processedChildrenResult,
+      ...processedDOMProps,
+      style: processedStyleProps,
+      nodeTheme,
+      children: normalizedChildren,
     }
   }
 
   /**
-   * Resolves style properties by replacing theme path placeholders with actual theme values.
-   * Handles complex strings like '1px solid theme.background.primary' and iterative resolution.
-   * @param initialCssProps The initial CSS properties object.
+   * Resolves obj properties by replacing theme path placeholders with actual theme values.
+   * Handles complex strings like '1px solid theme.background.primary' and nested objects.
+   * @param obj The initial obj properties object.
    * @param theme The theme object to use for resolving paths.
    * @returns A new CSSProperties object with theme values resolved.
    */
-  private _resolveStyleWithTheme(initialCssProps: CSSProperties, theme?: Theme): CSSProperties {
-    // If no theme is provided or there are no initial CSS props to process, return the initial props.
-    if (!theme || Object.keys(initialCssProps).length === 0) {
-      return initialCssProps
+  private _resolveObjWithTheme(obj: Record<string, unknown>, theme?: Theme) {
+    // Return early if no theme or empty object
+    if (!theme || Object.keys(obj).length === 0) {
+      return obj
     }
 
-    const mergedTheme: Theme = { ...this.rawProps?.nodeTheme, ...theme } // Merge nodeTheme from rawProps with theme
-    const styleWithTheme: Record<string, unknown> = { ...initialCssProps }
+    // Merge raw nodeTheme with passed theme for resolution
+    const mergedTheme: Theme = { ...this.rawProps?.nodeTheme, ...theme }
 
-    for (const styleKey in styleWithTheme) {
-      if (Object.prototype.hasOwnProperty.call(styleWithTheme, styleKey)) {
-        const styleValue = styleWithTheme[styleKey as keyof CSSProperties]
+    /**
+     * Recursively resolves theme values in an object
+     * @param currentObj The current object level being processed
+     * @returns New object with resolved theme values
+     */
+    const resolveRecursively = (currentObj: Record<string, unknown>): Record<string, unknown> => {
+      const resolved: Record<string, unknown> = {}
 
-        if (typeof styleValue === 'string' && styleValue.includes('theme.')) {
-          let processedValue = styleValue
+      // Process each property in the current object
+      for (const key in currentObj) {
+        // Skip non-own properties
+        if (!Object.prototype.hasOwnProperty.call(currentObj, key)) continue
 
-          // Iteratively resolve theme references within the string
+        const value = currentObj[key]
+
+        // Skip private properties starting with underscore
+        if (key.startsWith('_')) {
+          return currentObj
+        }
+
+        // Handle string values containing theme references
+        if (typeof value === 'string' && value.includes('theme.')) {
+          let processedValue = value
+          // Replace theme path placeholders with actual theme values
           processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-            const themeValue = getValueByPath(mergedTheme, path) // Use 'theme' passed to the function
-
-            // Replace it if themeValue is found and is a string or number.
-            // null is explicitly excluded to avoid 'null' string in output unless intended.
-            if (themeValue !== undefined && themeValue !== null && (typeof themeValue === 'string' || typeof themeValue === 'number')) {
-              return String(themeValue)
-            }
-            // If themeValue is not a string or number or is undefined/null, keep the original placeholder
-            return match
+            const themeValue = getValueByPath(mergedTheme, path)
+            // Convert theme value to string if it exists and is a valid type
+            return themeValue != null && ['string', 'number'].includes(typeof themeValue) ? String(themeValue) : match
           })
-          styleWithTheme[styleKey] = processedValue
+          resolved[key] = processedValue
+        }
+        // Recursively process nested objects (excluding arrays)
+        else if (value && typeof value === 'object' && !Array.isArray(value)) {
+          resolved[key] = resolveRecursively(value as Record<string, unknown>)
+        }
+        // Keep other values as-is
+        else {
+          resolved[key] = value
         }
       }
+
+      return resolved
     }
-    return styleWithTheme
+
+    return resolveRecursively(obj)
   }
 
   /**
@@ -147,7 +171,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
         return new BaseNode(bnResult.element, {
           ...(bnResult.rawProps || {}),
           nodeTheme: passedTheme,
-          theme: passedTheme, // Pass theme for consistency if used in rawProps
+          theme: passedTheme,
           key: passedKey,
         }).render()
       }
@@ -162,7 +186,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
         return new BaseNode(processedResult.element, {
           ...processedResult.rawProps,
           nodeTheme: processedResult.rawProps?.theme || processedResult.rawProps?.nodeTheme || passedTheme,
-          key: processedResult.rawProps?.key || passedKey, // Use an existing key or passed key
+          key: processedResult.rawProps?.key || passedKey,
         }).render()
       }
       return processedResult.render()
@@ -420,7 +444,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
 export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
   return (props: T = {} as T) => {
-    const result = component({ ...props }) // Execute wrapped component
+    const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
     if (result instanceof BaseNode) {
