@@ -16,24 +16,24 @@ export type NodeElement =
   | Component<any, any>
   | ElementType
   | ComponentType<any>
-  | BaseNodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | BaseNodeInstance<any> | ComponentNode)
+  | NodeInstance<any>
+  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | NodeInstance<any> | ComponentNode)
 
 /**
  * Defines valid child types that can be passed to a node:
  * - ReactNode: Any valid React child (elements, strings, numbers, etc.)
  * - ElementType: React component types (functions/classes)
- * - BaseNodeInstance: Other node instances in the tree
+ * - NodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | Component<any> | NodeElement | BaseNodeInstance<any> | ComponentNode
+export type Children = ReactNode | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
  * Defines the core structure and capabilities of a BaseNode instance.
  * @template T - The type of React element/component that this node represents
  */
-export interface BaseNodeInstance<T extends NodeElement = NodeElement> {
+export interface NodeInstance<T extends NodeElement = NodeElement> {
   /** The underlying React element or component type that this node will render */
   readonly element: T
 
@@ -53,7 +53,7 @@ export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElemen
   ? JSX.IntrinsicElements[E]
   : E extends JSXElementConstructor<any>
     ? ComponentProps<E>
-    : BaseNodeInstance<E>
+    : NodeInstance<E>
 
 /**
  * Theme configuration object that can be passed through the node tree.
@@ -130,7 +130,7 @@ export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { node
  */
 export interface FunctionRendererProps<E extends NodeElement> {
   /** Function that returns the child content to render */
-  render: (props?: NodeProps<E>) => ReactNode | BaseNodeInstance<E>
+  render: (props?: NodeProps<E>) => ReactNode | NodeInstance<E>
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme
@@ -138,7 +138,7 @@ export interface FunctionRendererProps<E extends NodeElement> {
   /** Optional key prop to help React identify unique instances in lists */
   passedKey?: string
 
-  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => BaseNodeInstance<E>
+  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => NodeInstance<E>
 }
 
-export type ComponentNode = (BaseNodeInstance<any> | ReactNode) | (() => BaseNodeInstance<any> | ReactNode)
+export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)

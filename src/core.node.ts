@@ -1,6 +1,6 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { BaseNodeInstance, ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
+import type { NodeInstance, ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 
@@ -13,7 +13,7 @@ import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from 
  * - Style processing with theme variables
  * @template E The type of React element or component this node represents
  */
-class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
+class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   /** The underlying React element or component type that this node represents */
   public element: E
 
@@ -143,7 +143,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
    * @param props.passedTheme The theme to provide to the child, if applicable.
    * @returns The rendered ReactNode, with theme applied if necessary.
    */
-  private _functionRenderer<E extends ReactNode | BaseNodeInstance<E>>({
+  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({
     render,
     passedTheme,
     passedKey,
@@ -163,7 +163,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
     }
 
     if (result instanceof BaseNode) {
-      const bnResult = result as BaseNodeInstance
+      const bnResult = result as NodeInstance
 
       // If the returned BaseNode does not have its own theme, but a theme is provided,
       // re-create the node with the provided theme to ensure correct theme propagation.
@@ -253,7 +253,7 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
 
       return new BaseNode(this._functionRenderer as NodeElement, {
         processRawNode: this._processRawNode.bind(this),
-        render: rawNode as FunctionRendererProps<ReactNode | BaseNodeInstance<typeof rawNode>>['render'],
+        render: rawNode as FunctionRendererProps<ReactNode | NodeInstance<typeof rawNode>>['render'],
         passedTheme: parentTheme,
         key: keyForFunctionRenderer, // Assign the generated key
       })
@@ -405,9 +405,9 @@ class BaseNode<E extends NodeElement> implements BaseNodeInstance<E> {
  * Factory function to create a BaseNode instance.
  * @param element The React element type.
  * @param props The props for the node.
- * @returns BaseNodeInstance<E> - A new BaseNode instance.
+ * @returns NodeInstance<E> - A new BaseNode instance.
  */
-export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): BaseNodeInstance<E> {
+export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): NodeInstance<E> {
   const finalProps: RawNodeProps<E> = { ...props } // Ensure we are working with a mutable copy
   if (finalProps.theme && finalProps.nodeTheme === undefined) {
     // If theme is provided but nodeTheme is not
