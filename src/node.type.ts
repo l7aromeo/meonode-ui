@@ -10,6 +10,7 @@ import type {
   JSXElementConstructor,
   Component,
 } from 'react'
+import type { Root as ReactDOMRoot } from 'react-dom/client'
 
 export type NodeElement =
   | ReactNode
@@ -42,6 +43,9 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactNode
+
+  /** Creates Portal-compatible React elements for rendering outside of the DOM tree */
+  toPortal(): ReactDOMRoot | null
 }
 
 /**

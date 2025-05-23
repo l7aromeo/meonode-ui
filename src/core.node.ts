@@ -1,8 +1,9 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { NodeInstance, ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
+import type { ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
+import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -22,6 +23,9 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
   /** Processed props after theme resolution, style processing, and child normalization */
   public props: FinalNodeProps
+
+  private _portalDOMElement: HTMLDivElement | null = null
+  private _portalReactRoot: ReactDOMRoot | null = null
 
   /**
    * Creates a new BaseNode instance that wraps a React element.
@@ -91,19 +95,12 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
      * @returns New object with resolved theme values
      */
     const resolveRecursively = (currentObj: Record<string, unknown>): Record<string, unknown> => {
-      const resolved: Record<string, unknown> = {}
-
+      const resolvedObj: Record<string, unknown> = {}
       // Process each property in the current object
       for (const key in currentObj) {
-        // Skip non-own properties
-        if (!Object.prototype.hasOwnProperty.call(currentObj, key)) continue
-
         const value = currentObj[key]
 
-        // Skip private properties starting with underscore
-        if (key.startsWith('_')) {
-          return currentObj
-        }
+        if (key.startsWith('_')) return currentObj
 
         // Handle string values containing theme references
         if (typeof value === 'string' && value.includes('theme.')) {
@@ -111,22 +108,22 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
           // Replace theme path placeholders with actual theme values
           processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
             const themeValue = getValueByPath(mergedTheme, path)
-            // Convert theme value to string if it exists and is a valid type
+            // Convert the theme value to string if it exists and is a valid type
             return themeValue != null && ['string', 'number'].includes(typeof themeValue) ? String(themeValue) : match
           })
-          resolved[key] = processedValue
+          resolvedObj[key] = processedValue
         }
         // Recursively process nested objects (excluding arrays)
-        else if (value && typeof value === 'object' && !Array.isArray(value)) {
-          resolved[key] = resolveRecursively(value as Record<string, unknown>)
+        else if (value && typeof value === 'object') {
+          resolvedObj[key] = resolveRecursively(value as Record<string, unknown>)
         }
         // Keep other values as-is
         else {
-          resolved[key] = value
+          resolvedObj[key] = value
         }
       }
 
-      return resolved
+      return resolvedObj
     }
 
     return resolveRecursively(obj)
@@ -399,6 +396,50 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
   }
+
+  private _ensurePortalInfrastructure() {
+    if (typeof window === 'undefined') return false
+
+    if (this._portalDOMElement && this._portalReactRoot) return true
+
+    if (this._portalDOMElement && !this._portalDOMElement.isConnected) {
+      this._portalDOMElement = null
+      this._portalDOMElement = null
+    }
+
+    if (!this._portalDOMElement) {
+      this._portalDOMElement = document.createElement('div')
+      document.body.appendChild(this._portalDOMElement)
+    }
+
+    if (!this._portalReactRoot) {
+      if (!this._portalDOMElement) return false
+      this._portalReactRoot = createRoot(this._portalDOMElement)
+    }
+    return true
+  }
+
+  public toPortal(): ReactDOMRoot | null {
+    if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) return null
+
+    const content = this.render()
+    this._portalReactRoot.render(content)
+    return {
+      ...this._portalReactRoot,
+      unmount: () => {
+        if (this._portalReactRoot) {
+          this._portalReactRoot.unmount()
+          this._portalReactRoot = null
+        }
+        if (this._portalDOMElement) {
+          if (this._portalDOMElement.parentNode) {
+            this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
+          }
+          this._portalDOMElement = null
+        }
+      },
+    }
+  }
 }
 
 /**
@@ -443,7 +484,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  */
 export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
-  return (props: T = {} as T) => {
+  return (props: any = {}) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
