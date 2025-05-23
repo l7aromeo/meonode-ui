@@ -50,6 +50,13 @@ export const Center = (props?: NodeProps<'div'>) =>
   })
 
 /**
+ * Represents a fixed positioned element.
+ * @param props Optional properties for the fixed positioned element.
+ * @returns A div element node with fixed positioning.
+ */
+export const Fixed = (props?: NodeProps<'div'>) => Div({ position: 'fixed', ...props })
+
+/**
  * Represents a relatively positioned element.
  * @param props Optional properties for the relatively positioned element.
  * @returns A div element node with relative positioning.
