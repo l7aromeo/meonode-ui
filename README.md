@@ -208,17 +208,18 @@ const LoginForm = Component(() =>
 ```tsx
 'use client'
 /**
- * This file showcases the integration of React hooks with @meonode/ui components
+ * This file showcases the integration of React hooks with `@meonode/ui` components
  * for building declarative user interfaces. It demonstrates different rendering
  * approaches, the use of Higher-Order Components (HOCs), and how theme context
  * is managed and propagated within the @meonode/ui component tree.
  */
-import { Component, Column, Row, P, Node, Button, Theme, Center, NodeInstance, Absolute } from '@meonode/ui'
+import { Button, Center, Column, Component, Fixed, Node, type NodeInstance, P, Portal, Row, type Theme } from '@meonode/ui'
 import { useState, useEffect, ReactElement, ReactNode } from 'react'
 import { CssBaseline, FormControlLabel, TextField } from '@meonode/mui'
 import { Switch as MUISwitch } from '@mui/material'
 import { styled } from '@mui/material'
 
+// Styled Material UI Switch component for theme toggling
 const MaterialUISwitch = styled(MUISwitch)(({ theme }) => ({
   width: 62,
   height: 34,
@@ -276,10 +277,8 @@ const MaterialUISwitch = styled(MUISwitch)(({ theme }) => ({
 }))
 
 /**
- * Defines the color palette for the light theme.
- * These color values are used by @meonode/ui components when they encounter
- * theme string references (e.g., 'theme.primary') and the current theme mode is 'light'.
- * In a larger application, this theme object would typically reside in a dedicated theme file.
+ * Light theme configuration containing color palette values.
+ * Used by `@meonode/ui` components when resolving theme references in light mode.
  */
 const lightTheme: Theme = {
   mode: 'light',
@@ -298,10 +297,8 @@ const lightTheme: Theme = {
 }
 
 /**
- * Defines the color palette for the dark theme.
- * Similar to the light theme, these colors are used by @meonode/ui components
- * when resolving theme string references, but specifically when the current theme
- * mode is 'dark'.
+ * Dark theme configuration containing color palette values.
+ * Used by `@meonode/ui` components when resolving theme references in dark mode.
  */
 const darkTheme: Theme = {
   mode: 'dark',
@@ -320,29 +317,15 @@ const darkTheme: Theme = {
 }
 
 /**
- * The main page component, implemented as a functional component using React hooks.
- * It manages the theme mode state and the visibility of additional content.
- *
- * This function is wrapped by the `Component` HOC from `@meonode/ui`. The `Component`
- * HOC transforms the function into a standard React component that returns a `ReactNode`,
- * making it compatible with React's rendering lifecycle and enabling SSR/CSR.
+ * Main page component using React hooks for state management.
+ * Manages theme mode and visibility of additional content sections.
+ * Wrapped by `Component` HOC to ensure React compatibility and SSR/CSR support.
  */
 export default Component(() => {
-  // State hook to control the visibility of additional content sections.
   const [showMore, setShowDetails] = useState(false)
   const [mode, setMode] = useState<'dark' | 'light'>('light')
   const theme = mode === 'dark' ? darkTheme : lightTheme
 
-  /**
-   * The root of the UI tree is a `Column` component from `@meonode/ui`.
-   * This `Column` sets the theme context for its children.
-   * Its children include:
-   * - A theme toggle switch using MUI components wrapped in `@meonode/ui`'s `Node`.
-   * - A button to toggle the visibility of the detail sections.
-   * - Various examples demonstrating how to render components that return either
-   *   `@meonode/ui` `Node` instances or `ReactNode`s, illustrating theme propagation
-   *   both unconditionally and conditionally, highlighting theme propagation.
-   */
   return Column({
     theme: theme.colors,
     padding: 20,
@@ -351,8 +334,7 @@ export default Component(() => {
     backgroundColor: 'theme.background',
     color: 'theme.foreground',
     children: [
-      CssBaseline, // Applies baseline Material UI styles for consistent rendering.
-      // Theme toggle switch using MUI components wrapped with @meonode/ui's Node HOC.
+      CssBaseline,
       Center({
         children: FormControlLabel({
           control: Node(MaterialUISwitch).render() as ReactElement,
@@ -363,165 +345,196 @@ export default Component(() => {
           onChange: () => setMode(prev => (prev === 'dark' ? 'light' : 'dark')),
         }),
       }),
-      // Button to show modal.
       Button('Show Modal', {
-        onClick: () => Modal({ theme }), // Click handler to show modal immedietelly.
-        cursor: 'pointer', // Visual cue for clickability.
-        userSelect: 'none', // Prevents text selection on the button.
+        onClick: () => Modal({ theme: theme.colors }),
+        cursor: 'pointer',
+        userSelect: 'none',
         padding: '10px 20px',
-        backgroundColor: 'theme.primary', // Background color sourced from the theme context.
+        backgroundColor: 'theme.primary',
         borderRadius: 5,
         fontWeight: 'bold',
         color: 'white',
       }),
-      // Button to toggle the visibility of the detail sections.
-      Button(showMore ? 'Hide' : 'Show More', {
-        onClick: () => setShowDetails(prev => !prev), // Click handler to toggle the 'showMore' state.
-        cursor: 'pointer', // Visual cue for clickability.
-        userSelect: 'none', // Prevents text selection on the button.
+      Button(showMore ? 'Hide Details' : 'Show More Details', {
+        onClick: () => setShowDetails(prev => !prev),
+        cursor: 'pointer',
+        userSelect: 'none',
         padding: '10px 20px',
-        backgroundColor: 'theme.accent', // Background color sourced from the theme context.
+        backgroundColor: 'theme.accent',
         borderRadius: 5,
         fontWeight: 'bold',
         color: 'white',
       }),
 
       /**
-       * --- Unconditional Rendering Examples ---
-       * These examples demonstrate rendering components that return either a
-       * `@meonode/ui` `Node` instance (`DetailComponent`) or a `ReactNode`
-       * (`ReturnRenderedDetailComponent`), and how the `Node` HOC affects this.
-       * Observe how theme context is propagated (or not) in each case.
+       * Component rendering examples demonstrating theme context propagation:
+       * - Direct Node instance rendering
+       * - Rendered Node instances
+       * - ReactNode components
+       * - HOC usage patterns
        */
-      // 1. Rendering a component that returns a @meonode/ui Node instance directly.
-      //    The internal Row component correctly receives theme context from the parent Column.
-      DetailComponent({ info: 'Detail 1 (Node instance)' }),
+      DetailComponent({
+        info: 'Detail 1: Rendering a component that returns a @meonode/ui Node instance directly. The internal Row component correctly receives theme context from the parent Column.',
+      }),
 
-      // 2. Rendering a component that returns a @meonode/ui Node instance, then calling .render().
-      //    The internal Row component also correctly receives theme context.
-      DetailComponent({ info: 'Detail 2 (Node instance + .render())' }).render(),
+      DetailComponent({
+        info: 'Detail 2: Rendering a component that returns a @meonode/ui Node instance, then calling .render(). The internal Row component also correctly receives theme context.',
+      }).render(),
 
-      // 3. Attempting to wrap a component returning a Node instance with Node HOC.
-      //    ❌ Fails: The Node HOC expects the wrapped function to return a ReactNode, not a @meonode/ui Node instance.
-      // Node(DetailComponent, { info: 'Detail 3 (Node HOC on Node instance)' }),
+      // ❌ Fails: The Node HOC expects the wrapped function to return a ReactNode, not a @meonode/ui Node instance.
+      // Node(DetailComponent, { info: 'Detail 3: Attempting to wrap a component returning a Node instance with Node HOC.' }),
 
-      // 4. Rendering a component that explicitly returns a ReactNode (.render() is called internally).
-      //    The internal Row component correctly receives theme context from the parent Column.
-      ReturnRenderedDetailComponent({ info: 'Detail 4 (ReactNode)' }),
+      ReturnRenderedDetailComponent({
+        info: 'Detail 4: Rendering a component that explicitly returns a ReactNode (.render() is called internally). The internal Row component correctly receives theme context from the parent Column.',
+      }),
 
-      // 5. Wrapping a component returning ReactNode with Node HOC.
-      //    Renders successfully. However, the Node HOC does NOT propagate theme context to the wrapped component's children.
-      Node(ReturnRenderedDetailComponent, { info: 'Detail 5 (Node HOC on ReactNode)' }),
+      Node(ReturnRenderedDetailComponent, {
+        info: "Detail 5: Wrapping a component returning ReactNode with Node HOC (without .render()). Renders successfully. However, the Node HOC does NOT propagate theme context to the wrapped component's children.",
+      }),
 
-      // 6. Wrapping a component returning ReactNode with Node HOC, then calling .render().
-      //    Renders successfully. Theme context is NOT propagated by the Node HOC.
-      Node(ReturnRenderedDetailComponent, { info: 'Detail 6 (Node HOC on ReactNode + .render())' }).render(),
+      // TODO: This case seems redundant with #5. Re-evaluate if needed or if the description needs refinement.
+      Node(ReturnRenderedDetailComponent, {
+        info: 'Detail 6: Wrapping a component returning ReactNode with Node HOC, then calling .render(). Renders successfully. Theme context is NOT propagated by the Node HOC.',
+      }).render(),
+
+      WrappedDetailComponent({
+        info: 'Detail 7: Using Component HOC with Node instance returns. Theme context is correctly propagated.',
+      }),
 
       /**
-       * Conditional rendering examples (shown when 'showMore' is true):
-       * These demonstrate various wrapping techniques (inline functions, Component HOC)
-       * and their effect on rendering and theme propagation for both types of detail components.
+       * Conditional rendering examples (visible when showMore is true)
+       * Demonstrates:
+       * - Inline function wrappers
+       * - Component HOC usage
+       * - Theme context propagation patterns
        */
-      // 7. Conditional rendering of a component returning a Node instance using an inline function wrapper.
-      //    Renders successfully when `showMore` is true. The internal Row receives theme context.
-      showMore && (() => DetailComponent({ info: 'Detail 7 (Conditional inline function + Node instance)' })),
+      showMore &&
+      (() =>
+        DetailComponent({
+          info: 'Detail 8: Conditional rendering of a Node instance component using inline function wrapper. Theme context is correctly received.',
+        })),
 
-      // 8. Conditional rendering of a component returning a Node instance using an inline function wrapper, then calling .render().
-      //    Renders successfully when `showMore` is true. The internal Row receives theme context.
-      showMore && (() => DetailComponent({ info: 'Detail 8 (Conditional inline function + Node instance + .render())' }).render()),
+      showMore &&
+      (() =>
+        DetailComponent({
+          info: 'Detail 9: Conditional rendering of a Node instance component with .render() call. Theme context is correctly propagated.',
+        }).render()),
 
-      // 9. Conditional rendering of a component returning a Node instance using the Component HOC wrapper.
-      //    Renders successfully when `showMore` is true. The internal Row receives theme context.
-      showMore && Component(() => DetailComponent({ info: 'Detail 9 (Conditional Component HOC + Node instance)' })),
+      showMore &&
+      WrappedDetailComponent({
+        info: 'Detail 10: Conditional rendering using Component HOC with Node instance. Theme context is correctly propagated.',
+      }),
 
-      // 10. Conditional rendering of a component returning ReactNode using an inline function wrapper.
-      //     Renders successfully when `showMore` is true. The internal Row receives theme context.
-      showMore && (() => ReturnRenderedDetailComponent({ info: 'Detail 10 (Conditional inline function + ReactNode)' })),
+      showMore &&
+      (() =>
+        ReturnRenderedDetailComponent({
+          info: 'Detail 11: Conditional rendering of ReactNode component using inline function. Theme context is properly propagated.',
+        })),
 
-      // 11. Conditional rendering of a component returning ReactNode using the Component HOC wrapper.
-      //     Renders successfully when `showMore` is true. The internal Row receives theme context.
-      showMore && Component(() => ReturnRenderedDetailComponent({ info: 'Detail 11 (Conditional Component HOC + ReactNode)' })),
-      // showMore && ReturnRenderedDetailComponent({ info: 'Here are some details 15!' }), // ❌ Fails: Direct call to a component function using hooks (ReturnRenderedDetailComponent) inside render logic without a React-aware wrapper. This can violate Rules of Hooks.
+      showMore &&
+      Component(() =>
+        ReturnRenderedDetailComponent({
+          info: 'Detail 12: Conditional rendering with Component HOC wrapping ReactNode component. Note that theme context is not propagated in this case.',
+        }),
+      ),
+
+      // showMore && ReturnRenderedDetailComponent({
+      //   info: 'Detail 15: Direct component call violates Rules of Hooks!'
+      // }), // ❌ Fails: Direct call to a component function using hooks inside render logic without a React-aware wrapper.
     ],
   })
 })
 
 /**
- * A component that displays a styled detail section.
- * It uses `useEffect` for lifecycle logging. The internal `Row` component
- * sources its theme from the React context provided by an ancestor `@meonode/ui`
- * component (like the main `Column` in this page).
- *
- * This component returns a @meonode/ui `Row` Node instance.
- * This type of component is suitable for direct inclusion as a child within other
- * `@meonode/ui` components that expect `Node` instances or arrays of `Node` instances.
- * @param {object} props - Component properties.
- * @param {string} props.info - Text content to display in the detail section.
- * @returns {NodeInstance} A @meonode/ui Row Node instance.
+ * Styled detail section component returning a Node instance.
+ * Uses useEffect for lifecycle logging.
+ * Theme context is received from parent @meonode/ui components.
  */
 const DetailComponent = ({ info }: { info: string }): NodeInstance => {
-  // useEffect hook for logging component mount and unmount phases (for debugging).
   useEffect(() => {
-    console.log('DetailComponent mounted:', info) // Example mount log
+    console.log('DetailComponent mounted:', info)
     return () => {
-      console.log('DetailComponent unmounted:', info) // Example unmount log
+      console.log('DetailComponent unmounted:', info)
     }
-  }, [info]) // Effect depends on 'info' prop.
+  }, [info])
 
-  // Returns a @meonode/ui Row Node instance configured with props and children.
-  // Its styling (e.g., backgroundColor) will resolve theme strings from React context.
   return Row({
     alignItems: 'center',
     gap: 10,
     padding: 4,
     border: '2px solid theme.accent',
     borderRadius: 6,
-    backgroundColor: 'theme.warning', // Background color sourced from theme in React context.
+    backgroundColor: 'theme.warning',
     color: 'theme.danger',
     children: [P(info, { flex: 1, padding: '0 20px' }), TextField({ flex: 1, sx: { background: 'theme.primary' } })],
   })
 }
 
 /**
- * An alternative detail component implementation that explicitly calls `.render()`
- * to return a `ReactNode` (a rendered React element) directly.
- * This makes it compatible with standard React rendering patterns and wrappers
- * like the `Node` HOC that specifically expect a function returning `ReactNode`.
- * It uses `useEffect` for lifecycle logging. The internal `Row` sources its
- * theme from React context.
- *
- * This component returns a `ReactNode`.
- * @param {object} props - Component properties.
- * @param {string} props.info - Text content to display.
- * @returns {React.ReactNode} A rendered React element (the result of `Row(...).render()`).
+ * Styled detail section component wrapped with Component HOC.
+ * Similar to DetailComponent but demonstrates HOC pattern.
+ * Theme context is correctly propagated through the HOC.
  */
-const ReturnRenderedDetailComponent = ({ info }: { info: string }): ReactNode => {
-  // useEffect hook for logging component mount and unmount phases (for debugging).
+const WrappedDetailComponent = Component(({ info }): NodeInstance => {
   useEffect(() => {
-    console.log('ReturnRenderedDetailComponent mounted:', info) // Example mount log
+    console.log('DetailComponent mounted')
     return () => {
-      console.log('ReturnRenderedDetailComponent unmounted:', info) // Example unmount log
+      console.log('DetailComponent unmounted')
     }
-  }, [info]) // Effect depends on 'info' prop.
+  }, [info])
 
-  // Constructs a @meonode/ui Row and immediately calls .render() on it.
-  // The Row itself will attempt to resolve theme strings (e.g., 'theme.background.secondary')
-  // from the React context provided by an ancestor @meonode/ui component (like the main Column).
   return Row({
     alignItems: 'center',
     gap: 10,
     padding: 4,
     border: '2px solid theme.accent',
     borderRadius: 6,
-    backgroundColor: 'theme.warning', // Theme-aware background; relies on theme from React context.
+    backgroundColor: 'theme.warning',
     color: 'theme.danger',
     children: [P(info, { flex: 1, padding: '0 20px' }), TextField({ flex: 1, sx: { background: 'theme.primary' } })],
-  }).render() // Explicitly renders to ReactNode.
+  })
+})
+
+/**
+ * Alternative detail component implementation returning ReactNode.
+ * Explicitly calls .render() for React compatibility.
+ * Demonstrates theme context usage with standard React patterns.
+ */
+const ReturnRenderedDetailComponent = ({ info }: { info: string }): ReactNode => {
+  useEffect(() => {
+    console.log('ReturnRenderedDetailComponent mounted')
+    return () => {
+      console.log('ReturnRenderedDetailComponent unmounted')
+    }
+  }, [info])
+
+  return Row({
+    alignItems: 'center',
+    gap: 10,
+    padding: 4,
+    border: '2px solid theme.accent',
+    borderRadius: 6,
+    backgroundColor: 'theme.warning',
+    color: 'theme.danger',
+    children: [P(info, { flex: 1, padding: '0 20px' }), TextField({ flex: 1, sx: { background: 'theme.primary' } })],
+  }).render()
 }
 
-const Modal = ({ theme }: { theme: Theme }) => {
-  const modal = Absolute({
-    theme: theme.colors,
+/**
+ * Modal component using Portal HOC for DOM placement.
+ * Demonstrates theme-aware content rendering outside main hierarchy.
+ * Includes nested modal support and Material UI integration.
+ */
+const Modal = Portal(({ theme, portal }) => {
+  useEffect(() => {
+    console.log('Modal mounted')
+    return () => {
+      console.log('Modal unmounted')
+    }
+  }, [])
+
+  return Fixed({
+    theme,
     top: 0,
     left: 0,
     right: 0,
@@ -532,50 +545,62 @@ const Modal = ({ theme }: { theme: Theme }) => {
     alignItems: 'center',
     onClick: e => {
       if (e.target === e.currentTarget) {
-        modal?.unmount()
+        portal.unmount()
       }
     },
-    children: Column({
-      width: '50%',
-      height: '50%',
-      backgroundColor: 'theme.background',
-      borderRadius: '8px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      transition: 'transform 0.2s ease-in-out',
-      padding: 10,
-      gap: 10,
-      color: 'theme.foreground',
-      children: [
-        Center({ fontWeight: 'bold', children: 'Hello There' }),
-        TextField({
-          sx: {
-            '& .MuiFormLabel-root': {
-              color: 'theme.foreground',
-              '&.Mui-focused': {
+    children: [
+      Column({
+        width: '50%',
+        height: '80%',
+        backgroundColor: 'theme.background',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        padding: 10,
+        gap: 10,
+        color: 'theme.foreground',
+        children: [
+          Button('More Modal', {
+            onClick: () => Modal({ theme }),
+            cursor: 'pointer',
+            userSelect: 'none',
+            padding: '10px 20px',
+            backgroundColor: 'theme.primary',
+            borderRadius: 5,
+            fontWeight: 'bold',
+            color: 'white',
+          }),
+          Center({ fontWeight: 'bold', children: 'Modal' }),
+          Center({ children: Math.random() * 1000 }),
+          TextField({
+            sx: {
+              '& .MuiFormLabel-root': {
                 color: 'theme.foreground',
+                '&.Mui-focused': {
+                  color: 'theme.foreground',
+                },
+              },
+              '& .MuiOutlinedInput-root': {
+                color: 'theme.foreground',
+                '& fieldset': {
+                  borderColor: 'theme.foreground',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'theme.foreground',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'theme.foreground',
+                },
+                borderRadius: 2,
               },
             },
-            '& .MuiOutlinedInput-root': {
-              color: 'theme.foreground',
-              '& fieldset': {
-                borderColor: 'theme.foreground',
-              },
-              '&:hover fieldset': {
-                borderColor: 'theme.foreground',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: 'theme.foreground',
-              },
-              borderRadius: 2,
-            },
-          },
-          label: 'Hello',
-          fullWidth: true,
-        }),
-      ],
-    }),
-  }).toPortal()
-}
+            label: 'Hello',
+            fullWidth: true,
+          }),
+        ],
+      }),
+    ],
+  })
+})
 ```
 
 ---
@@ -584,10 +609,12 @@ const Modal = ({ theme }: { theme: Theme }) => {
 
 ### Core Functions
 
-| Function    | Parameters                              | Description                                  |
-|-------------|-----------------------------------------|----------------------------------------------|
-| `Node`      | `element: string | React.ComponentType`, `baseProps: object` | Creates a configurable UI node |
-| `Component` | `(props: P) => Node | ReactNode`          | Converts node trees to React components      |
+| Function    | Parameters                                                         | Description                                                                                              |
+|-------------|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `Node`      | `element: NodeElement \| React.ComponentType`, `baseProps: object` | Constructs a configurable UI node that supports flexible properties and dynamic styling.                 |
+| `Component` | `(props: P) => ComponentNode`                                      | Transforms node trees into reusable React components with built-in type safety and seamless integration. |
+| `Portal`    | `(props: P) => ComponentNode`                                      | Converts node trees to React components and renders them in a React Portal with advanced DOM placement.  |
+|
 
 ---
 
