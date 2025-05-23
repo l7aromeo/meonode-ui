@@ -392,7 +392,6 @@ export default Component(() => {
         info: "Detail 5: Wrapping a component returning ReactNode with Node HOC (without .render()). Renders successfully. However, the Node HOC does NOT propagate theme context to the wrapped component's children.",
       }),
 
-      // TODO: This case seems redundant with #5. Re-evaluate if needed or if the description needs refinement.
       Node(ReturnRenderedDetailComponent, {
         info: 'Detail 6: Wrapping a component returning ReactNode with Node HOC, then calling .render(). Renders successfully. Theme context is NOT propagated by the Node HOC.',
       }).render(),
