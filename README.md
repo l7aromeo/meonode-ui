@@ -1,5 +1,3 @@
-[file name]: README.md
-[file content begin]
 # @meonode/ui
 
 [![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
