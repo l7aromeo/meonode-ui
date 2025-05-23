@@ -202,7 +202,7 @@ const knownValidSymbols = new Set([REACT_FRAGMENT_TYPE, REACT_PROFILER_TYPE, REA
  * @returns {boolean} - True if the type can be rendered as a React element
  */
 export const isValidElementType = <T>(type: T): boolean => {
-  if (typeof type === 'string' || typeof type === 'function') return true
+  if (typeof type === 'string' || typeof type === 'number' || typeof type === 'bigint' || typeof type === 'function') return true
   if (knownValidSymbols.has(type as symbol)) return true
   if (typeof type === 'object' && type !== null) {
     const $$typeof = (type as any).$$typeof
