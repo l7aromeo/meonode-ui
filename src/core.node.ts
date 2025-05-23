@@ -41,10 +41,12 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { children, nodeTheme, theme, ...remainingRawProps } = rawProps
+    const { children, nodetheme, theme, ...remainingRawProps } = rawProps
+
+    const currentTheme = theme || nodetheme
 
     // Resolve any theme variables in the remaining props
-    const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, nodeTheme)
+    const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
 
     // Extract style-related props that match valid CSS properties
     const processedStyleProps = getCSSProps(propsWithResolvedTheme)
@@ -57,10 +59,10 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (children) {
       if (Array.isArray(children)) {
         // Process array of children with index for stable keys
-        normalizedChildren = (children as NodeElement[]).map((child, index) => this._processRawNode(child, nodeTheme, index))
+        normalizedChildren = (children as NodeElement[]).map((child, index) => this._processRawNode(child, currentTheme, index))
       } else {
         // Process single child
-        normalizedChildren = this._processRawNode(children, nodeTheme)
+        normalizedChildren = this._processRawNode(children, currentTheme)
       }
     }
 
@@ -68,7 +70,8 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     this.props = {
       ...processedDOMProps,
       style: processedStyleProps,
-      nodeTheme,
+      nodetheme: currentTheme,
+      theme,
       children: normalizedChildren,
     }
   }
@@ -86,8 +89,8 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       return obj
     }
 
-    // Merge raw nodeTheme with passed theme for resolution
-    const mergedTheme: Theme = { ...this.rawProps?.nodeTheme, ...theme }
+    // Merge raw nodetheme with passed theme for resolution
+    const mergedTheme: Theme = { ...this.rawProps?.nodetheme, ...theme }
 
     /**
      * Recursively resolves theme values in an object
@@ -100,7 +103,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       for (const key in currentObj) {
         const value = currentObj[key]
 
-        if (key.startsWith('_')) return currentObj
+        if (key.startsWith('_')) return currentObj // Hack to pass Next.js shitty error caused by Turbopack development thingy
 
         // Handle string values containing theme references
         if (typeof value === 'string' && value.includes('theme.')) {
@@ -114,7 +117,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
           resolvedObj[key] = processedValue
         }
         // Recursively process nested objects (excluding arrays)
-        else if (value && typeof value === 'object') {
+        else if (value && typeof value === 'object' && !Array.isArray(value)) {
           resolvedObj[key] = resolveRecursively(value as Record<string, unknown>)
         }
         // Keep other values as-is
@@ -153,8 +156,13 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const element = result.render()
       const processed = processRawNode(element, passedTheme)
       if (processed instanceof BaseNode) {
-        // If a processed result is a BaseNode, render it
-        return processed.render()
+        if ((processed.rawProps?.theme || processed.rawProps?.nodetheme) === undefined && passedTheme !== undefined) {
+          return new BaseNode(processed.element, {
+            ...processed.rawProps,
+            nodetheme: processed.rawProps?.theme || processed.rawProps?.nodetheme || passedTheme,
+            key: processed.rawProps?.key || passedKey,
+          }).render()
+        }
       }
       return processed
     }
@@ -164,11 +172,10 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
       // If the returned BaseNode does not have its own theme, but a theme is provided,
       // re-create the node with the provided theme to ensure correct theme propagation.
-      if (bnResult.rawProps?.nodeTheme === undefined && passedTheme !== undefined) {
+      if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
         return new BaseNode(bnResult.element, {
           ...(bnResult.rawProps || {}),
-          nodeTheme: passedTheme,
-          theme: passedTheme,
+          nodetheme: passedTheme,
           key: passedKey,
         }).render()
       }
@@ -179,14 +186,11 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const processedResult = processRawNode(result, passedTheme)
 
     if (processedResult instanceof BaseNode) {
-      if ((processedResult.rawProps?.theme || processedResult.rawProps?.nodeTheme) === undefined && passedTheme !== undefined) {
-        return new BaseNode(processedResult.element, {
-          ...processedResult.rawProps,
-          nodeTheme: processedResult.rawProps?.theme || processedResult.rawProps?.nodeTheme || passedTheme,
-          key: processedResult.rawProps?.key || passedKey,
-        }).render()
-      }
-      return processedResult.render()
+      return new BaseNode(processedResult.element, {
+        ...processedResult.rawProps,
+        nodetheme: processedResult.rawProps?.theme || processedResult.rawProps?.nodetheme || passedTheme,
+        key: processedResult.rawProps?.key || passedKey,
+      }).render()
     }
 
     // If the result is not a BaseNode (e.g., JSX, string, etc.), return it directly.
@@ -226,13 +230,13 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (rawNode instanceof BaseNode) {
       const childInstance = rawNode as BaseNode<any>
       const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
-      const themeForNewNode = childRawProps.nodeTheme || parentTheme || {} // Prefer child's own theme
+      const themeForNewNode = childRawProps.theme || childRawProps.nodetheme || parentTheme // Prefer child's own theme
 
       const keyForChildNode = generateIndexedKeyIfNeeded(childInstance.element, childRawProps.key)
 
       return new BaseNode(childInstance.element, {
         ...childRawProps,
-        nodeTheme: themeForNewNode, // Use the determined theme for the new node
+        nodetheme: themeForNewNode, // Use the determined theme for the new node
         key: keyForChildNode,
       }) // Create a new BaseNode with merged props and theme
     }
@@ -258,22 +262,18 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     // Case 4: Child is a React Element (JSX element like <div> or <MyComponent>)
     if (isValidElement(rawNode)) {
-      // Extract and merge props from the JSX element, flattening style props
-      let childElementProps = { ...(rawNode.props as ComponentProps<any>) }
-      childElementProps = { ...childElementProps.style, ...childElementProps } // Merge main props into style props
-      delete childElementProps.style // Remove the original style object after merging
+      const { style: childStyleObject, ...otherChildProps } = rawNode.props as ComponentProps<any>
 
-      // Handle theme: prefer nodeTheme from child's props, fallback to the parent theme
-      const themeForChild = childElementProps?.nodeTheme || parentTheme
+      // Combine top-level props from the element with its flattened style object properties
+      const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
 
-      // For array children without keys, generate a stable key from element type and index
+      const themeForChild = combinedProps.theme || combinedProps.nodetheme || parentTheme
       const keyForChildNode = generateIndexedKeyIfNeeded(rawNode.type as ElementType, rawNode.key)
 
-      // Create a new BaseNode instance with processed props and theme
       return new BaseNode(rawNode.type as ElementType, {
-        ...childElementProps,
-        nodeTheme: themeForChild,
-        key: keyForChildNode, // Assign the generated key
+        ...combinedProps, // Pass the combined props
+        nodetheme: themeForChild,
+        key: keyForChildNode,
       })
     }
 
@@ -282,7 +282,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       // ElementTypes don't have an intrinsic key from the rawNode itself.
       const keyForChildNode = generateIndexedKeyIfNeeded(rawNode as ElementType, undefined)
       return new BaseNode(rawNode as ElementType, {
-        nodeTheme: parentTheme, // Apply parent theme
+        nodetheme: parentTheme, // Apply parent theme
         key: keyForChildNode,
       })
     }
@@ -317,14 +317,14 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _normalizeChild = (child: NodeElement): ReactNode => {
     if (!child) return child
 
-    const currentTheme = this.rawProps?.nodeTheme || this.rawProps?.theme || this.props.nodeTheme || this.props.theme
+    const currentTheme = this.rawProps?.nodetheme || this.rawProps?.theme || this.props.nodetheme || this.props.theme
 
     // For BaseNode instances, apply current theme if child has no theme
     if (child instanceof BaseNode) {
-      if (!child.rawProps?.nodeTheme && currentTheme !== undefined) {
+      if (!child.rawProps?.nodetheme && currentTheme !== undefined) {
         return new BaseNode(child.element, {
           ...child.rawProps,
-          nodeTheme: currentTheme,
+          nodetheme: currentTheme,
         }).render()
       }
       return child.render()
@@ -332,10 +332,10 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     // For React.Component instances, wrap in BaseNode with theme if needed
     if (child instanceof React.Component) {
-      if (!child.props.nodeTheme && currentTheme !== undefined) {
+      if (!child.props.nodetheme && currentTheme !== undefined) {
         return new BaseNode(child.render(), {
           ...child.props,
-          nodeTheme: currentTheme,
+          nodetheme: currentTheme,
         }).render()
       }
       return child.render()
@@ -369,7 +369,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (childrenInProps !== undefined && childrenInProps !== null) {
       if (Array.isArray(childrenInProps)) {
         if (childrenInProps.length > 0) {
-          const mappedArray = childrenInProps.map(this._normalizeChild) // Normalize each child in the array
+          const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement)) // Normalize each child in the array
           // Check if all children are null/undefined (e.g., conditional rendering resulted in nothing)
           if (mappedArray.every(child => child === null || child === undefined)) {
             finalChildren = undefined
@@ -381,7 +381,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
         }
       } else {
         // Single child
-        finalChildren = this._normalizeChild(childrenInProps)
+        finalChildren = this._normalizeChild(childrenInProps as NodeElement)
       }
     }
 
@@ -390,9 +390,6 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       ...(otherProps as ComponentProps<ElementType>), // Cast otherProps
       key, // This is the key of the current BaseNode itself
     } // Prepare props for React.createElement
-
-    // Delete the key `nodeTheme` as it's not a valid DOM/React prop for the element
-    delete propsForCreateElement.nodeTheme
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
   }
@@ -424,6 +421,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     const content = this.render()
     this._portalReactRoot.render(content)
+
     return {
       ...this._portalReactRoot,
       unmount: () => {
@@ -450,12 +448,12 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
  */
 export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): NodeInstance<E> {
   const finalProps: RawNodeProps<E> = { ...props } // Ensure we are working with a mutable copy
-  if (finalProps.theme && finalProps.nodeTheme === undefined) {
-    // If theme is provided but nodeTheme is not
-    // Prefer explicit nodeTheme if provided
-    finalProps.nodeTheme = finalProps.theme // Set nodeTheme to theme
+  if (finalProps.theme && !finalProps.nodetheme) {
+    // If theme is provided but nodetheme is not
+    // Prefer explicit nodetheme if provided
+    finalProps.nodetheme = finalProps.theme // Set nodetheme to theme
   }
-  // 'theme' prop itself is not directly used by BaseNode after this, nodeTheme is used.
+  // 'theme' prop itself is not directly used by BaseNode after this, nodetheme is used.
   // We can keep `theme` in rawProps if needed for cloning or inspection.
   return new BaseNode(element, finalProps as RawNodeProps<E>)
 }
@@ -469,7 +467,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  * - Handles theme inheritance and merging
  * - Preserves component props
  * - Type-safe with generic prop types
- * @template T - The props type for the wrapped component
+ * @template P - The props type for the wrapped component
  * @param component Component function that returns a BaseNode or ReactNode
  * @returns A React function component that handles BaseNode conversion and theme propagation
  * @example
@@ -482,25 +480,71 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  * })
  * ```
  */
-export function Component<T extends Record<string, any> & { theme?: Theme }>(component: (props: T) => ComponentNode) {
+export function Component<P extends Record<string, any> & { theme?: Theme }>(component: (props: P) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
-  return (props: any = {}) => {
+  const renderer = (props: any = {}) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
     if (result instanceof BaseNode) {
-      // Theme merging: Check if we need to handle theme inheritance
-      if (!!(props?.theme || props?.nodeTheme) || !!(result.rawProps?.theme || result.rawProps?.nodeTheme)) {
-        return new BaseNode(result.element, {
-          ...result.rawProps,
-          // Theme priority: props.theme > rawProps.theme > rawProps.nodeTheme
-          nodeTheme: props?.theme || result.rawProps?.theme || result.rawProps?.nodeTheme,
-        }).render()
-      }
-
-      return result.render() // No theme to handle, just render
+      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme
+      return Node(result.element, {
+        ...result.rawProps,
+        nodetheme: theme,
+      }).render()
     }
 
-    return result
+    return result as ReactNode
+  }
+
+  return (props: any = {}) => Node(renderer, props).render()
+}
+
+/**
+ * Creates a portal wrapper component for rendering content outside the normal DOM hierarchy.
+ * Portals are useful for rendering modals, tooltips, and other overlays that need to break out
+ * of their parent container's DOM structure while maintaining React context and event bubbling.
+ *
+ * Key features:
+ * - Renders content to a separate DOM node outside the parent hierarchy
+ * - Maintains theme inheritance through the portal
+ * - Provides portal instance with unmount control
+ * - Automatically cleans up DOM nodes on unmount
+ * @template P Props type for the wrapped component including theme and portal instance
+ * @param component Component function that returns portal content
+ * @returns Function that creates and manages the portal instance
+ * @example
+ * ```ts
+ * const Modal = Portal(({ portal }) => {
+ *   return Div({
+ *     onClick: () => portal.unmount(),
+ *     children: "Click to close"
+ *   })
+ * })
+ * ```
+ */
+export function Portal<
+  P extends Record<string, any> & {
+    theme?: Theme
+    portal: { unmount: () => void }
+  },
+>(component: (props: P) => ComponentNode) {
+  let portalInstance: ReactDOMRoot | null = null
+  const renderer = (props: any = {}) => {
+    const result = component({ ...props, portal: portalInstance })
+    if (result instanceof BaseNode) {
+      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme
+      return Node(result.element, {
+        ...result.rawProps,
+        nodetheme: theme,
+      }).render()
+    }
+
+    return result as ReactNode
+  }
+
+  return (props: any = {}) => {
+    portalInstance = Node(renderer, props).toPortal()
+    return portalInstance
   }
 }

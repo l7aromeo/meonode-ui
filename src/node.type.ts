@@ -84,7 +84,7 @@ export type FinalNodeProps = ReactAttributes & {
   style?: CSSProperties
   children?: Children | Children[]
   theme?: Theme
-  nodeTheme?: Theme
+  nodetheme?: Theme
 }
 
 /**
@@ -119,11 +119,11 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'style' | 'child
 /**
  * BaseNode's internal props type, extending NodeProps:
  * - Makes all properties optional for flexible node creation
- * - Adds nodeTheme for theme context handling
+ * - Adds nodetheme for theme context handling
  * - Used for both initial construction and internal state
  * @template E - The element type these props apply to
  */
-export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodeTheme?: Theme }
+export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodetheme?: Theme }
 
 /**
  * Props interface for the internal FunctionRenderer component.
