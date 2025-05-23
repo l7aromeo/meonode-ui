@@ -1,25 +1,30 @@
+[file name]: README.md
+[file content begin]
 # @meonode/ui
 
 [![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@meonode/ui)](https://bundlephobia.com/package/@meonode/ui)
 
 **Build React UIs with Type-Safe Fluency**  
 A structured approach to component composition with built-in theming, prop separation, and dynamic children handling.
 
-```ts
+```tsx
 // Quick Start Example
 import { Component, Div, H1, Button } from '@meonode/ui';
 
+// Create a reusable styled component
 const BlueButton = Component((props) =>
   Button('Blue', {
     padding: '12px 24px',
     borderRadius: '8px',
     backgroundColor: 'dodgerblue',
     color: 'white',
-    ...props
+    ...props // Merge with incoming props
   })
 );
 
+// Compose your app
 const App = Component(() =>
   Div({
     padding: '40px',
@@ -36,37 +41,45 @@ const App = Component(() =>
 
 ## Why @meonode/ui?
 
-- 🎯 **Type-Safe Design** - Full TypeScript support with autocomplete for styles and themes
-- 🎨 **CSS-in-JS Without Runtime** - Write styles directly in props with theme references
+- 🎯 **Type-Safe Design** - Full TypeScript support with autocomplete for styles, props, and theme paths
+- 🎨 **Theme-Aware Styles** - Write styles directly in props with dynamic theme resolution
 - 🧩 **Component-First Architecture** - Compose UIs from structured nodes instead of JSX
-- 🌐 **Theme Propagation** - Contextual theming that works with any component structure
-- ⚡ **Small Footprint** - Lightweight core (under 185kb unpacked)
+- 🌐 **Contextual Theming** - Theme values propagate automatically through nested components
+- ⚡ **Optimized Bundle** - Efficient core with tree-shaking support
+- 🔄 **Seamless React Integration** - Works with hooks, HOCs, and React 18+ features
 
 ## Installation
 
-```shell
+```bash
+# Using npm
 npm install @meonode/ui react
-# or
+
+# Using yarn
 yarn add @meonode/ui react
+
+# Using pnpm
+pnpm add @meonode/ui react
 ```
+
+---
 
 ## Core Concepts
 
 ### 1. Component Creation
 
-Create elements using the `Node` factory or pre-built components:
+Create elements using either the `Node` factory or pre-built components:
 
-```ts
+```tsx
 import { Node, Div, H1 } from '@meonode/ui';
 
-// Using Node factory
+// Method 1: Node factory for custom elements
 const Card = Node('div', {
   padding: '20px',
   borderRadius: '8px',
   boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
 });
 
-// Using pre-built components
+// Method 2: Pre-built semantic components
 const Header = () =>
   Div({
     padding: '20px',
@@ -77,10 +90,11 @@ const Header = () =>
 
 ### 2. Theming System
 
-Define and consume themes with dot-notation:
+Define themes and access values using dot-notation:
 
-```ts
-const theme = {
+```tsx
+// theme.ts
+export const theme = {
   colors: {
     primary: '#2196F3',
     text: {
@@ -94,9 +108,13 @@ const theme = {
   }
 };
 
+// ThemedComponent.tsx
+import { Component, Div, H1, P } from '@meonode/ui';
+import { theme } from './theme';
+
 const ThemedCard = Component(() =>
   Div({
-    theme,
+    theme, // Provide theme context
     padding: 'theme.spacing.lg',
     backgroundColor: 'theme.colors.primary',
     children: [
@@ -111,47 +129,49 @@ const ThemedCard = Component(() =>
 
 Automatic separation of CSS props from DOM attributes:
 
-```ts
+```tsx
 const ProfileCard = Component(({ user }) =>
   Div({
     // CSS Props
     padding: '20px',
     borderRadius: '8px',
+    
     // DOM Props
-    ariaRole: 'article',
+    'aria-role': 'article',
     tabIndex: 0,
+    
     // Children
     children: `Welcome ${user.name}!`
   })
 );
 ```
 
+---
 
 ## Key Features
 
-| Feature              | Description                                                          |
-|----------------------|----------------------------------------------------------------------|
-| **Smart Prop Merge** | CSS properties are automatically merged with style object            |
-| **Theme Resolution** | `theme.` references resolve through component hierarchy              |
-| **Type Safety**      | Autocomplete for CSS properties and theme paths                      |
-| **HOC Support**      | Wrap existing components with `Component()` for seamless integration |
-| **Dynamic Children** | Function-as-child pattern with automatic theme propagation           |
+| Feature              | Description                                                                 |
+|----------------------|-----------------------------------------------------------------------------|
+| **Smart Prop Merge** | CSS props merge with style objects; DOM props pass to underlying elements  |
+| **Theme Resolution** | `theme.` references resolve through component hierarchy                     |
+| **Type Guards**      | Autocomplete for CSS properties and theme paths with strict type checks     |
+| **HOC Support**      | Wrap existing components with `Component()` for theme integration           |
+| **Dynamic Children** | Supports function-as-child pattern with automatic theme propagation         |
 
-## Advanced Usage
+---
+
+## Advanced Patterns
 
 ### Component Composition
 
-```ts
+```tsx
 const Dashboard = Component(() => 
   Div({
     display: 'grid',
     gridTemplateColumns: '1fr 3fr',
     gap: '20px',
     children: [
-      Sidebar({
-        width: '240px',
-        items: navItems
-      }),
+      Sidebar({ width: '240px' }),
       MainContent({
         padding: '40px',
         children: AnalyticsChart({ dataset })
@@ -163,32 +183,22 @@ const Dashboard = Component(() =>
 
 ### Material UI Integration
 
-```shell
+```bash
 yarn add @meonode/mui @mui/material
 ```
 
-```ts
+```tsx
 import { Button, TextField } from '@meonode/mui';
 
-const MuiLoginForm = Component(() =>
+const LoginForm = Component(() =>
   Div({
     maxWidth: '400px',
     margin: '0 auto',
     children: [
-      TextField({
-        label: 'Email',
-        fullWidth: true,
-        margin: 'normal'
-      }),
-      TextField({
-        label: 'Password',
-        type: 'password',
-        fullWidth: true,
-        margin: 'normal'
-      }),
+      TextField({ label: 'Email', fullWidth: true }),
+      TextField({ label: 'Password', type: 'password' }),
       Button({
         variant: 'contained',
-        color: 'primary',
         children: 'Sign In'
       })
     ]
@@ -196,9 +206,8 @@ const MuiLoginForm = Component(() =>
 );
 ```
 
-### With Conditional Children That Contains Hook
-
-```ts
+## Comprehensive Example: Theme-Switching & Conditional Components
+```tsx
 'use client'
 /**
  * This file showcases the integration of React hooks with @meonode/ui components
@@ -206,7 +215,7 @@ const MuiLoginForm = Component(() =>
  * approaches, the use of Higher-Order Components (HOCs), and how theme context
  * is managed and propagated within the @meonode/ui component tree.
  */
-import { Component, Column, Row, P, Node, Button, Theme, Center, NodeInstance } from '@meonode/ui'
+import { Component, Column, Row, P, Node, Button, Theme, Center, NodeInstance, Absolute } from '@meonode/ui'
 import { useState, useEffect, ReactElement, ReactNode } from 'react'
 import { CssBaseline, FormControlLabel, TextField } from '@meonode/mui'
 import { Switch as MUISwitch } from '@mui/material'
@@ -322,7 +331,7 @@ const darkTheme: Theme = {
  */
 export default Component(() => {
   // State hook to control the visibility of additional content sections.
-  const [showMore, setShowDetails] = useState(false) // 'showMore' controls visibility, 'setShowDetails' is the updater.
+  const [showMore, setShowDetails] = useState(false)
   const [mode, setMode] = useState<'dark' | 'light'>('light')
   const theme = mode === 'dark' ? darkTheme : lightTheme
 
@@ -344,6 +353,7 @@ export default Component(() => {
     backgroundColor: 'theme.background',
     color: 'theme.foreground',
     children: [
+      CssBaseline, // Applies baseline Material UI styles for consistent rendering.
       // Theme toggle switch using MUI components wrapped with @meonode/ui's Node HOC.
       Center({
         children: FormControlLabel({
@@ -354,6 +364,17 @@ export default Component(() => {
           checked: mode === 'dark',
           onChange: () => setMode(prev => (prev === 'dark' ? 'light' : 'dark')),
         }),
+      }),
+      // Button to show modal.
+      Button('Show Modal', {
+        onClick: () => Modal({ theme }), // Click handler to show modal immedietelly.
+        cursor: 'pointer', // Visual cue for clickability.
+        userSelect: 'none', // Prevents text selection on the button.
+        padding: '10px 20px',
+        backgroundColor: 'theme.primary', // Background color sourced from the theme context.
+        borderRadius: 5,
+        fontWeight: 'bold',
+        color: 'white',
       }),
       // Button to toggle the visibility of the detail sections.
       Button(showMore ? 'Hide' : 'Show More', {
@@ -366,7 +387,6 @@ export default Component(() => {
         fontWeight: 'bold',
         color: 'white',
       }),
-      CssBaseline, // Applies baseline Material UI styles for consistent rendering.
 
       /**
        * --- Unconditional Rendering Examples ---
@@ -500,28 +520,92 @@ const ReturnRenderedDetailComponent = ({ info }: { info: string }): ReactNode =>
     children: [P(info, { flex: 1, padding: '0 20px' }), TextField({ flex: 1, sx: { background: 'theme.primary' } })],
   }).render() // Explicitly renders to ReactNode.
 }
+
+const Modal = ({ theme }: { theme: Theme }) => {
+  const modal = Absolute({
+    theme: theme.colors,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    onClick: e => {
+      if (e.target === e.currentTarget) {
+        modal?.unmount()
+      }
+    },
+    children: Column({
+      width: '50%',
+      height: '50%',
+      backgroundColor: 'theme.background',
+      borderRadius: '8px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      transition: 'transform 0.2s ease-in-out',
+      padding: 10,
+      gap: 10,
+      color: 'theme.foreground',
+      children: [
+        Center({ fontWeight: 'bold', children: 'Hello There' }),
+        TextField({
+          sx: {
+            '& .MuiFormLabel-root': {
+              color: 'theme.foreground',
+              '&.Mui-focused': {
+                color: 'theme.foreground',
+              },
+            },
+            '& .MuiOutlinedInput-root': {
+              color: 'theme.foreground',
+              '& fieldset': {
+                borderColor: 'theme.foreground',
+              },
+              '&:hover fieldset': {
+                borderColor: 'theme.foreground',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: 'theme.foreground',
+              },
+              borderRadius: 2,
+            },
+          },
+          label: 'Hello',
+          fullWidth: true,
+        }),
+      ],
+    }),
+  }).toPortal()
+}
 ```
+
+---
 
 ## API Reference
 
 ### Core Functions
 
-| Function       | Parameters                              | Description                                     |
-|----------------|-----------------------------------------|-------------------------------------------------|
-| `Node`         | `element: string \| Component`, `props` | Creates a new UI node                           |
-| `Component`    | `(props) => Node \| ReactNode`          | Converts node trees to React components         |
+| Function    | Parameters                              | Description                                  |
+|-------------|-----------------------------------------|----------------------------------------------|
+| `Node`      | `element: string | React.ComponentType`, `baseProps: object` | Creates a configurable UI node |
+| `Component` | `(props: P) => Node | ReactNode`          | Converts node trees to React components      |
 
+---
 
 ## Contributing
 
 We welcome contributions! Please follow these steps:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
 
-Contact me on [Discord](https://discordapp.com/users/704803255561224264) for discussions.
+1. **Fork** the repository
+2. **Clone** your fork: `git clone https://github.com/your-username/meonode-ui.git`
+3. **Install dependencies**: `yarn install` (or npm/pnpm)
+4. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+5. **Commit changes** with descriptive messages
+6. **Push** to your branch: `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+For major changes, please open an issue first to discuss your proposal.
 
 ---
 
