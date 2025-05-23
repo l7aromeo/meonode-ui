@@ -40,7 +40,7 @@ const App = Component(() =>
 - 🎨 **CSS-in-JS Without Runtime** - Write styles directly in props with theme references
 - 🧩 **Component-First Architecture** - Compose UIs from structured nodes instead of JSX
 - 🌐 **Theme Propagation** - Contextual theming that works with any component structure
-- ⚡ **Zero Dependencies** - Lightweight core (under 15kb gzipped)
+- ⚡ **Small Footprint** - Lightweight core (under 185kb unpacked)
 
 ## Installation
 
