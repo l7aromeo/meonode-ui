@@ -35,6 +35,8 @@
     "appearance",
     "aspect-ratio",
     "azimuth",
+    "backdrop-filter",
+    "-webkit-backdrop-filter",
     "backface-visibility",
     "background",
     "background-attachment",
