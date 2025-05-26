@@ -628,7 +628,7 @@ import store from '/path/to/redux/store'
  * available to the entire component tree.
  *
  * @constant
- * @type {ReactNode}
+ * @type {NodeElement}
  * @param {Object} store - The Redux store instance to be passed down to the application.
  */
 const ReduxProvider = Node(Provider, { store })
