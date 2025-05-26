@@ -103,7 +103,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       for (const key in currentObj) {
         const value = currentObj[key]
 
-        if (key.startsWith('_')) return currentObj // Hack to pass Next.js shitty error caused by Turbopack development thingy
+        // if (key.startsWith('_')) return currentObj // Hack to pass Next.js shitty error caused by Turbopack development thingy
 
         // Handle string values containing theme references
         if (typeof value === 'string' && value.includes('theme.')) {
