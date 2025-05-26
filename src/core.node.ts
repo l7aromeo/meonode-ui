@@ -530,7 +530,7 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  * })
  * ```
  */
-export function Component<P extends Record<string, any> & { theme?: Theme }>(component: (props: P) => ComponentNode) {
+export function Component<P extends Record<string, any>>(component: (props: P) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
   const renderer = (props: any = {}) => {
     const result = component(props) // Execute wrapped component
@@ -573,12 +573,13 @@ export function Component<P extends Record<string, any> & { theme?: Theme }>(com
  * })
  * ```
  */
-export function Portal<
-  P extends Record<string, any> & {
-    theme?: Theme
-    portal: { unmount: () => void }
-  },
->(component: (props: P) => ComponentNode) {
+export function Portal<P extends Record<string, any>>(
+  component: (
+    props: P & {
+      portal: { unmount: () => void }
+    },
+  ) => ComponentNode,
+) {
   let portalInstance: ReactDOMRoot | null = null
   const renderer = (props: any = {}) => {
     const result = component({ ...props, portal: portalInstance })
