@@ -46,6 +46,7 @@ export const Center = (props?: NodeProps<'div'>) =>
     verticalAlign: 'middle',
     alignSelf: 'center',
     justifySelf: 'center',
+    margin: 'auto',
     ...props,
   })
 
