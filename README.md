@@ -205,6 +205,7 @@ const LoginForm = Component(() =>
 ```
 
 ## Comprehensive Example: Theme-Switching & Conditional Components
+
 ```tsx
 'use client'
 /**
@@ -213,7 +214,19 @@ const LoginForm = Component(() =>
  * approaches, the use of Higher-Order Components (HOCs), and how theme context
  * is managed and propagated within the @meonode/ui component tree.
  */
-import { Button, Center, Column, Component, Fixed, Node, type NodeInstance, P, Portal, Row, type Theme } from '@meonode/ui'
+import {
+  Button,
+  Center,
+  Column,
+  Component,
+  Fixed,
+  Node,
+  type NodeInstance,
+  P,
+  Portal,
+  Row,
+  type Theme
+} from '@meonode/ui'
 import { useState, useEffect, ReactElement, ReactNode } from 'react'
 import { CssBaseline, FormControlLabel, TextField } from '@meonode/mui'
 import { Switch as MUISwitch } from '@mui/material'
@@ -602,18 +615,67 @@ const Modal = Portal(({ theme, portal }) => {
 })
 ```
 
+## Passing Context Wrapper To Portal
+```ts
+import { Provider, useSelector } from 'react-redux'
+import store from '/path/to/redux/store'
+
+/**
+ * ReduxProvider
+ *
+ * A wrapper component that integrates the Redux store with a React application.
+ * It utilizes the `Provider` component from `react-redux` to make the Redux store
+ * available to the entire component tree.
+ *
+ * @constant
+ * @type {ReactNode}
+ * @param {Object} store - The Redux store instance to be passed down to the application.
+ */
+const ReduxProvider = Node(Provider, { store })
+
+/**
+ * Represents a modal component that is implemented using a portal
+ * and wrapped with a Redux provider. This component retrieves state
+ * from the Redux store and responds to state changes.
+ *
+ * The `Modal` leverages the Redux `useSelector` hook to access specific
+ * Redux state values and ensure dynamic behavior within the modal based
+ * on the application's state.
+ *
+ * Dependencies:
+ * - ReduxProvider: Ensures the modal has access to the Redux store.
+ * - Portal: Renders the modal outside of its parent hierarchy.
+ * - useSelector: Accesses specific data from the Redux state.
+ *
+ * Side Effects:
+ * - The component logs the specific Redux state changes to the console
+ *   when the state is updated.
+ *
+ * Props:
+ * - portal: Configuration for where the modal portal is rendered.
+ */
+const Modal = Portal(ReduxProvider, ({ portal }) => {
+  const someReduxState = useSelector(state => state.someReduxState)
+
+  useEffect(() => {
+    console.log('Redux State value: ', someReduxState)
+  }, [])
+
+  // ...
+})
+```
+
 ---
 
 ## API Reference
 
 ### Core Functions
 
-| Function    | Parameters                                                         | Description                                                                                              |
-|-------------|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `Node`      | `element: NodeElement \| React.ComponentType`, `baseProps: object` | Constructs a configurable UI node that supports flexible properties and dynamic styling.                 |
-| `Component` | `(props: P) => ComponentNode`                                      | Transforms node trees into reusable React components with built-in type safety and seamless integration. |
-| `Portal`    | `(props: P) => ComponentNode`                                      | Converts node trees to React components and renders them in a React Portal with advanced DOM placement.  |
-|
+| Function    | Parameters                                                                                                                                  | Description                                                                                                                                                                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Node`      | `element: NodeElement \| React.ComponentType`, `baseProps: object`                                                                          | Constructs a configurable UI node that supports flexible properties and dynamic styling.                                                                                                                         |
+| `Component` | `(props: P) => ComponentNode`                                                                                                               | Transforms node trees into reusable React components with built-in type safety and seamless integration.                                                                                                         |
+| `Portal`    | • `(component: (props: P) => ComponentNode)` or <br/> • `(providers: NodeElement \| NodeElement[], component: (props: P) => ComponentNode)` | Creates a React Portal component. Accepts either a component function directly, or a tuple of providers (e.g. Redux Provider) and the component. The component receives portal controls for mounting/unmounting. |
 
 ---
 
