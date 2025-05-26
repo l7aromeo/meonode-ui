@@ -35,6 +35,7 @@
     "appearance",
     "aspect-ratio",
     "azimuth",
+    "backdrop-filter",
     "backface-visibility",
     "background",
     "background-attachment",
