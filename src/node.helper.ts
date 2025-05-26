@@ -19,12 +19,6 @@ import {
 } from '@src/react-is.helper.js'
 
 /**
- * The list of CSS property names imported from the JSON file.
- * Used for validation and filtering of CSS-related props.
- */
-const cssProperties = cssPropertiesJson.properties
-
-/**
  * Returns a string describing the type of a given React component or element.
  *
  * Checks for common React types (class, forwardRef, memo, etc.) and returns a string
@@ -195,7 +189,7 @@ const toCamelCase = (prop: string): string => {
 /**
  * A set of valid CSS property names in camelCase, used for validation.
  */
-const cssPropertySet: Set<string> = new Set(cssProperties.map(toCamelCase))
+const cssPropertySet: Set<string> = new Set(cssPropertiesJson.properties.map(toCamelCase))
 
 /**
  * Filters an object to only include valid CSS properties
