@@ -644,15 +644,18 @@ const ReduxProvider = Node(Provider, { store })
  *
  * Dependencies:
  * - ReduxProvider: Ensures the modal has access to the Redux store.
- * - Portal: Renders the modal outside of its parent hierarchy.
+ * - Portal: Renders the modal outside of its parent hierarchy and provides
+ *   control methods such as `unmount` for cleaning up the modal.
  * - useSelector: Accesses specific data from the Redux state.
  *
  * Side Effects:
  * - The component logs the specific Redux state changes to the console
  *   when the state is updated.
+ * - The modal listens for specific user interactions (e.g., clicking outside
+ *   the modal area) and programmatically unmounts itself using `portal.unmount()`.
  *
  * Props:
- * - portal: Configuration for where the modal portal is rendered.
+ * - portal: Includes a method `unmount` to remove the modal from the DOM.
  */
 const Modal = Portal(ReduxProvider, ({ portal }) => {
   const someReduxState = useSelector(state => state.someReduxState)
