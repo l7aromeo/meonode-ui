@@ -530,7 +530,13 @@ export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps
  * })
  * ```
  */
-export function Component<P extends Record<string, any>>(component: (props: P) => ComponentNode) {
+export function Component<P extends Record<string, any>>(
+  component: (
+    props: P & {
+      children?: NodeElement
+    },
+  ) => ComponentNode,
+) {
   // Create a wrapper component that handles theme and rendering
   const renderer = (props: any = {}) => {
     const result = component(props) // Execute wrapped component
@@ -576,6 +582,7 @@ export function Component<P extends Record<string, any>>(component: (props: P) =
 export function Portal<P extends Record<string, any>>(
   component: (
     props: P & {
+      children?: NodeElement
       portal: { unmount: () => void }
     },
   ) => ComponentNode,
