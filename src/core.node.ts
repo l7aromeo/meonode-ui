@@ -76,9 +76,12 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     }
   }
 
+  // In class BaseNode
+
   /**
    * Resolves obj properties by replacing theme path placeholders with actual theme values.
    * Handles complex strings like '1px solid theme.background.primary' and nested objects.
+   * This version includes detection for circular references to prevent infinite loops.
    * @param obj The initial obj properties object.
    * @param theme The theme object to use for resolving paths.
    * @returns A new CSSProperties object with theme values resolved.
@@ -93,43 +96,90 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const mergedTheme: Theme = { ...this.rawProps?.nodetheme, ...theme }
 
     /**
-     * Recursively resolves theme values in an object
-     * @param currentObj The current object level being processed
-     * @returns New object with resolved theme values
+     * Recursively resolves theme values in an object by traversing its properties and replacing theme path references.
+     *
+     * This function handles:
+     * - Theme path resolution (e.g. 'theme.colors.primary' -> '#ff0000')
+     * - Nested object traversal with cycle detection
+     * - Type preservation for non-theme values
+     * - Special case handling for private props (starting with '_')
+     * @param currentObj The current object being processed in the recursion
+     * @param visited Set tracking visited objects to prevent infinite loops from circular references
+     * @returns A new object with all theme path references resolved to actual values
      */
-    const resolveRecursively = (currentObj: Record<string, unknown>): Record<string, unknown> => {
+    const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>): Record<string, unknown> => {
+      // Prevent infinite recursion by detecting cycles in the object graph
+      // If this object was already processed in the current branch, return it as-is
+      if (visited.has(currentObj)) {
+        return currentObj
+      }
+
+      // Track this object to detect future cycles
+      visited.add(currentObj)
+
       const resolvedObj: Record<string, unknown> = {}
-      // Process each property in the current object
+
+      // Process all enumerable properties of the current object
       for (const key in currentObj) {
+        // Skip inherited properties from the prototype chain
+        // This ensures we only process the object's own properties
+        if (!Object.prototype.hasOwnProperty.call(currentObj, key)) {
+          continue
+        }
+
         const value = currentObj[key]
 
-        // if (key.startsWith('_')) return currentObj // Hack to pass Next.js shitty error caused by Turbopack development thingy
+        // Special handling for "private" properties that start with underscore
+        // These are exempt from theme resolution to allow implementation details
+        if (key.startsWith('_')) {
+          resolvedObj[key] = value
+          continue
+        }
 
-        // Handle string values containing theme references
+        // Process string values that contain theme path references
+        // Example: "1px solid theme.colors.border" -> "1px solid #ccc"
         if (typeof value === 'string' && value.includes('theme.')) {
           let processedValue = value
-          // Replace theme path placeholders with actual theme values
+          // Find and replace all theme path references using regex
           processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
             const themeValue = getValueByPath(mergedTheme, path)
-            // Convert the theme value to string if it exists and is a valid type
-            return themeValue != null && ['string', 'number'].includes(typeof themeValue) ? String(themeValue) : match
+            // Only convert theme values that are strings or numbers
+            // Other types are left as-is to maintain the reference format
+            if (themeValue !== undefined && themeValue !== null) {
+              if (typeof themeValue === 'string' || typeof themeValue === 'number') {
+                return String(themeValue)
+              }
+              // Theme value exists but is wrong type - keep original reference
+              // Could add warning: console.warn(`Theme value for ${path} is not string/number`)
+            }
+            // Theme path not found - keep original reference
+            // Could add warning: console.warn(`Theme path ${path} not found`)
+            return match
           })
           resolvedObj[key] = processedValue
         }
-        // Recursively process nested objects (excluding arrays)
+        // Recursively process nested objects, excluding arrays
+        // This allows theme resolution in deeply nested structures
         else if (value && typeof value === 'object' && !Array.isArray(value)) {
-          resolvedObj[key] = resolveRecursively(value as Record<string, unknown>)
+          // Use same visited set to maintain cycle detection across the entire tree
+          resolvedObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
         }
-        // Keep other values as-is
+        // All other values (numbers, booleans, arrays, etc) are copied as-is
         else {
           resolvedObj[key] = value
         }
       }
 
+      // Important: We added `currentObj` to `visited` at the start of this function call.
+      // For cycle detection within a single top-level `_resolveObjWithTheme` call,
+      // we don't remove it here. The `visited` set is fresh for each top-level call.
+      // If `visited` was a longer-lived cache across multiple calls, cleanup logic might be needed.
+
       return resolvedObj
     }
 
-    return resolveRecursively(obj)
+    // Initial call to the recursive function with a new Set to track visited objects for this resolution.
+    return resolveRecursively(obj, new Set())
   }
 
   /**
