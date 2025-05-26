@@ -1,7 +1,8 @@
 'use strict'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
 import type { NodeElement, FinalNodeProps } from '@src/node.type.js'
-import cssPropertiesJson from '@src/json/css-properties.json'
+import allCSSProps from '@src/json/all.css-properties.json'
+import standardCSSProps from '@src/json/standard.css-properties.json'
 import {
   isContextConsumer,
   isContextProvider,
@@ -187,9 +188,16 @@ const toCamelCase = (prop: string): string => {
 }
 
 /**
- * A set of valid CSS property names in camelCase, used for validation.
+ * A set of valid CSS property names in camelCase, including CSS custom properties, used for validation.
+ * This set contains all CSS properties including non-standard vendor prefixed properties.
  */
-const cssPropertySet: Set<string> = new Set(cssPropertiesJson.properties.map(toCamelCase))
+const allCSSPropertySet: Set<string> = new Set(allCSSProps.properties.map(toCamelCase))
+
+/**
+ * A set of standard CSS property names in camelCase, used for validation.
+ * This set contains only standard CSS properties defined in CSS specifications.
+ */
+const standardCSSPropertySet: Set<string> = new Set(standardCSSProps.properties.map(toCamelCase))
 
 /**
  * Filters an object to only include valid CSS properties
@@ -207,7 +215,7 @@ export function getCSSProps<T extends Record<string, any>>(props: T): Partial<CS
   const result: Partial<CSSProperties> = {}
 
   for (const key in props) {
-    if (cssPropertySet.has(key)) {
+    if (allCSSPropertySet.has(key)) {
       result[key as keyof CSSProperties] = props[key]
     }
   }
@@ -231,7 +239,7 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
   const result: Partial<FinalNodeProps> = {}
 
   for (const key in props) {
-    if (!cssPropertySet.has(key)) {
+    if (!standardCSSPropertySet.has(key)) {
       result[key as keyof NonNullable<FinalNodeProps>] = props[key]
     }
   }
