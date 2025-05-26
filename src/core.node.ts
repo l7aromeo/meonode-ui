@@ -88,109 +88,78 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     }
   }
 
-  // In class BaseNode
-
   /**
-   * Resolves obj properties by replacing theme path placeholders with actual theme values.
-   * Handles complex strings like '1px solid theme.background.primary' and nested objects.
-   * This version includes detection for circular references to prevent infinite loops.
-   * @param obj The initial obj properties object.
-   * @param theme The theme object to use for resolving paths.
-   * @returns A new CSSProperties object with theme values resolved.
+   * Resolves theme variable references in an object's values recursively.
+   * Handles nested objects and prevents circular references.
+   * Theme variables are referenced using the format "theme.path.to.value".
+   * @param obj The object whose values should be resolved against the theme
+   * @param theme Optional theme object containing variable definitions
+   * @returns A new object with all theme variables resolved to their values
    */
   private _resolveObjWithTheme(obj: Record<string, unknown>, theme?: Theme) {
-    // Return early if no theme or empty object
+    // Early return if no theme or empty object
     if (!theme || Object.keys(obj).length === 0) {
       return obj
     }
 
-    // Merge raw nodetheme with passed theme for resolution
+    // Merge parent theme with current theme
     const mergedTheme: Theme = { ...this.rawProps?.nodetheme, ...theme }
 
     /**
-     * Recursively resolves theme values in an object by traversing its properties and replacing theme path references.
-     *
-     * This function handles:
-     * - Theme path resolution (e.g. 'theme.colors.primary' -> '#ff0000')
-     * - Nested object traversal with cycle detection
-     * - Type preservation for non-theme values
-     * - Special case handling for private props (starting with '_')
-     * @param currentObj The current object being processed in the recursion
-     * @param visited Set tracking visited objects to prevent infinite loops from circular references
-     * @returns A new object with all theme path references resolved to actual values
+     * Recursively resolves theme variables in an object, tracking visited objects
+     * to prevent infinite recursion with circular references.
      */
     const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>): Record<string, unknown> => {
-      // Prevent infinite recursion by detecting cycles in the object graph
-      // If this object was already processed in the current branch, return it as-is
+      // Prevent processing same object multiple times
       if (visited.has(currentObj)) {
         return currentObj
       }
 
-      // Track this object to detect future cycles
+      // Track this object to detect circular references
       visited.add(currentObj)
 
       const resolvedObj: Record<string, unknown> = {}
 
-      // Process all enumerable properties of the current object
       for (const key in currentObj) {
-        // Skip inherited properties from the prototype chain
-        // This ensures we only process the object's own properties
+        // Skip non-own properties
         if (!Object.prototype.hasOwnProperty.call(currentObj, key)) {
           continue
         }
 
         const value = currentObj[key]
 
-        // Special handling for "private" properties that start with underscore
-        // These are exempt from theme resolution to allow implementation details
+        // Skip private props (starting with _)
         if (key.startsWith('_')) {
           resolvedObj[key] = value
           continue
         }
 
-        // Process string values that contain theme path references
-        // Example: "1px solid theme.colors.border" -> "1px solid #ccc"
+        // Resolve theme variables in string values
         if (typeof value === 'string' && value.includes('theme.')) {
           let processedValue = value
-          // Find and replace all theme path references using regex
           processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
             const themeValue = getValueByPath(mergedTheme, path)
-            // Only convert theme values that are strings or numbers
-            // Other types are left as-is to maintain the reference format
-            if (themeValue !== undefined && themeValue !== null) {
-              if (typeof themeValue === 'string' || typeof themeValue === 'number') {
-                return String(themeValue)
-              }
-              // Theme value exists but is wrong type - keep original reference
-              // Could add warning: console.warn(`Theme value for ${path} is not string/number`)
+            // Only convert string/number theme values
+            if (themeValue !== undefined && themeValue !== null && typeof themeValue !== 'object') {
+              return themeValue
             }
-            // Theme path not found - keep original reference
-            // Could add warning: console.warn(`Theme path ${path} not found`)
-            return match
+            return match // Keep original if no valid theme value found
           })
           resolvedObj[key] = processedValue
         }
-        // Recursively process nested objects, excluding arrays
-        // This allows theme resolution in deeply nested structures
+        // Recursively process nested objects
         else if (value && typeof value === 'object' && !Array.isArray(value)) {
-          // Use same visited set to maintain cycle detection across the entire tree
           resolvedObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
         }
-        // All other values (numbers, booleans, arrays, etc) are copied as-is
+        // Keep other values as-is
         else {
           resolvedObj[key] = value
         }
       }
 
-      // Important: We added `currentObj` to `visited` at the start of this function call.
-      // For cycle detection within a single top-level `_resolveObjWithTheme` call,
-      // we don't remove it here. The `visited` set is fresh for each top-level call.
-      // If `visited` was a longer-lived cache across multiple calls, cleanup logic might be needed.
-
       return resolvedObj
     }
 
-    // Initial call to the recursive function with a new Set to track visited objects for this resolution.
     return resolveRecursively(obj, new Set())
   }
 
