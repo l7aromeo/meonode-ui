@@ -256,6 +256,6 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
  * @param path The dot-separated path string (e.g., 'background.primary').
  * @returns The value at the specified path, or undefined if not found.
  */
-export function getValueByPath(obj: Record<string, any> = {}, path: string): any {
+export function getValueByPath(obj: Record<string, any> = {}, path: string) {
   return path.split('.').reduce((acc, key) => acc?.[key], obj)
 }
