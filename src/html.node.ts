@@ -12,6 +12,26 @@ import { Node } from '@src/core.node.js'
 export const Div = (props?: NodeProps<'div'>) => Node('div', props)
 
 /**
+ * Represents a root div element with full viewport dimensions and column flex layout.
+ * By default, applies flex column layout and 100% viewport dimensions.
+ * @param props Optional properties for the root div element that merge with defaults.
+ * @returns A div element node configured as root container.
+ * @example
+ * Root({
+ *   backgroundColor: 'white',
+ *   children: [Header(), Main(), Footer()]
+ * })
+ */
+export const Root = (props?: NodeProps<'div'>) =>
+  Div({
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '100vh',
+    minWidth: '100vw',
+    ...props,
+  })
+
+/**
  * Represents a column layout using flexbox.
  * @param props Optional properties for the column layout.
  * @returns A div element node with flexbox column layout.
