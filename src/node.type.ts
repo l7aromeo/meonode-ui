@@ -146,3 +146,40 @@ export interface FunctionRendererProps<E extends NodeElement> {
 }
 
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)
+
+/**
+ * Props type for components rendered through the Portal HOC.
+ * Extends the component's own props with portal-specific functionality.
+ * @template T The component's own prop types
+ */
+export type PortalProps<T extends Record<string, any>> = T & {
+  /** Content to render within the portal */
+  children?: NodeElement | NodeElement[]
+
+  /** Portal control object containing lifecycle methods */
+  portal: {
+    /** Unmounts and cleans up the portal */
+    unmount: () => void
+  }
+}
+
+/**
+ * Function type for creating portal instances when Portal is called with just a component.
+ * Allows passing providers through props at portal creation time.
+ * @template P_Content The portal content component's prop types
+ */
+export type PortalLauncher<P_Content extends Record<string, any>> = (
+  props: P_Content & {
+    /** Optional provider components to wrap the portal content */
+    providers?: NodeInstance<any> | NodeInstance<any>[]
+  } & PortalProps<P_Content>,
+) => ReactDOMRoot | null
+
+/**
+ * Function type for creating portal instances when Portal is called with providers and component.
+ * Uses fixed providers specified at HOC creation time.
+ * @template P_Content The portal content component's prop types
+ */
+export type PortalLauncherWithFixedProviders<P_Content extends Record<string, any>> = (
+  props: P_Content & Omit<PortalProps<P_Content>, 'portal'>,
+) => ReactDOMRoot | null

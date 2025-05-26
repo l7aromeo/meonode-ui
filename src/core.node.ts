@@ -1,6 +1,18 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { ComponentNode, FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
+import type {
+  ComponentNode,
+  FinalNodeProps,
+  FunctionRendererProps,
+  NodeElement,
+  NodeInstance,
+  NodeProps,
+  PortalLauncher,
+  PortalLauncherWithFixedProviders,
+  PortalProps,
+  RawNodeProps,
+  Theme,
+} from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
@@ -557,52 +569,132 @@ export function Component<P extends Record<string, any>>(
 }
 
 /**
- * Creates a portal wrapper component for rendering content outside the normal DOM hierarchy.
- * Portals are useful for rendering modals, tooltips, and other overlays that need to break out
- * of their parent container's DOM structure while maintaining React context and event bubbling.
+ * Creates a portal component that renders its content outside the normal DOM hierarchy.
+ * Supports wrapping the portal content with provider components for context/theme inheritance.
  *
- * Key features:
- * - Renders content to a separate DOM node outside the parent hierarchy
- * - Maintains theme inheritance through the portal
- * - Provides portal instance with unmount control
- * - Automatically cleans up DOM nodes on unmount
- * @template P Props type for the wrapped component including theme and portal instance
- * @param component Component function that returns portal content
- * @returns Function that creates and manages the portal instance
+ * A portal creates a new DOM element and renders React content into it, useful for modals,
+ * popovers, and other overlays that need to break out of their parent container's DOM hierarchy.
+ *
+ * The portal content can be wrapped with provider components to maintain context/theme inheritance:
+ * 1. Fixed providers specified when creating the portal via Portal(providers, component)
+ * 2. Dynamic providers passed as props when launching the portal
+ * @template P_Content - Props type for the portal's content component
  * @example
- * ```ts
- * const Modal = Portal(({ portal }) => {
- *   return Div({
- *     onClick: () => portal.unmount(),
- *     children: "Click to close"
- *   })
+ * // Basic portal with no providers
+ * const Modal = Portal((props) => Div({ children: props.children }));
+ *
+ * // Portal with fixed theme provider
+ * const ThemedModal = Portal(
+ *   ThemeProvider({ theme }),
+ *   (props) => Div({ children: props.children })
+ * )
+ *
+ * // Usage with dynamic providers
+ * const modal = Modal({
+ *   providers: [ThemeProvider({ theme })],
+ *   children: "Modal content"
  * })
- * ```
+ * modal.unmount(); // Clean up when done
  */
-export function Portal<P extends Record<string, any>>(
-  component: (
-    props: P & {
-      children?: NodeElement
-      portal: { unmount: () => void }
+export function Portal<P_Content extends Record<string, any>>(
+  providers: NodeInstance<any> | NodeInstance<any>[],
+  component: (props: PortalProps<P_Content>) => ComponentNode,
+): PortalLauncherWithFixedProviders<P_Content>
+export function Portal<P_Content extends Record<string, any>>(component: (props: PortalProps<P_Content>) => ComponentNode): PortalLauncher<P_Content>
+export function Portal<P_Content extends Record<string, any>>(
+  arg1: NodeInstance<any> | NodeInstance<any>[] | ((props: PortalProps<P_Content>) => ComponentNode),
+  arg2?: (props: PortalProps<P_Content>) => ComponentNode,
+): any {
+  // Track fixed providers passed during portal creation
+  let hocFixedProviders: NodeInstance<any>[] | undefined = undefined
+  let componentFunction: (props: PortalProps<P_Content>) => ComponentNode
+  let currentPortalRoot: ReactDOMRoot | null = null
+
+  // Parse arguments to determine which overload is being used
+  if (typeof arg2 === 'function' && (arg1 instanceof BaseNode || (Array.isArray(arg1) && arg1.every(item => item instanceof BaseNode)))) {
+    // Overload 1: Portal(providers, component) - Fixed providers
+    hocFixedProviders = Array.isArray(arg1) ? arg1 : [arg1 as NodeInstance<any>]
+    componentFunction = arg2
+  } else if (typeof arg1 === 'function' && arg2 === undefined) {
+    // Overload 2: Portal(component) - Dynamic providers via props
+    componentFunction = arg1 as (props: PortalProps<P_Content>) => ComponentNode
+  } else {
+    throw new Error('Invalid arguments for Portal HOC. Use Portal(component) or Portal(providersArrayOrNodeInstance, component).')
+  }
+
+  // Control object passed to portal content for cleanup
+  const portalControl = {
+    unmount: () => {
+      if (currentPortalRoot) {
+        currentPortalRoot.unmount()
+        currentPortalRoot = null
+      }
     },
-  ) => ComponentNode,
-) {
-  let portalInstance: ReactDOMRoot | null = null
-  const renderer = (props: any = {}) => {
-    const result = component({ ...props, portal: portalInstance })
+  }
+
+  // Renderer function that executes portal content with control object
+  const renderer = (propsFromNodeFactory: P_Content & { nodetheme?: Theme } = {} as any) => {
+    const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
+
+    const result = componentFunction({
+      ...(contentOnlyProps as P_Content),
+      portal: portalControl,
+    })
+
+    // Handle BaseNode results by properly applying the theme
     if (result instanceof BaseNode) {
-      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme
+      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || propsFromNodeFactory.nodetheme
       return Node(result.element, {
         ...result.rawProps,
         nodetheme: theme,
       }).render()
     }
-
     return result as ReactNode
   }
 
-  return (props: any = {}) => {
-    portalInstance = Node(renderer, props).toPortal()
-    return portalInstance
+  // Return launcher function that creates and manages the portal instance
+  return (
+    props: P_Content & {
+      providers?: NodeInstance<any> | NodeInstance<any>[] // Optional dynamic providers
+    },
+  ): ReactDOMRoot | null => {
+    let nodeToPortalize: NodeInstance<any>
+
+    // Combine fixed and dynamic providers in the correct order
+    let finalProvidersArray: NodeInstance<any>[] | undefined = undefined
+    if (hocFixedProviders) {
+      finalProvidersArray = hocFixedProviders
+    } else if (props.providers) {
+      finalProvidersArray = Array.isArray(props.providers) ? props.providers : [props.providers]
+    }
+
+    // Extract props needed for portal setup vs content
+    const { providers: _launcherProviders, nodetheme, ...contentPropsForRenderer } = props
+    const propsForInnermostNode: NodeProps<any> = { ...contentPropsForRenderer, nodetheme }
+
+    // Create node for portal content with renderer
+    const contentNode = Node(renderer, propsForInnermostNode)
+
+    // Wrap content with providers if any exist
+    if (finalProvidersArray && finalProvidersArray.length > 0) {
+      nodeToPortalize = finalProvidersArray.reduceRight((currentWrappedContent: NodeInstance<any>, providerNode: NodeInstance<any>) => {
+        // Validate each provider is a proper NodeInstance
+        if (!(providerNode instanceof BaseNode)) {
+          console.warn('Portal: Item in providers array is not a valid NodeInstance. Skipping.', providerNode)
+          return currentWrappedContent
+        }
+        return Node(providerNode.element, {
+          ...providerNode.rawProps,
+          children: currentWrappedContent,
+          nodetheme: providerNode.rawProps?.nodetheme || providerNode.rawProps?.theme || nodetheme,
+        })
+      }, contentNode)
+    } else {
+      nodeToPortalize = contentNode
+    }
+
+    // Create a portal and return root for lifecycle management
+    currentPortalRoot = nodeToPortalize.toPortal()
+    return currentPortalRoot
   }
 }
