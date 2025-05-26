@@ -66,5 +66,23 @@
   "publishConfig": {
     "access": "public"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "typescript",
+    "ui-framework",
+    "theme-engine",
+    "jsx-free",
+    "type-safe",
+    "component-composition",
+    "css-in-js",
+    "design-system",
+    "react-components",
+    "dynamic-theming",
+    "frontend",
+    "web-development",
+    "no-jsx",
+    "component-library",
+    "accessible-components"
+  ]
 }
