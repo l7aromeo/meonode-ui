@@ -576,29 +576,19 @@ export function Portal<P_Content extends Record<string, any>>(
 ): any {
   // Track fixed providers passed during portal creation
   let hocFixedProviders: NodeInstance<any>[] | undefined = undefined
-  let componentFunction: (props: PortalProps<P_Content>) => ComponentNode
-  let currentPortalRoot: ReactDOMRoot | null = null
+  let componentFunction: (props: Partial<PortalProps<P_Content>>) => ComponentNode
+  let portalInstance: ReactDOMRoot | null = null
 
   // Parse arguments to determine which overload is being used
   if (typeof arg2 === 'function' && (arg1 instanceof BaseNode || (Array.isArray(arg1) && arg1.every(item => item instanceof BaseNode)))) {
     // Overload 1: Portal(providers, component) - Fixed providers
     hocFixedProviders = Array.isArray(arg1) ? arg1 : [arg1 as NodeInstance<any>]
-    componentFunction = arg2
+    componentFunction = arg2 as (props: Partial<PortalProps<P_Content>>) => ComponentNode
   } else if (typeof arg1 === 'function' && arg2 === undefined) {
     // Overload 2: Portal(component) - Dynamic providers via props
-    componentFunction = arg1 as (props: PortalProps<P_Content>) => ComponentNode
+    componentFunction = arg1 as (props: Partial<PortalProps<P_Content>>) => ComponentNode
   } else {
     throw new Error('Invalid arguments for Portal HOC. Use Portal(component) or Portal(providersArrayOrNodeInstance, component).')
-  }
-
-  // Control object passed to portal content for cleanup
-  const portalControl = {
-    unmount: () => {
-      if (currentPortalRoot) {
-        currentPortalRoot.unmount()
-        currentPortalRoot = null
-      }
-    },
   }
 
   // Renderer function that executes portal content with control object
@@ -606,8 +596,8 @@ export function Portal<P_Content extends Record<string, any>>(
     const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
 
     const result = componentFunction({
-      ...(contentOnlyProps as P_Content),
-      portal: portalControl,
+      ...(contentOnlyProps as Partial<P_Content>),
+      portal: portalInstance,
     })
 
     // Handle BaseNode results by properly applying the theme
@@ -663,7 +653,7 @@ export function Portal<P_Content extends Record<string, any>>(
     }
 
     // Create a portal and return root for lifecycle management
-    currentPortalRoot = nodeToPortalize.toPortal()
-    return currentPortalRoot
+    portalInstance = nodeToPortalize.toPortal()
+    return portalInstance
   }
 }
