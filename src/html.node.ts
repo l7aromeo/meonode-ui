@@ -64,8 +64,6 @@ export const Center = (props?: NodeProps<'div'>) =>
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    textAlign: 'center',
-    verticalAlign: 'middle',
     ...props,
   })
 
