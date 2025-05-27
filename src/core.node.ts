@@ -519,7 +519,7 @@ export function Component<P extends Record<string, any>>(
   ) => ComponentNode,
 ) {
   // Create a wrapper component that handles theme and rendering
-  const renderer = (props: any = {}) => {
+  const Renderer = (props: any = {}) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
@@ -534,7 +534,7 @@ export function Component<P extends Record<string, any>>(
     return result as ReactNode
   }
 
-  return (props: any = {}) => Node(renderer, props).render()
+  return (props: any = {}) => Node(Renderer, props).render()
 }
 
 /**
@@ -602,7 +602,7 @@ export function Portal<P_Content extends Record<string, any>>(
   }
 
   // Renderer function that executes portal content with control object
-  const renderer = (propsFromNodeFactory: P_Content & { nodetheme?: Theme } = {} as any) => {
+  const Renderer = (propsFromNodeFactory: P_Content & { nodetheme?: Theme } = {} as any) => {
     const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
 
     const result = componentFunction({
@@ -642,7 +642,7 @@ export function Portal<P_Content extends Record<string, any>>(
     const propsForInnermostNode: NodeProps<any> = { ...contentPropsForRenderer, nodetheme }
 
     // Create node for portal content with renderer
-    const contentNode = Node(renderer, propsForInnermostNode)
+    const contentNode = Node(Renderer, propsForInnermostNode)
 
     // Wrap content with providers if any exist
     if (finalProvidersArray && finalProvidersArray.length > 0) {
