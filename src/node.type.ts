@@ -172,7 +172,7 @@ export type PortalLauncher<P_Content extends Record<string, any>> = (
   props: P_Content & {
     /** Optional provider components to wrap the portal content */
     providers?: NodeInstance<any> | NodeInstance<any>[]
-  } & PortalProps<P_Content>,
+  } & Omit<PortalProps<P_Content>, 'portal'>,
 ) => ReactDOMRoot | null
 
 /**
