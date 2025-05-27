@@ -53,20 +53,19 @@ export const Row = (props?: NodeProps<'div'>) => Div({ display: 'flex', flexDire
 export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...props })
 
 /**
- * Represents a centered layout using flexbox.
- * @param props Optional properties for the centered layout.
- * @returns A div element node with centered flexbox layout.
+ * Represents a centered container with flexbox alignment.
+ * By default, centers content both horizontally and vertically.
+ * @param props Optional properties for the div element.
+ * @returns A div element node configured for centered content.
  */
 export const Center = (props?: NodeProps<'div'>) =>
   Div({
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center',
     verticalAlign: 'middle',
-    alignSelf: 'center',
-    justifySelf: 'center',
-    margin: 'auto',
     ...props,
   })
 
