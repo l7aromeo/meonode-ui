@@ -519,7 +519,7 @@ export function Component<P extends Record<string, any>>(
   ) => ComponentNode,
 ) {
   // Create a wrapper component that handles theme and rendering
-  const Renderer = (props: any = {}) => {
+  const Renderer = (props: P) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
@@ -534,7 +534,9 @@ export function Component<P extends Record<string, any>>(
     return result as ReactNode
   }
 
-  return (props: any = {}) => Node(Renderer, props).render()
+  return function Func(props: Partial<P> = {}) {
+    return Node(Renderer, props).render()
+  }
 }
 
 /**
@@ -547,7 +549,7 @@ export function Component<P extends Record<string, any>>(
  * The portal content can be wrapped with provider components to maintain context/theme inheritance:
  * 1. Fixed providers specified when creating the portal via Portal(providers, component)
  * 2. Dynamic providers passed as props when launching the portal
- * @template P_Content - Props type for the portal's content component
+ * @template P - Props type for the portal's content component
  * @example
  * // Basic portal with no providers
  * const Modal = Portal((props) => Div({ children: props.children }));
@@ -565,38 +567,38 @@ export function Component<P extends Record<string, any>>(
  * })
  * modal.unmount(); // Clean up when done
  */
-export function Portal<P_Content extends Record<string, any>>(
+export function Portal<P extends Record<string, any>>(
   providers: NodeInstance<any> | NodeInstance<any>[],
-  component: (props: PortalProps<P_Content>) => ComponentNode,
-): PortalLauncherWithFixedProviders<P_Content>
-export function Portal<P_Content extends Record<string, any>>(component: (props: PortalProps<P_Content>) => ComponentNode): PortalLauncher<P_Content>
-export function Portal<P_Content extends Record<string, any>>(
-  arg1: NodeInstance<any> | NodeInstance<any>[] | ((props: PortalProps<P_Content>) => ComponentNode),
-  arg2?: (props: PortalProps<P_Content>) => ComponentNode,
-): any {
+  component: (props: PortalProps<P>) => ComponentNode,
+): PortalLauncherWithFixedProviders<P>
+export function Portal<P extends Record<string, any>>(component: (props: PortalProps<P>) => ComponentNode): PortalLauncher<P>
+export function Portal<P extends Record<string, any>>(
+  arg1: NodeInstance<any> | NodeInstance<any>[] | ((props: PortalProps<P>) => ComponentNode),
+  arg2?: (props: PortalProps<P>) => ComponentNode,
+) {
   // Track fixed providers passed during portal creation
   let hocFixedProviders: NodeInstance<any>[] | undefined = undefined
-  let componentFunction: (props: Partial<PortalProps<P_Content>>) => ComponentNode
+  let componentFunction: (props: Partial<PortalProps<P>>) => ComponentNode
   let portalInstance: ReactDOMRoot | null = null
 
   // Parse arguments to determine which overload is being used
   if (typeof arg2 === 'function' && (arg1 instanceof BaseNode || (Array.isArray(arg1) && arg1.every(item => item instanceof BaseNode)))) {
     // Overload 1: Portal(providers, component) - Fixed providers
     hocFixedProviders = Array.isArray(arg1) ? arg1 : [arg1 as NodeInstance<any>]
-    componentFunction = arg2 as (props: Partial<PortalProps<P_Content>>) => ComponentNode
+    componentFunction = arg2 as (props: Partial<PortalProps<P>>) => ComponentNode
   } else if (typeof arg1 === 'function' && arg2 === undefined) {
     // Overload 2: Portal(component) - Dynamic providers via props
-    componentFunction = arg1 as (props: Partial<PortalProps<P_Content>>) => ComponentNode
+    componentFunction = arg1 as (props: Partial<PortalProps<P>>) => ComponentNode
   } else {
     throw new Error('Invalid arguments for Portal HOC. Use Portal(component) or Portal(providersArrayOrNodeInstance, component).')
   }
 
   // Renderer function that executes portal content with control object
-  const Renderer = (propsFromNodeFactory: P_Content & { nodetheme?: Theme } = {} as any) => {
+  const Renderer = (propsFromNodeFactory: P & { nodetheme?: Theme } = {} as any) => {
     const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
 
     const result = componentFunction({
-      ...(contentOnlyProps as Partial<P_Content>),
+      ...(contentOnlyProps as Partial<P>),
       portal: portalInstance,
     })
 
@@ -612,11 +614,11 @@ export function Portal<P_Content extends Record<string, any>>(
   }
 
   // Return launcher function that creates and manages the portal instance
-  return (
-    props: P_Content & {
+  return function Func(
+    props: Partial<P> & {
       providers?: NodeInstance<any> | NodeInstance<any>[] // Optional dynamic providers
     },
-  ): ReactDOMRoot | null => {
+  ): ReactDOMRoot | null {
     let nodeToPortalize: NodeInstance<any>
 
     // Combine fixed and dynamic providers in the correct order
