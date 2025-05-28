@@ -128,8 +128,8 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
         const value = currentObj[key]
 
-        // Skip private props (starting with _)
-        if (key.startsWith('_')) {
+        // Skip private props (starting with _) and React `ref` property
+        if (key.startsWith('_') || key === 'ref') {
           resolvedObj[key] = value
           continue
         }
