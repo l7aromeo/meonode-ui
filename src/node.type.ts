@@ -108,12 +108,9 @@ type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have
  */
 export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'style' | 'children'> &
   ReactAttributes &
-  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true
-    ? Partial<CSSProperties> // If E's props have a CSS-compatible style, allow NodeProps to set CSSProperties
-    : object) & {
+  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? Partial<Omit<CSSProperties, keyof Omit<PropsOf<E>, 'style' | 'children'>>> : object) & {
     children?: Children | Children[]
     theme?: Theme
-    // key is part of ReactAttributes
   }
 
 /**
