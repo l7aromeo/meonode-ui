@@ -140,7 +140,10 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
           processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
             const themeValue = getValueByPath(mergedTheme, path)
             // Only convert string/number theme values
-            if (themeValue !== undefined && themeValue !== null && typeof themeValue !== 'object') {
+            if (themeValue !== undefined && themeValue !== null) {
+              if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+                return themeValue.default
+              }
               return themeValue
             }
             return match // Keep original if no valid theme value found
