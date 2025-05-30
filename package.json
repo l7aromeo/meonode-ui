@@ -9,6 +9,10 @@
     ".": {
       "import": "./dist/main.js",
       "types": "./dist/main.d.ts"
+    },
+    "./hook": {
+      "import": "./dist/hook/index.js",
+      "types": "./dist/hook/index.d.ts"
     }
   },
   "files": [
