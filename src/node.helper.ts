@@ -16,7 +16,7 @@ import {
   isSuspense,
   isSuspenseList,
 } from '@src/react-is.helper.js'
-import allCSSProperties from '@src/data/all.css-properties'
+import cssProperties from '@src/data/css-properties'
 
 /**
  * Returns a string describing the type of a given React component or element.
@@ -181,7 +181,7 @@ export function getElementTypeName(node: unknown): string {
  * toCamelCase('--custom-prop') // '--custom-prop'
  * ```
  */
-export const toCamelCase = (prop: string): string => {
+const toCamelCase = (prop: string): string => {
   if (prop.startsWith('--')) return prop // Preserve CSS variables
   return prop.replace(/-([a-z])/g, (_, char) => char.toUpperCase())
 }
@@ -190,7 +190,7 @@ export const toCamelCase = (prop: string): string => {
  * A set of valid CSS property names in camelCase, including CSS custom properties, used for validation.
  * This set contains all CSS properties including non-standard vendor prefixed properties.
  */
-export const allCSSPropertySet: Set<string> = new Set(allCSSProperties.map(toCamelCase))
+export const CSSPropertySet: Set<string> = new Set(cssProperties.map(toCamelCase))
 
 /**
  * Filters an object to only include valid CSS properties
@@ -208,7 +208,7 @@ export function getCSSProps<T extends Record<string, any>>(props: T): Partial<CS
   const result: Partial<CSSProperties> = {}
 
   for (const key in props) {
-    if (Object.prototype.hasOwnProperty.call(props, key) && allCSSPropertySet.has(key)) {
+    if (Object.prototype.hasOwnProperty.call(props, key) && CSSPropertySet.has(key)) {
       result[key as keyof CSSProperties] = props[key]
     }
   }
@@ -232,7 +232,7 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
   const result: Partial<FinalNodeProps> = {}
 
   for (const key in props) {
-    if (Object.prototype.hasOwnProperty.call(props, key) && !allCSSPropertySet.has(key)) {
+    if (Object.prototype.hasOwnProperty.call(props, key) && !CSSPropertySet.has(key)) {
       result[key as keyof NonNullable<FinalNodeProps>] = props[key]
     }
   }
