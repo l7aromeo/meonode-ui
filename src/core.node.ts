@@ -418,9 +418,9 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     // Prepare props for React.createElement
     const propsForCreateElement: ComponentProps<ElementType> & { key?: Key } = {
-      ...(otherProps as ComponentProps<ElementType>), // Cast otherProps
-      key, // This is the key of the current BaseNode itself
-    } // Prepare props for React.createElement
+      ...(otherProps as ComponentProps<ElementType>),
+      key,
+    }
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
   }
