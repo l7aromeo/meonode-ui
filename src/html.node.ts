@@ -54,7 +54,6 @@ export const Row = (props?: NodeProps<'div'>) =>
   Div({
     display: 'flex',
     flexDirection: 'row',
-    minHeight: 0,
     minWidth: 0,
     ...props,
   })
@@ -64,7 +63,7 @@ export const Row = (props?: NodeProps<'div'>) =>
  * @param props Optional properties for the grid layout.
  * @returns A div element node with grid layout.
  */
-export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', minHeight: 0, minWidth: 0, ...props })
+export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...props })
 
 /**
  * Represents a centered container with flexbox alignment.
@@ -712,7 +711,14 @@ export const Body = (props?: NodeProps<'body'>) => Node('body', props)
  * @param props Optional properties for the main element.
  * @returns A main element node.
  */
-export const Main = (props?: NodeProps<'main'>) => Node('main', props)
+export const Main = (props?: NodeProps<'main'>) =>
+  Node('main', {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    minWidth: 0,
+    ...props,
+  })
 
 /**
  * Represents a header element.
