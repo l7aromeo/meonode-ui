@@ -36,21 +36,35 @@ export const Root = (props?: NodeProps<'div'>) =>
  * @param props Optional properties for the column layout.
  * @returns A div element node with flexbox column layout.
  */
-export const Column = (props?: NodeProps<'div'>) => Div({ display: 'flex', flexDirection: 'column', ...props })
+export const Column = (props?: NodeProps<'div'>) =>
+  Div({
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    minWidth: 0,
+    ...props,
+  })
 
 /**
  * Represents a row layout using flexbox.
  * @param props Optional properties for the row layout.
  * @returns A div element node with flexbox row layout.
  */
-export const Row = (props?: NodeProps<'div'>) => Div({ display: 'flex', flexDirection: 'row', ...props })
+export const Row = (props?: NodeProps<'div'>) =>
+  Div({
+    display: 'flex',
+    flexDirection: 'row',
+    minHeight: 0,
+    minWidth: 0,
+    ...props,
+  })
 
 /**
  * Represents a grid layout.
  * @param props Optional properties for the grid layout.
  * @returns A div element node with grid layout.
  */
-export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...props })
+export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', minHeight: 0, minWidth: 0, ...props })
 
 /**
  * Represents a centered container with flexbox alignment.
@@ -64,6 +78,8 @@ export const Center = (props?: NodeProps<'div'>) =>
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 0,
+    minWidth: 0,
     ...props,
   })
 
