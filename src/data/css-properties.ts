@@ -1,5 +1,4 @@
 const cssProperties = [
-  '--*',
   '-ms-accelerator',
   '-ms-block-progression',
   '-ms-content-zoom-chaining',
