@@ -61,7 +61,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
 
     // Extract style-related props that match valid CSS properties and add default minHeight/minWidth
-    const processedStyleProps = { minHeight: 0, minWidth: 0, ...getCSSProps(propsWithResolvedTheme) }
+    const processedStyleProps = getCSSProps(propsWithResolvedTheme)
 
     // Extract remaining props that are valid DOM attributes
     const processedDOMProps = getDOMProps(propsWithResolvedTheme)
