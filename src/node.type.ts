@@ -106,9 +106,9 @@ type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'style' | 'children'> &
+export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'children'> &
   ReactAttributes &
-  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? Partial<Omit<CSSProperties, keyof Omit<PropsOf<E>, 'style' | 'children'>>> : object) & {
+  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? Partial<Omit<CSSProperties, keyof Omit<PropsOf<E>, 'children'>>> : object) & {
     children?: Children | Children[]
     theme?: Theme
   }
