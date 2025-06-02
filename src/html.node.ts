@@ -41,6 +41,8 @@ export const Column = (props?: NodeProps<'div'>) =>
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    minWidth: 0,
+    flexShrink: !(props?.overflow || props?.overflowY || props?.overflowX) ? 0 : undefined,
     ...props,
   })
 
@@ -53,6 +55,9 @@ export const Row = (props?: NodeProps<'div'>) =>
   Div({
     display: 'flex',
     flexDirection: 'row',
+    minHeight: 0,
+    minWidth: 0,
+    flexShrink: !(props?.overflow || props?.overflowY || props?.overflowX) ? 0 : undefined,
     ...props,
   })
 
@@ -76,6 +81,8 @@ export const Center = (props?: NodeProps<'div'>) =>
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 0,
+    minWidth: 0,
+    flexShrink: !(props?.overflow || props?.overflowY || props?.overflowX) ? 0 : undefined,
     ...props,
   })
 
@@ -713,6 +720,8 @@ export const Main = (props?: NodeProps<'main'>) =>
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    minWidth: 0,
+    flexShrink: !(props?.overflow || props?.overflowY || props?.overflowX) ? 0 : undefined,
     ...props,
   })
 
