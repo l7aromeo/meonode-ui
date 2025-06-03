@@ -1,3 +1,5 @@
+'use strict'
+
 /**
  * Custom React Type Checker (TypeScript Version)
  * Provides utilities for identifying and checking React component/element types.
