@@ -61,7 +61,13 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
 
     // Extract style-related props that match valid CSS properties and add default minHeight/minWidth
-    const processedStyleProps = { ...propsWithResolvedTheme.style, ...getCSSProps(propsWithResolvedTheme) }
+    const processedStyleProps = getCSSProps(propsWithResolvedTheme)
+    const defaultStyles = {
+      minHeight: '0',
+      minWidth: '0',
+      flexShrink: !(processedStyleProps.overflow || processedStyleProps.overflowY || processedStyleProps.overflowX) ? 0 : undefined,
+    }
+    const finalStyleProps = { ...defaultStyles, ...propsWithResolvedTheme.style, ...processedStyleProps }
 
     // Extract remaining props that are valid DOM attributes
     const processedDOMProps = getDOMProps(propsWithResolvedTheme)
@@ -81,7 +87,7 @@ class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Combine processed props into final normalized form
     this.props = {
       ...processedDOMProps,
-      style: processedStyleProps,
+      style: finalStyleProps,
       nodetheme: currentTheme,
       theme,
       children: normalizedChildren,
