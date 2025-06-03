@@ -202,15 +202,13 @@ export function Portal<P extends Record<string, any>>(
 
         // If the provider already has nested children, inject content deeply.
         // Otherwise, simply set currentWrappedContent as its direct child.
-        const wrappedProvider = hasNestedChildren
+        return hasNestedChildren
           ? injectContentDeeply(providerNode, currentWrappedContent, nodetheme)
           : Node(providerNode.element, {
               ...providerNode.rawProps,
               children: currentWrappedContent,
               nodetheme: providerNode.rawProps?.nodetheme || providerNode.rawProps?.theme || nodetheme,
             })
-
-        return wrappedProvider
       }, contentNode)
     } else {
       // If no providers, the content node is the final node to portalize.
