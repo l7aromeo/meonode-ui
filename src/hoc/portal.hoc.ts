@@ -152,11 +152,17 @@ export function Portal<P extends Record<string, any>>(
   ): ReactDOMRoot | null {
     let nodeToPortalize: NodeInstance<any>
 
-    // Combines fixed providers (from Portal HOC creation) and dynamic providers (from launcher props).
-    const finalProviderArray: NodeInstance<any>[] = [
-      ...(hocFixedProvider ?? []),
-      ...(Array.isArray(props.provider) ? props.provider : props.provider ? [props.provider] : []),
-    ]
+    // Combine fixed and dynamic providers
+    const dynamicProviders: NodeInstance<any>[] = []
+
+    if (Array.isArray(props.provider)) {
+      console.warn('Portal: Passing an array of providers as the `provider` prop is deprecated. Please pass a single NodeInstance instead.')
+      dynamicProviders.push(...props.provider)
+    } else if (props.provider) {
+      dynamicProviders.push(props.provider)
+    }
+
+    const finalProviderArray: NodeInstance<any>[] = [...(hocFixedProvider ?? []), ...dynamicProviders]
 
     // Separates props for the portal's content from internal props like 'provider' or 'nodetheme'.
     const { provider: _launcherProvider, nodetheme, ...contentPropsForRenderer } = props
