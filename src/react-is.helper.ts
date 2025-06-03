@@ -192,7 +192,14 @@ export const isSuspenseList = (object: unknown): boolean => typeOf(object) === R
  * Used for quick validation of element types in isValidElementType().
  * Includes Fragment, Profiler, StrictMode, Suspense and SuspenseList.
  */
-const knownValidSymbols = new Set([REACT_FRAGMENT_TYPE, REACT_PROFILER_TYPE, REACT_STRICT_MODE_TYPE, REACT_SUSPENSE_TYPE, REACT_SUSPENSE_LIST_TYPE])
+const knownValidSymbols = new Set([
+  REACT_FRAGMENT_TYPE,
+  REACT_PROFILER_TYPE,
+  REACT_STRICT_MODE_TYPE,
+  REACT_SUSPENSE_TYPE,
+  REACT_SUSPENSE_LIST_TYPE,
+  REACT_VIEW_TRANSITION_TYPE,
+])
 
 /**
  * Checks if a type is a valid React element type that can be rendered.
@@ -213,7 +220,7 @@ export const isValidElementType = <T>(type: T): boolean => {
       $$typeof === REACT_CONSUMER_TYPE ||
       $$typeof === REACT_FORWARD_REF_TYPE ||
       $$typeof === REACT_CLIENT_REFERENCE ||
-      typeof (type as any).getModuleId === 'function'
+      $$typeof === REACT_PROVIDER_TYPE
     )
   }
   return false
