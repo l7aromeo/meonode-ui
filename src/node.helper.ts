@@ -170,27 +170,10 @@ export function getElementTypeName(node: unknown): string {
 }
 
 /**
- * Converts kebab-case CSS property names to camelCase, preserving CSS custom properties.
- * Converts kebab-case CSS property names to their camelCase equivalents
- * Preserves CSS custom properties that start with --
- * @param prop The CSS property name to convert
- * @returns The camelCase property name
- * @example
- * ```ts
- * toCamelCase('background-color') // 'backgroundColor'
- * toCamelCase('--custom-prop') // '--custom-prop'
- * ```
- */
-const toCamelCase = (prop: string): string => {
-  if (prop.startsWith('--')) return prop // Preserve CSS variables
-  return prop.replace(/-([a-z])/g, (_, char) => char.toUpperCase())
-}
-
-/**
  * A set of valid CSS property names in camelCase, including CSS custom properties, used for validation.
  * This set contains all CSS properties including non-standard vendor prefixed properties.
  */
-export const CSSPropertySet: Set<string> = new Set(cssProperties.map(toCamelCase))
+export const CSSPropertySet: Set<string> = new Set(cssProperties)
 
 /**
  * Filters an object to only include valid CSS properties
