@@ -161,20 +161,20 @@ export type PortalProps<T extends Record<string, any>> = T & {
 }
 
 /**
- * Function type for creating portal instances when Portal is called with just a component.
+ * Function type for creating portal instances.
  * Allows passing providers through props at portal creation time.
- * @template P_Content The portal content component's prop types
+ * @template P The portal content component's prop types
  */
 export type PortalLauncher<P extends Record<string, any>> = (
   props: P & {
     /** Optional provider components to wrap the portal content */
-    providers?: NodeInstance<any> | NodeInstance<any>[]
+    provider?:
+      | NodeInstance<any>
+
+      /**
+       * @deprecated
+       * Use a single NodeInstance instead of an array for fixed provider.
+       */
+      | NodeInstance<any>[]
   } & Omit<PortalProps<P>, 'portal'>,
 ) => ReactDOMRoot | null
-
-/**
- * Function type for creating portal instances when Portal is called with providers and component.
- * Uses fixed providers specified at HOC creation time.
- * @template P The portal content component's prop types
- */
-export type PortalLauncherWithFixedProviders<P extends Record<string, any>> = (props: P & Omit<PortalProps<P>, 'portal'>) => ReactDOMRoot | null
