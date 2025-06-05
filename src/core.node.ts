@@ -1,5 +1,5 @@
 'use strict'
-import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
@@ -41,22 +41,18 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { children, nodetheme, theme, ...remainingRawProps } = rawProps
+    const { ref, children, nodetheme, theme, ...remainingRawProps } = rawProps
 
     const currentTheme = theme || nodetheme
 
     // Resolve any theme variables in the remaining props
     const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
-
-    // Extract style-related props that match valid CSS properties and add default minHeight/minWidth
+    // Extract CSS-related properties from the resolved theme-aware props
     const processedStyleProps = getCSSProps(propsWithResolvedTheme)
-    const defaultStyles = {
-      minHeight: '0',
-      minWidth: '0',
-      flexShrink: !(processedStyleProps.overflow || processedStyleProps.overflowY || processedStyleProps.overflowX) ? 0 : undefined,
-    }
+    // Resolve default styles based on the processed style properties
+    const defaultStyles = this._resolveDefaultStyles(processedStyleProps)
+    // Merge default styles, resolved theme styles, and processed style properties into final style props
     const finalStyleProps = { ...defaultStyles, ...propsWithResolvedTheme.style, ...processedStyleProps }
-
     // Extract remaining props that are valid DOM attributes
     const processedDOMProps = getDOMProps(propsWithResolvedTheme)
 
@@ -75,10 +71,58 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Combine processed props into final normalized form
     this.props = {
       ...processedDOMProps,
+      ref,
       style: finalStyleProps,
       nodetheme: currentTheme,
       theme,
       children: normalizedChildren,
+    }
+  }
+
+  /**
+   * Resolves default styles for a given CSSProperties object.
+   * This method ensures that certain default styles, such as `minHeight`, `minWidth`,
+   * and `flexShrink`, are applied based on the provided style properties.
+   *
+   * - If the element is a flex container:
+   * - Sets `flexShrink` to 0 for specific scenarios:
+   * - Column-based layout with wrapping.
+   * - Row-based layout without wrapping (default direction is assumed to be 'row').
+   * - If the element is not a flex container:
+   * - Defaults `flexShrink` to 0.
+   * @param style The CSSProperties object containing style definitions.
+   * @returns An object with resolved default styles.
+   */
+  private _resolveDefaultStyles(style: CSSProperties) {
+    const isFlexContainer = style.display === 'flex'
+    const hasNoExplicitOverflow = !(style.overflow || style.overflowY || style.overflowX)
+    const isWrapping = style.flexFlow === 'wrap' || style.flexWrap === 'wrap'
+
+    let defaultFlexShrink = undefined
+
+    if (isFlexContainer) {
+      if (hasNoExplicitOverflow) {
+        const isColumnDirection = style.flexDirection === 'column' || style.flexDirection === 'column-reverse'
+        const isRowDirectionOrDefault = style.flexDirection === 'row' || style.flexDirection === 'row-reverse' || !style.flexDirection
+
+        // Scenario 1: Column-based layout with wrapping
+        if (isColumnDirection && isWrapping) {
+          defaultFlexShrink = 0
+        }
+        // Scenario 2: Row-based layout without wrapping, this assumes 'row' is the default if flexDirection is not set.
+        else if (isRowDirectionOrDefault && !isWrapping) {
+          defaultFlexShrink = 0
+        }
+      }
+    } else {
+      // If it's not a flex container, default flex-shrink to 0
+      defaultFlexShrink = 0
+    }
+
+    return {
+      minHeight: 0,
+      minWidth: 0,
+      flexShrink: defaultFlexShrink,
     }
   }
 
@@ -122,8 +166,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
         const value = currentObj[key]
 
-        // Skip private props (starting with _), React ref and HTMLElement instances
-        if (key.startsWith('_') || key === 'ref' || value instanceof HTMLElement) {
+        // Skip private props (starting with _) and HTMLElement instances
+        if (key.startsWith('_') || value instanceof HTMLElement) {
           resolvedObj[key] = value
           continue
         }

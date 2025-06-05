@@ -9,6 +9,7 @@ import type {
   ComponentType,
   JSXElementConstructor,
   Component,
+  Ref,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -81,6 +82,7 @@ export interface Theme {
  * @template E - The element type these props apply to
  */
 export type FinalNodeProps = ReactAttributes & {
+  ref?: Ref<unknown>
   style?: CSSProperties
   children?: Children | Children[]
   theme?: Theme
