@@ -1,8 +1,16 @@
 {
   "presets": [
-    ["@babel/preset-env", {
-      "modules": false
-    }],
+    [
+      "@babel/preset-env",
+      {
+        "modules": false,
+        "exclude": [
+          "@babel/plugin-transform-classes",
+          "@babel/plugin-transform-spread"
+        ],
+        "bugfixes": true
+      }
+    ],
     "@babel/preset-typescript",
     [
       "minify",
@@ -13,18 +21,27 @@
     ]
   ],
   "plugins": [
-    ["module-resolver", {
-      "root": [
-        "./"
-      ],
-      "alias": {
-        "@src": "./src"
-      },
-      "extensions": [".js", ".ts", ".json"]
-    }]
+    [
+      "module-resolver",
+      {
+        "root": [
+          "./"
+        ],
+        "alias": {
+          "@src": "./src"
+        },
+        "extensions": [
+          ".js",
+          ".ts",
+          ".json"
+        ]
+      }
+    ]
   ],
   "generatorOpts": {
     "importAttributesKeyword": "with"
   },
-  "exclude": ["**/node_modules/**"]
+  "exclude": [
+    "**/node_modules/**"
+  ]
 }
