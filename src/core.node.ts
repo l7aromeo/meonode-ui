@@ -41,7 +41,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { ref, children, nodetheme, theme, ...remainingRawProps } = rawProps
+    const { ref, children, nodetheme, theme, props: componentProps, ...remainingRawProps } = rawProps
 
     const currentTheme = theme || nodetheme
 
@@ -71,8 +71,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Combine processed props into final normalized form
     this.props = {
       ...processedDOMProps,
-      ref,
+      ...componentProps,
       style: finalStyleProps,
+      ref,
       nodetheme: currentTheme,
       theme,
       children: normalizedChildren,
