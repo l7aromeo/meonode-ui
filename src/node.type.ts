@@ -15,11 +15,11 @@ import type { Root as ReactDOMRoot } from 'react-dom/client'
 
 export type NodeElement =
   | ReactNode
-  | Component<any, any>
+  | Component<any, any, any>
   | ElementType
   | ComponentType<any>
   | NodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any> | NodeInstance<any> | ComponentNode)
+  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
 
 /**
  * Defines valid child types that can be passed to a node:
@@ -40,7 +40,9 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
   readonly element: T
 
   /** Original props passed during node construction, preserved for cloning/recreation */
-  readonly rawProps?: RawNodeProps<T>
+  readonly rawProps: RawNodeProps<T>
+
+  readonly isBaseNode: true
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactNode
@@ -108,9 +110,9 @@ type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, 'children'> &
+export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children'> &
   ReactAttributes &
-  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? Partial<Omit<CSSProperties, keyof Omit<PropsOf<E>, 'children'>>> : object) &
+  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   Partial<{
     props: Omit<PropsOf<E>, 'children'>
     children: Children | Children[]
@@ -143,7 +145,7 @@ export interface FunctionRendererProps<E extends NodeElement> {
   /** Optional key prop to help React identify unique instances in lists */
   passedKey?: string
 
-  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => NodeInstance<E>
+  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => NodeElement
 }
 
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)
