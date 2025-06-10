@@ -38,10 +38,9 @@ export function Component<P extends Record<string, any>>(
 
     // Handle BaseNode results - requires special processing
     if (result instanceof BaseNode) {
-      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme
       return Node(result.element, {
         ...result.rawProps,
-        nodetheme: theme,
+        nodetheme: result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme,
       }).render()
     }
 

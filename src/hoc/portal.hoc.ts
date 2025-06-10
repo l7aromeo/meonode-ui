@@ -126,10 +126,9 @@ export function Portal<P extends Record<string, any>>(
 
     // Ensures that the theme is correctly applied if the result is a BaseNode.
     if (result instanceof BaseNode) {
-      const theme = result.rawProps?.nodetheme || result.rawProps?.theme || propsFromNodeFactory.nodetheme
       return Node(result.element, {
         ...result.rawProps,
-        nodetheme: theme,
+        nodetheme: result.rawProps?.nodetheme || result.rawProps?.theme || propsFromNodeFactory.nodetheme,
       }).render()
     }
     return result as ReactNode
