@@ -1,7 +1,7 @@
 'use strict'
 import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath } from '@src/node.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath, isNodeInstance } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -14,15 +14,17 @@ import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
  * - Style processing with theme variables
  * @template E The type of React element or component this node represents
  */
-export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
+export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstance<E> {
   /** The underlying React element or component type that this node represents */
   public element: E
 
   /** Original props passed during construction, preserved for cloning/recreation */
-  public rawProps?: RawNodeProps<E>
+  public rawProps: RawNodeProps<E> = {}
 
   /** Processed props after theme resolution, style processing, and child normalization */
   public props: FinalNodeProps
+
+  public readonly isBaseNode = true
 
   private _portalDOMElement: HTMLDivElement | null = null
   private _portalReactRoot: ReactDOMRoot | null = null
@@ -203,68 +205,105 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * React component that renders the result of a function child, supporting theme propagation.
+   * Renders a processed NodeElement into a ReactNode, applying theme and key if needed.
    *
-   * This component is used to render children that are functions (i.e., `() => Children`).
-   * It ensures that if the returned value is a `BaseNode` instance without an explicit theme,
-   * the theme from the parent is injected. Otherwise, the result is rendered as-is.
-   * @param props The props for the renderer.
-   * @param props.render The function to invoke for rendering the child.
-   * @param props.passedTheme The theme to provide to the child, if applicable.
-   * @returns The rendered ReactNode, with theme applied if necessary.
+   * Handles the following cases:
+   * 1. If the element is a BaseNode instance, it re-wraps it to apply the key and theme if needed.
+   * 2. If the element is a React class component type, it wraps it in a BaseNode.
+   * 3. If the element is a NodeInstance object, it calls its render method.
+   * 4. If the element is a React.Component instance, it calls its render method.
+   * 5. If the element is a functional component, it creates a React element with the provided key.
+   * 6. For all other valid ReactNode types, it returns the element as-is.
+   * @param processedElement The processed node element to render.
+   * @param passedTheme The theme to apply, if any.
+   * @param passedKey The key to assign, if any.
+   * @returns The rendered ReactNode.
    */
-  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({
-    render,
-    passedTheme,
-    passedKey,
-    processRawNode, // Function to process raw nodes
-  }: FunctionRendererProps<E>): NodeElement {
-    // Call the user-provided render function to get the child.
-    const result = render()
-
-    if (result instanceof React.Component) {
-      const element = result.render()
-      const processed = processRawNode(element, passedTheme)
-      if (processed instanceof BaseNode) {
-        if ((processed.rawProps?.theme || processed.rawProps?.nodetheme) === undefined && passedTheme !== undefined) {
-          return new BaseNode(processed.element, {
-            ...processed.rawProps,
-            nodetheme: processed.rawProps?.theme || processed.rawProps?.nodetheme || passedTheme,
-            key: processed.rawProps?.key || passedKey,
-          }).render()
-        }
-      }
-      return processed
+  private _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined): ReactNode {
+    const commonBaseNodeProps: Partial<NodeProps<any>> = {}
+    if (passedKey !== undefined) {
+      commonBaseNodeProps.key = passedKey
     }
 
-    if (result instanceof BaseNode) {
-      const bnResult = result as NodeInstance
-
-      // If the returned BaseNode does not have its own theme, but a theme is provided,
-      // re-create the node with the provided theme to ensure correct theme propagation.
-      if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
-        return new BaseNode(bnResult.element, {
-          ...(bnResult.rawProps || {}),
-          nodetheme: passedTheme,
-          key: passedKey,
-        }).render()
-      }
-      // If the node already has a theme or no theme is provided, render as-is.
-      return bnResult.render()
-    }
-    // Process the result if it's not a React.Component or BaseNode
-    const processedResult = processRawNode(result, passedTheme)
-
-    if (processedResult instanceof BaseNode) {
-      return new BaseNode(processedResult.element, {
-        ...processedResult.rawProps,
-        nodetheme: processedResult.rawProps?.theme || processedResult.rawProps?.nodetheme || passedTheme,
-        key: processedResult.rawProps?.key || passedKey,
+    // 1. BaseNode instance: re-wrap to apply key/theme if needed
+    if (processedElement instanceof BaseNode) {
+      const nodetheme = processedElement.rawProps?.theme || processedElement.rawProps?.nodetheme || passedTheme
+      return new BaseNode(processedElement.element, {
+        ...processedElement.rawProps,
+        ...commonBaseNodeProps,
+        nodetheme,
       }).render()
     }
 
-    // If the result is not a BaseNode (e.g., JSX, string, etc.), return it directly.
-    // Note: Non-BaseNode results will not automatically receive the theme.
+    // 2. React class component type: wrap in BaseNode
+    if (isReactClassComponent(processedElement)) {
+      return new BaseNode(processedElement, commonBaseNodeProps).render()
+    }
+
+    // 3. NodeInstance object: call its render
+    if (isNodeInstance(processedElement)) {
+      return processedElement.render()
+    }
+
+    // 4. React.Component instance: call its render
+    if (processedElement instanceof React.Component) {
+      return processedElement.render()
+    }
+
+    // 5. Functional component: create element with key
+    if (typeof processedElement === 'function') {
+      return createElement(processedElement as ElementType, { key: passedKey })
+    }
+
+    // 6. Other valid ReactNode types
+    return processedElement as ReactNode
+  }
+
+  /**
+   * Renders the result of a function child, supporting theme propagation.
+   *
+   * Used for children that are functions (`() => Children`). If the returned value is a `BaseNode`
+   * without an explicit theme, the parent theme is injected. Otherwise, the result is rendered as-is.
+   * @template E - The type of ReactNode or NodeInstance.
+   * @param props Renderer props.
+   * @param props.render Function to invoke for rendering the child.
+   * @param props.passedTheme Theme to provide to the child, if applicable.
+   * @param props.passedKey Key to assign to the rendered node.
+   * @param props.processRawNode Function to process raw nodes.
+   * @returns The rendered ReactNode, with theme applied if necessary.
+   */
+  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): ReactNode {
+    // Invoke the render function to get the child node.
+    const result = render()
+
+    // Handle React.Component instance
+    if (result instanceof React.Component) {
+      const element = result.render()
+      const processed = processRawNode(element, passedTheme)
+      return this._renderProcessedNode(processed, passedTheme, passedKey)
+    }
+
+    // Handle BaseNode instance
+    if (result instanceof BaseNode) {
+      const bnResult = result
+      if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
+        return new BaseNode(bnResult.element, {
+          key: passedKey,
+          ...bnResult.rawProps,
+          nodetheme: passedTheme,
+        }).render()
+      }
+      return bnResult.render()
+    }
+
+    // Process other result types
+    const processedResult = processRawNode(result, passedTheme)
+
+    if (processedResult) return this._renderProcessedNode(processedResult, passedTheme, passedKey)
+
+    // Fallback: return result directly (e.g., JSX, string, etc.)
+    // Non-BaseNode results will not automatically receive the theme.
+    if (isNodeInstance(result)) return result.render()
     return result
   }
 
@@ -320,9 +359,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = generateIndexedKeyIfNeeded(this._functionRenderer as NodeElement, undefined) // Generate key for function renderer
+      const keyForFunctionRenderer = generateIndexedKeyIfNeeded(this._functionRenderer, undefined) // Generate key for function renderer
 
-      return new BaseNode(this._functionRenderer as NodeElement, {
+      return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
         render: rawNode as FunctionRendererProps<ReactNode | NodeInstance<typeof rawNode>>['render'],
         passedTheme: parentTheme,
