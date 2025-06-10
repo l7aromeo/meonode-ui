@@ -1,6 +1,6 @@
 'use strict'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
-import type { NodeElement, FinalNodeProps } from '@src/node.type.js'
+import type { NodeElement, FinalNodeProps, NodeInstance } from '@src/node.type.js'
 import {
   isContextConsumer,
   isContextProvider,
@@ -236,4 +236,26 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
  */
 export function getValueByPath(obj: Record<string, any> = {}, path: string) {
   return path.split('.').reduce((acc, key) => acc?.[key], obj)
+}
+
+/**
+ * Type guard to check if an object is a NodeInstance.
+ *
+ * A NodeInstance is expected to be a non-null object with:
+ * - an 'element' property,
+ * - a 'render' method,
+ * - a 'toPortal' method,
+ * - and an 'isBaseNode' property.
+ * @param obj The object to check.
+ * @returns True if the object is a NodeInstance, false otherwise.
+ */
+export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'element' in obj &&
+    typeof (obj as NodeInstance<any>).render === 'function' &&
+    typeof (obj as NodeInstance<any>).toPortal === 'function' &&
+    'isBaseNode' in obj
+  )
 }
