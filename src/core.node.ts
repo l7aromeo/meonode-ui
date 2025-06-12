@@ -159,15 +159,17 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
       const resolvedObj: Record<string, unknown> = {}
 
       for (const key in currentObj) {
-        // Skip non-own properties
-        if (!Object.prototype.hasOwnProperty.call(currentObj, key)) {
-          continue
-        }
-
         const value = currentObj[key]
 
-        // Skip private props (starting with _) and HTMLElement instances
-        if (key.startsWith('_') || value instanceof HTMLElement) {
+        // Skip complex objects/functions unless they are specifically targeted for theme resolution,
+        // This prevents inadvertently flattening or stripping methods from instances like dayjs, React components, etc.
+        // You might need to refine this condition based on what specific types you want to *never* resolve/transform
+        if (
+          typeof value === 'function' ||
+          value instanceof HTMLElement ||
+          value instanceof Date ||
+          (value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)
+        ) {
           resolvedObj[key] = value
           continue
         }
