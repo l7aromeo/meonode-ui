@@ -114,7 +114,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   Partial<{
-    props: Omit<PropsOf<E>, 'children'>
+    props: Partial<Omit<PropsOf<E>, 'children'>>
     children: Children | Children[]
     theme: Theme
   }>
