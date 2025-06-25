@@ -1,6 +1,6 @@
 'use strict'
 import { BaseNode, Node } from '@src/core.node'
-import type { ComponentNode, NodeInstance, NodeProps, PortalLauncher, PortalProps, Theme } from '@src/node.type'
+import type { BasePortalProps, ComponentNode, NodeInstance, NodeProps, PortalLauncher, PortalProps, Theme } from '@src/node.type'
 import type { ReactNode } from 'react'
 import { type Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -27,7 +27,10 @@ import { type Root as ReactDOMRoot } from 'react-dom/client'
  * deprecatedModalInstance.unmount();
  * ```
  */
-export function Portal<P extends Record<string, any>>(provider: NodeInstance<any>[], component: (props: PortalProps<P>) => ComponentNode): PortalLauncher<P>
+export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
+  provider: NodeInstance<any>[],
+  component: (props: PortalProps<P>) => ComponentNode,
+): PortalLauncher<P>
 
 /**
  * Creates a portal component with a single fixed provider.
@@ -50,7 +53,10 @@ export function Portal<P extends Record<string, any>>(provider: NodeInstance<any
  * modalInstance.unmount();
  * ```
  */
-export function Portal<P extends Record<string, any>>(provider: NodeInstance<any>, component: (props: PortalProps<P>) => ComponentNode): PortalLauncher<P>
+export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
+  provider: NodeInstance<any>,
+  component: (props: PortalProps<P>) => ComponentNode,
+): PortalLauncher<P>
 
 /**
  * Creates a basic portal component without any fixed providers.
@@ -80,10 +86,12 @@ export function Portal<P extends Record<string, any>>(provider: NodeInstance<any
  * dynamicModalInstance.unmount();
  * ```
  */
-export function Portal<P extends Record<string, any>>(component: (props: PortalProps<P>) => ComponentNode): PortalLauncher<P>
+export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
+  component: (props: PortalProps<P>) => ComponentNode,
+): PortalLauncher<P>
 
 // --- Implementation ---
-export function Portal<P extends Record<string, any>>(
+export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
   arg1: NodeInstance<any> | NodeInstance<any>[] | ((props: PortalProps<P>) => ComponentNode),
   arg2?: (props: PortalProps<P>) => ComponentNode,
 ) {
@@ -116,11 +124,11 @@ export function Portal<P extends Record<string, any>>(
   // --- Core Content Renderer Function ---
   // This function is the actual React component that will be rendered inside the portal.
   // It receives props and handles theme application and portal control.
-  const Renderer = (propsFromNodeFactory: P & { nodetheme?: Theme } = {} as any) => {
+  const Renderer = (propsFromNodeFactory: P & NodeProps<any> = {} as NodeProps<any>) => {
     const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
 
     const result = componentFunction({
-      ...(contentOnlyProps as Partial<P>),
+      ...contentOnlyProps,
       portal: portalInstance, // Passes the portal control object to the content component
     })
 
@@ -137,7 +145,7 @@ export function Portal<P extends Record<string, any>>(
   // --- Portal Launcher Function (Returned to User) ---
   // This is the function that developers call to actually create and manage a portal instance.
   return function Func(
-    props: Partial<P> & {
+    props: Partial<P & NodeProps<any>> & {
       /** Optional provider components to wrap the portal content */
       provider?:
         | NodeInstance<any>

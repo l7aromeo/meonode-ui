@@ -151,11 +151,12 @@ export interface FunctionRendererProps<E extends NodeElement> {
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)
 
 /**
- * Props type for components rendered through the Portal HOC.
- * Extends the component's own props with portal-specific functionality.
- * @template T The component's own prop types
+ * Base props interface for components rendered inside a portal.
+ * @property children - The content to render within the portal. Accepts a single NodeElement or an array of NodeElements.
+ * @property portal - An object providing portal lifecycle control methods.
+ * @property unmount - Function to unmount and clean up the portal instance.
  */
-export type PortalProps<T extends Record<string, any>> = T & {
+export interface BasePortalProps {
   /** Content to render within the portal */
   children?: NodeElement | NodeElement[]
 
@@ -167,20 +168,39 @@ export type PortalProps<T extends Record<string, any>> = T & {
 }
 
 /**
+ * Props type for components rendered through the Portal HOC.
+ * Extends the component's own props with portal-specific functionality.
+ * @template T The component's own prop types
+ */
+export type PortalProps<T extends BasePortalProps | Record<string, any>> = T & BasePortalProps
+
+/**
  * Function type for creating portal instances.
  * Allows passing providers through props at portal creation time.
  * @template P The portal content component's prop types
  */
-export type PortalLauncher<P extends Record<string, any>> = (
-  props?: P & {
-    /** Optional provider components to wrap the portal content */
-    provider?:
-      | NodeInstance<any>
+export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P extends BasePortalProps
+  ? (props?: {
+      /** Optional provider components to wrap the portal content */
+      provider?:
+        | NodeInstance<any>
 
-      /**
-       * @deprecated
-       * Use a single NodeInstance instead of an array for fixed provider.
-       */
-      | NodeInstance<any>[]
-  } & Omit<PortalProps<P>, 'portal'>,
-) => ReactDOMRoot | null
+        /**
+         * @deprecated
+         * Use a single NodeInstance instead of an array for fixed provider.
+         */
+        | NodeInstance<any>[]
+    }) => ReactDOMRoot | null
+  : (
+      props: P & {
+        /** Optional provider components to wrap the portal content */
+        provider?:
+          | NodeInstance<any>
+
+          /**
+           * @deprecated
+           * Use a single NodeInstance instead of an array for fixed provider.
+           */
+          | NodeInstance<any>[]
+      } & Omit<PortalProps<P>, 'portal'>,
+    ) => ReactDOMRoot | null
