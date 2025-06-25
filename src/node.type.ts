@@ -172,7 +172,7 @@ export type PortalProps<T extends Record<string, any>> = T & {
  * @template P The portal content component's prop types
  */
 export type PortalLauncher<P extends Record<string, any>> = (
-  props: P & {
+  props?: P & {
     /** Optional provider components to wrap the portal content */
     provider?:
       | NodeInstance<any>
