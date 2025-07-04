@@ -143,6 +143,9 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     // Merge parent theme with current theme
     const mergedTheme: Theme = { ...this.rawProps?.nodetheme, ...theme }
 
+    // Determine if we are in a browser environment
+    const isBrowser = typeof window !== 'undefined'
+
     /**
      * Recursively resolves theme variables in an object, tracking visited objects
      * to prevent infinite recursion with circular references.
@@ -166,7 +169,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
         // You might need to refine this condition based on what specific types you want to *never* resolve/transform
         if (
           typeof value === 'function' ||
-          value instanceof HTMLElement ||
+          (isBrowser && value instanceof HTMLElement) ||
           value instanceof Date ||
           (value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)
         ) {
