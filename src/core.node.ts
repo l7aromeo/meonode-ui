@@ -1,6 +1,6 @@
 'use strict'
 import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, RawNodeProps, Theme } from '@src/node.type.js'
+import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, PropsOf, RawNodeProps, Theme } from '@src/node.type.js'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath, isNodeInstance } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
@@ -43,18 +43,18 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { ref, children, nodetheme, theme, props: componentProps, ...remainingRawProps } = rawProps
+    const { ref, children, nodetheme, theme, props: _componentProps, ...remainingRawProps } = rawProps
 
     const currentTheme = theme || nodetheme
+    const { style: componentPropsStyle, ...componentProps } = (_componentProps || {}) as Omit<PropsOf<E>, 'children'>
 
     // Resolve any theme variables in the remaining props
+    const componentPropsStyleWithResolvedTheme = this._resolveObjWithTheme(componentPropsStyle, currentTheme)
     const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
     // Extract CSS-related properties from the resolved theme-aware props
     const processedStyleProps = getCSSProps(propsWithResolvedTheme)
-    // Resolve default styles based on the processed style properties
-    const styleWithResolvedDefault = this._resolveDefaultStyle(processedStyleProps)
-    // Merge resolved default styles and processed style properties into final style props
-    const finalStyleProps = { ...styleWithResolvedDefault, ...propsWithResolvedTheme.style }
+    // Resolve default styles
+    const finalStyleProps = this._resolveDefaultStyle({ ...processedStyleProps, ...componentPropsStyleWithResolvedTheme })
     // Extract remaining props that are valid DOM attributes
     const processedDOMProps = getDOMProps(propsWithResolvedTheme)
 
@@ -134,7 +134,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
    * @param theme Optional theme object containing variable definitions
    * @returns A new object with all theme variables resolved to their values
    */
-  private _resolveObjWithTheme(obj: Record<string, any>, theme?: Theme) {
+  private _resolveObjWithTheme(obj: Record<string, any> = {}, theme?: Theme) {
     // Early return if no theme or empty object
     if (!theme || Object.keys(obj).length === 0) {
       return obj
