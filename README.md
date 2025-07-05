@@ -12,8 +12,8 @@ A structured approach to component composition with built-in theming, prop separ
 import { Component, Div, H1, Button } from '@meonode/ui';
 
 // Create a reusable styled component
-const BlueButton = Component((props) =>
-  Button('Blue', {
+const BlueButton = Component(({ children, ...props }) =>
+  Button(children, {
     padding: '12px 24px',
     borderRadius: '8px',
     backgroundColor: 'dodgerblue',
