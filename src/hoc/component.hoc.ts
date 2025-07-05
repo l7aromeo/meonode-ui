@@ -1,6 +1,6 @@
 'use strict'
 import { BaseNode, Node } from '@src/core.node'
-import type { ComponentNode, NodeElement } from '@src/node.type'
+import type { ComponentNode, NodeElement, Theme } from '@src/node.type'
 import type { ReactNode } from 'react'
 
 /**
@@ -25,7 +25,7 @@ import type { ReactNode } from 'react'
  * })
  * ```
  */
-export function Component<P extends Record<string, any>>(
+export function Component<P>(
   component: (
     props: P & {
       props?: Partial<Omit<P, 'children'>>
@@ -34,7 +34,7 @@ export function Component<P extends Record<string, any>>(
   ) => ComponentNode,
 ) {
   // Create a wrapper component that handles theme and rendering
-  const Renderer = (props: P) => {
+  const Renderer = (props: P & { props?: Partial<Omit<P, 'children'>>; children?: NodeElement; nodetheme?: Theme; theme?: Theme }) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
@@ -48,7 +48,7 @@ export function Component<P extends Record<string, any>>(
     return result as ReactNode
   }
 
-  return function Func(props: Partial<P> = {}) {
-    return Node(Renderer, props).render()
+  return function Func(props: P = {} as P) {
+    return Node(Renderer, props as never).render()
   }
 }
