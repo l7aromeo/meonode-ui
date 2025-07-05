@@ -28,6 +28,7 @@ import type { ReactNode } from 'react'
 export function Component<P extends Record<string, any>>(
   component: (
     props: P & {
+      props?: Partial<Omit<P, 'children'>>
       children?: NodeElement
     },
   ) => ComponentNode,
