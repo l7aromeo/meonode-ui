@@ -215,7 +215,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
    * @param passedKey The key to assign, if any.
    * @returns The rendered ReactNode.
    */
-  private _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined): ReactNode {
+  static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined): ReactNode {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
     if (passedKey !== undefined) {
       commonBaseNodeProps.key = passedKey
@@ -276,11 +276,11 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     if (result instanceof React.Component) {
       const element = result.render()
       const processed = processRawNode(element, passedTheme)
-      return this._renderProcessedNode(processed, passedTheme, passedKey)
+      return BaseNode._renderProcessedNode(processed, passedTheme, passedKey)
     }
 
     // Handle BaseNode instance
-    if (result instanceof BaseNode) {
+    if (result instanceof BaseNode || isNodeInstance(result)) {
       const bnResult = result
       if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
         return new BaseNode(bnResult.element, {
@@ -295,11 +295,8 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     // Process other result types
     const processedResult = processRawNode(result, passedTheme)
 
-    if (processedResult) return this._renderProcessedNode(processedResult, passedTheme, passedKey)
+    if (processedResult) return BaseNode._renderProcessedNode(processedResult, passedTheme, passedKey)
 
-    // Fallback: return result directly (e.g., JSX, string, etc.)
-    // Non-BaseNode results will not automatically receive the theme.
-    if (isNodeInstance(result)) return result.render()
     return result
   }
 
@@ -438,7 +435,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     // For React.Component instances, wrap in BaseNode with theme if needed
     if (child instanceof React.Component) {
       if (!child.props.nodetheme && currentTheme !== undefined) {
-        return new BaseNode(child.render(), {
+        return new BaseNode(child, {
           ...child.props,
           nodetheme: currentTheme,
         }).render()
