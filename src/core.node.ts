@@ -72,12 +72,12 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
     // Combine processed props into final normalized form
     this.props = {
-      ...processedDOMProps,
-      ...componentProps,
-      style: finalStyleProps,
       ref,
       nodetheme: currentTheme,
       theme,
+      style: finalStyleProps,
+      ...processedDOMProps,
+      ...componentProps,
       children: normalizedChildren,
     }
   }
