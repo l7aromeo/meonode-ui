@@ -432,17 +432,6 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
       return child.render()
     }
 
-    // For React.Component instances, wrap in BaseNode with theme if needed
-    if (child instanceof React.Component) {
-      if (!child.props.nodetheme && currentTheme !== undefined) {
-        return new BaseNode(child, {
-          ...child.props,
-          nodetheme: currentTheme,
-        }).render()
-      }
-      return child.render()
-    }
-
     // Validate element type before returning
     if (!isValidElementType(child)) {
       const elementType = getComponentType(child)
