@@ -50,11 +50,11 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
     // Resolve any theme variables in the remaining props
     const componentPropsStyleWithResolvedTheme = this._resolveObjWithTheme(componentPropsStyle, currentTheme)
-    const propsWithResolvedTheme = this._resolveObjWithTheme(remainingRawProps, currentTheme)
+    const { style: stylePropsWithResolvedTheme, ...propsWithResolvedTheme } = this._resolveObjWithTheme(remainingRawProps, currentTheme)
     // Extract CSS-related properties from the resolved theme-aware props
     const processedStyleProps = getCSSProps(propsWithResolvedTheme)
     // Resolve default styles
-    const finalStyleProps = this._resolveDefaultStyle({ ...processedStyleProps, ...componentPropsStyleWithResolvedTheme })
+    const finalStyleProps = this._resolveDefaultStyle({ ...stylePropsWithResolvedTheme, ...processedStyleProps, ...componentPropsStyleWithResolvedTheme })
     // Extract remaining props that are valid DOM attributes
     const processedDOMProps = getDOMProps(propsWithResolvedTheme)
 
