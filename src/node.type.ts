@@ -71,9 +71,9 @@ export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElemen
  * - Custom theme variables and tokens
  * Used for consistent styling and dynamic theme application.
  */
-export interface Theme {
+export type Theme = Partial<{
   [key: string]: string | number | boolean | null | undefined | any | Theme | Record<string, Theme | string | number | boolean | null | undefined | any>
-}
+}>
 
 /**
  * Internal props type used by BaseNode instances after initial processing.
@@ -110,7 +110,7 @@ type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style'> &
+export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'theme' | 'props'> &
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   Partial<{
