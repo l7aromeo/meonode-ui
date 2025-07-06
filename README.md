@@ -4,9 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/@meonode/ui)](https://bundlephobia.com/package/@meonode/ui)
 
-**Build React UIs with Type-Safe Fluency**
-A structured approach to component composition with built-in theming, prop separation, and dynamic children handling.
+## **Build React UIs with Type-Safe Fluency Without JSX Syntax**
 
+A structured approach to component composition, direct CSS-first prop styling, built-in theming, smart prop handling (including raw property pass-through), and dynamic children.
+
+### Quick Example
 ```tsx
 // Quick Start Example
 import { Component, Div, H1, Button } from '@meonode/ui';
@@ -42,6 +44,7 @@ const App = Component(() =>
 - 🎯 **Type-Safe Design** - Full TypeScript support with autocomplete for styles, props, and theme paths
 - 🎨 **Theme-Aware Styles** - Write styles directly in props with dynamic theme resolution
 - 🧩 **Component-First Architecture** - Compose UIs from structured nodes instead of JSX
+- 🧩 **CSS-First Prop Styling** - Style components directly via props using CSS property names
 - 🌐 **Contextual Theming** - Theme values propagate automatically through nested components
 - ⚡ **Optimized Bundle** - Efficient core with tree-shaking support
 - 🔄 **Seamless React Integration** - Works with hooks, HOCs, and React 18+ features
@@ -150,19 +153,10 @@ const ProfileCard = Component<{ user: User }>(({ user }) =>
 
 ---
 
-## Key Features
+### 4. Passing Context Wrapper To Portal
 
-| Feature              | Description                                                                 |
-|----------------------|-----------------------------------------------------------------------------|
-| **Smart Prop Merge** | CSS props merge with style objects; DOM props pass to underlying elements  |
-| **Theme Resolution** | `theme.` references resolve through component hierarchy                     |
-| **Type Guards**      | Autocomplete for CSS properties and theme paths with strict type checks     |
-| **HOC Support**      | Wrap existing components with `Component()` for theme integration           |
-| **Dynamic Children** | Supports function-as-child pattern with automatic theme propagation         |
+Learn how to wrap a portal-rendered component with a context provider (like Redux Provider) using the `Portal` API from `@meonode/ui`. This lets portal components access context (such as the Redux store) even when rendered outside the main React tree.
 
----
-
-## Passing Context Wrapper To Portal
 ```ts
 import { Provider, useSelector } from 'react-redux'
 import store from '/path/to/redux/store'
