@@ -4,6 +4,17 @@ import type { ComponentNode, NodeElement, Theme } from '@src/node.type'
 import type { ReactNode } from 'react'
 
 /**
+ * Props for a component wrapped by the Component HOC.
+ *
+ * - `props`: Optional partial props (excluding `children`) to override or extend the main props.
+ * - `children`: Optional child nodes to be rendered within the component.
+ */
+type ComponentProps<P> = P & {
+  props?: Partial<Omit<P, 'children'>>
+  children?: NodeElement
+}
+
+/**
  * Higher-order component wrapper that converts BaseNode components into React components.
  * This wrapper ensures proper theme propagation and component rendering in the React ecosystem.
  *
@@ -25,16 +36,9 @@ import type { ReactNode } from 'react'
  * })
  * ```
  */
-export function Component<P>(
-  component: (
-    props: P & {
-      props?: Partial<Omit<P, 'children'>>
-      children?: NodeElement
-    },
-  ) => ComponentNode,
-) {
+export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode) {
   // Create a wrapper component that handles theme and rendering
-  const Renderer = (props: P & { props?: Partial<Omit<P, 'children'>>; children?: NodeElement; nodetheme?: Theme; theme?: Theme }) => {
+  const Renderer = (props: ComponentProps<P> & { nodetheme?: Theme; theme?: Theme }) => {
     const result = component(props) // Execute wrapped component
 
     // Handle BaseNode results - requires special processing
@@ -48,7 +52,7 @@ export function Component<P>(
     return result as ReactNode
   }
 
-  return function Func(props: P = {} as P) {
+  return function Func(props: P) {
     return Node(Renderer, props as never).render()
   }
 }
