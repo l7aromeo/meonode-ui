@@ -13,6 +13,41 @@ import type {
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
+/**
+ * Extracts the props type from an OverridableComponent.
+ * Handles both dual-call signatures (common in MUI) and single-call signatures.
+ * @template T - The OverridableComponent type to extract props from.
+ * @example
+ *   type Props = PropsFromOverridableComponent<MyOverridableComponent>
+ */
+type PropsFromOverridableComponent<T> = T extends {
+  (props: infer P1): any
+  (props: infer P2): any
+}
+  ? P1 | P2
+  : T extends { (props: infer P): any }
+    ? P
+    : never
+
+/**
+ * Signature interface for OverridableComponent types (e.g., MUI components).
+ * Supports both generic and non-generic call signatures for flexible component typing.
+ * @example
+ *   const MyComponent: OverridableComponentSignature = (props) => { ... }
+ */
+interface OverridableComponentSignature {
+  <RootComponent extends ElementType>(
+    props: {
+      component?: RootComponent // Make component optional here as well, consistent with AvatarProps
+    } & Record<string, any>,
+  ): JSX.Element | null
+  (props: Record<string, any>): JSX.Element | null
+}
+
+/**
+ * Union type representing any valid node element in the system.
+ * Includes React nodes, component types, node instances, and function-based nodes.
+ */
 export type NodeElement =
   | ReactNode
   | Component<any, any, any>
@@ -53,14 +88,16 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
 
 /**
  * Extracts the props type from a given element type, handling both intrinsic (HTML) elements
- * and custom React components.
+ * and custom React components, including MUI's OverridableComponent.
  * @template E - The element type to extract props from
  */
 export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElements
   ? JSX.IntrinsicElements[E]
-  : E extends JSXElementConstructor<any>
-    ? ComponentProps<E>
-    : NodeInstance<E>
+  : E extends OverridableComponentSignature // Check if it's an OverridableComponent
+    ? PropsFromOverridableComponent<E> // Use our custom extractor
+    : E extends JSXElementConstructor<any>
+      ? ComponentProps<E>
+      : NodeInstance<E>
 
 /**
  * Theme configuration object that can be passed through the node tree.
