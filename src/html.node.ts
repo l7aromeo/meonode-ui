@@ -259,6 +259,14 @@ export const P = (children: NodeElement, props?: Omit<NodeProps<'p'>, 'children'
   })
 
 /**
+ * Renders a semantic block of text using a `<p>` element.
+ * Alias for `P(...)`, recommended for general-purpose text content.
+ * @example
+ * Text('Hello world', { fontSize: 'theme.text.md' })
+ */
+export const Text = P
+
+/**
  * Creates a preformatted text element node.
  * @param children The content to be rendered within the element (text, numbers, components, etc) for the pre element.
  * @param props Optional properties for the pre element.
