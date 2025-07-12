@@ -36,13 +36,16 @@ type ComponentProps<P> = P & {
  * })
  * ```
  */
-export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode) {
+
+export function Component<P extends undefined>(component: (props: ComponentProps<P>) => ComponentNode): (props?: P) => ReactNode
+export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode): (props: P) => ReactNode
+export function Component(component: any): any {
   /**
    * Props for the internal Renderer component.
    * - Inherits all props from ComponentProps\<P\>
    * - Adds optional `nodetheme` and `theme` for theme propagation and merging
    */
-  type RendererProp = ComponentProps<P> & { nodetheme?: Theme; theme?: Theme }
+  type RendererProp = ComponentProps<any> & { nodetheme?: Theme; theme?: Theme }
 
   // Create a wrapper component that handles theme and rendering
   const Renderer = (props: RendererProp = {} as RendererProp) => {
@@ -59,7 +62,7 @@ export function Component<P>(component: (props: ComponentProps<P>) => ComponentN
     return result as ReactNode
   }
 
-  return function Func(props: P extends undefined ? undefined : P) {
-    return Node(Renderer, props as never).render()
+  return function Func(props: any) {
+    return Node(Renderer, props).render()
   }
 }
