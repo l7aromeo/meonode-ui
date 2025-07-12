@@ -37,8 +37,8 @@ type ComponentProps<P> = P & {
  * ```
  */
 
-export function Component<P extends undefined>(component: (props: ComponentProps<P>) => ComponentNode): (props?: P) => ReactNode
-export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode): (props: P) => ReactNode
+export function Component<P extends undefined>(component: (props: ComponentProps<P>) => ComponentNode): (props?: Partial<ComponentProps<P>>) => ReactNode
+export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode): (props: ComponentProps<P>) => ReactNode
 export function Component(component: any): any {
   /**
    * Props for the internal Renderer component.
