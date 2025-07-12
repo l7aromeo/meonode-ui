@@ -1,6 +1,6 @@
 'use strict'
 import { BaseNode, Node } from '@src/core.node'
-import type { ComponentNode, NodeElement, Theme } from '@src/node.type'
+import type { ComponentNode, NodeElement, NodeProps, Theme } from '@src/node.type'
 import type { ReactNode } from 'react'
 
 /**
@@ -9,10 +9,15 @@ import type { ReactNode } from 'react'
  * - `props`: Optional partial props (excluding `children`) to override or extend the main props.
  * - `children`: Optional child nodes to be rendered within the component.
  */
-type ComponentProps<P> = P & {
-  props?: Partial<Omit<P, 'children'>>
-  children?: NodeElement
-}
+type ComponentProps<P> = P extends undefined
+  ? {
+      props?: Partial<Omit<P, 'children'>>
+      children?: NodeElement
+    }
+  : P & {
+      props?: Partial<Omit<P, 'children'>>
+      children?: NodeElement
+    }
 
 /**
  * Higher-order component wrapper that converts BaseNode components into React components.
@@ -38,7 +43,7 @@ type ComponentProps<P> = P & {
  */
 
 export function Component<P extends undefined>(component: (props: ComponentProps<P>) => ComponentNode): (props?: Partial<ComponentProps<P>>) => ReactNode
-export function Component<P>(component: (props: ComponentProps<P>) => ComponentNode): (props: ComponentProps<P>) => ReactNode
+export function Component<P extends Record<string, any>>(component: (props: ComponentProps<P>) => ComponentNode): (props: ComponentProps<P>) => ReactNode
 export function Component(component: any): any {
   /**
    * Props for the internal Renderer component.
@@ -62,7 +67,7 @@ export function Component(component: any): any {
     return result as ReactNode
   }
 
-  return function Func(props: any) {
+  return function Func(props: Partial<NodeProps<typeof component>>) {
     return Node(Renderer, props).render()
   }
 }
