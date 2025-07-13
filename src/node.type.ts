@@ -19,12 +19,12 @@ import type { Root as ReactDOMRoot } from 'react-dom/client'
  */
 export type NodeElement =
   | ReactNode
-  | Promise<ReactNode>
+  | Promise<Awaited<ReactNode>>
   | Component<any, any, any>
   | ElementType
   | ComponentType<any>
   | NodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<ReactNode> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
+  | ((props?: any) => ReactNode | Promise<Awaited<ReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
 
 /**
  * Defines valid child types that can be passed to a node:
@@ -33,7 +33,7 @@ export type NodeElement =
  * - NodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | Promise<ReactNode> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
+export type Children = ReactNode | Promise<Awaited<ReactNode>> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
