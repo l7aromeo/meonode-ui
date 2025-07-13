@@ -42,7 +42,7 @@ type ComponentProps<TProps> = TProps extends undefined
  *   return H1(props.children)
  * })
  *
- * <Title theme={{ color: 'red' }}>Hello</Title>
+ * Title({ children: 'Hello' })
  * ```
  */
 export function Component<TProps extends undefined>(
@@ -68,7 +68,7 @@ export function Component<TProps extends undefined>(
  *   })
  * })
  *
- * <Button label="Click me" onClick={() => alert('clicked')} />
+ * Button({ label: 'Click me', onClick: () => alert('clicked')})
  * ```
  */
 export function Component<TProps extends Record<string, any>>(
