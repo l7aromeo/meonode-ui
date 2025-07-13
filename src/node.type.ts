@@ -19,6 +19,7 @@ import type { Root as ReactDOMRoot } from 'react-dom/client'
  */
 export type NodeElement =
   | ReactNode
+  | Promise<ReactNode>
   | Component<any, any, any>
   | ElementType
   | ComponentType<any>
@@ -32,7 +33,7 @@ export type NodeElement =
  * - NodeInstance: Other node instances in the tree
  * - Function: Lazy child evaluation, useful for conditional rendering and hooks
  */
-export type Children = ReactNode | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
+export type Children = ReactNode | Promise<ReactNode> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
@@ -100,7 +101,7 @@ export type FinalNodeProps = ReactAttributes & {
  * that is compatible with CSSProperties.
  * @template P - The props object of a component (e.g., PropsOf<E>)
  */
-type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have a 'style' prop (even optional)?
+export type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have a 'style' prop (even optional)?
   ? S extends CSSProperties | undefined // Is the type of that 'style' prop (S) assignable to CSSProperties or undefined?
     ? true // Yes, it's CSS compatible
     : false // No, 'style' exists but is not CSSProperties (e.g., style: string)
