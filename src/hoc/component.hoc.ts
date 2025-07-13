@@ -49,7 +49,7 @@ type ComponentProps<TProps> = TProps extends undefined
  */
 export function Component<TProps extends undefined>(
   component: <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ComponentNode,
-): <TActualProps extends TProps = TProps>(props?: ComponentProps<TActualProps>) => ReactNode | Promise<ReactNode>
+): <TActualProps extends TProps = TProps>(props?: ComponentProps<TActualProps>) => ReactNode | Promise<Awaited<ReactNode>>
 
 /**
  * Creates a component from a function that uses a defined props interface.
@@ -75,7 +75,7 @@ export function Component<TProps extends undefined>(
  */
 export function Component<TProps extends Record<string, any>>(
   component: <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ComponentNode,
-): <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ReactNode | Promise<ReactNode>
+): <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ReactNode | Promise<Awaited<ReactNode>>
 
 /**
  * Internal implementation of the `Component` HOC.
