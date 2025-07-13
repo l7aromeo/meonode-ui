@@ -39,9 +39,7 @@ type ComponentProps<TProps> = TProps extends undefined
  * @example
  * ```ts
  * const Title = Component((props) => {
- *   return H1({
- *     children: props.children,
- *   })
+ *   return H1(props.children)
  * })
  *
  * <Title theme={{ color: 'red' }}>Hello</Title>
