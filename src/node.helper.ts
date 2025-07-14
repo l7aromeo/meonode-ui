@@ -1,6 +1,6 @@
 'use strict'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
-import type { NodeElement, FinalNodeProps, NodeInstance } from '@src/node.type.js'
+import type { NodeElement, FinalNodeProps, NodeInstance, Theme } from '@src/node.type.js'
 import {
   isContextConsumer,
   isContextProvider,
@@ -258,4 +258,125 @@ export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
     typeof (obj as NodeInstance<any>).toPortal === 'function' &&
     'isBaseNode' in obj
   )
+}
+
+/**
+ * Resolves theme variable references in an object's values recursively.
+ * Handles nested objects and prevents circular references.
+ * Theme variables are referenced using the format "theme.path.to.value".
+ * @param obj The object whose values should be resolved against the theme
+ * @param theme Optional theme object containing variable definitions
+ * @returns A new object with all theme variables resolved to their values
+ */
+export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
+  // Early return if no theme or empty object
+  if (!theme || Object.keys(obj).length === 0) {
+    return obj
+  }
+
+  /**
+   * Recursively resolves theme variables in an object, tracking visited objects
+   * to prevent infinite recursion with circular references.
+   */
+  const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>): Record<string, unknown> => {
+    // Skip functions and non-plain objects to prevent unintended flattening or
+    // modification of complex instances like React components, DOM elements, or Date objects.
+    if (!currentObj || typeof currentObj !== 'object' || Array.isArray(currentObj) || Object.getPrototypeOf(currentObj) !== Object.prototype) {
+      return currentObj
+    }
+
+    // Prevent processing same object multiple times
+    if (visited.has(currentObj)) {
+      return currentObj
+    }
+
+    // Track this object to detect circular references
+    visited.add(currentObj)
+
+    const resolvedObj: Record<string, unknown> = {}
+
+    for (const key in currentObj) {
+      const value = currentObj[key]
+
+      // Skip functions and non-plain objects to prevent unintended flattening or
+      // modification of complex instances like React components, DOM elements, or Date objects.
+      if (
+        typeof value === 'function' ||
+        (value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
+        key === 'ref'
+      ) {
+        resolvedObj[key] = value
+        continue
+      }
+
+      // Resolve theme variables in string values
+      if (typeof value === 'string' && value.includes('theme.')) {
+        let processedValue = value
+        processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
+          const themeValue = getValueByPath(theme, path)
+          // Only convert string/number theme values
+          if (themeValue !== undefined && themeValue !== null) {
+            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+              return themeValue.default
+            }
+            return themeValue
+          }
+          return match // Keep original if no valid theme value found
+        })
+        resolvedObj[key] = processedValue
+      }
+      // Recursively process nested objects
+      else {
+        resolvedObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
+      }
+    }
+
+    return resolvedObj
+  }
+
+  return resolveRecursively(obj, new Set())
+}
+
+/**
+ * Resolves default styles for a given CSSProperties object.
+ * This method ensures that certain default styles, such as `minHeight`, `minWidth`,
+ * and `flexShrink`, are applied based on the provided style properties.
+ *
+ * - If the element is a flex container:
+ * - Sets `flexShrink` to 0 for specific scenarios:
+ * - Column-based layout without wrapping.
+ * - Row-based layout without wrapping (a default direction is assumed to be 'row').
+ * - If the element is not a flex container:
+ * - Defaults `flexShrink` to 0.
+ * @param style The CSSProperties object containing style definitions.
+ * @returns An object with resolved default styles.
+ */
+export const resolveDefaultStyle = (style: CSSProperties) => {
+  const { flex, ...restStyle } = style
+  const isFlexContainer = restStyle.display === 'flex'
+  const hasOverflow = !!(restStyle.overflow || restStyle.overflowY || restStyle.overflowX)
+  const isWrapping = restStyle.flexFlow?.includes('wrap') || restStyle.flexWrap === 'wrap'
+
+  let flexShrink = undefined
+
+  if (isFlexContainer) {
+    if (!hasOverflow) {
+      const isColumnDirection = restStyle.flexDirection === 'column' || restStyle.flexDirection === 'column-reverse'
+      const isRowDirectionOrDefault = restStyle.flexDirection === 'row' || restStyle.flexDirection === 'row-reverse' || !restStyle.flexDirection
+
+      // Scenario 1: Column-based layout
+      if (isColumnDirection && !isWrapping) {
+        flexShrink = 0
+      }
+      // Scenario 2: Row-based layout without wrapping, this assumes 'row' is the default if flexDirection is not set.
+      else if (isRowDirectionOrDefault && !isWrapping) {
+        flexShrink = 0
+      }
+    }
+  } else {
+    // If it's not a flex container, default flex-shrink to 0
+    flexShrink = 0
+  }
+
+  return { flex, flexShrink, minHeight: 0, minWidth: 0, ...restStyle }
 }

@@ -1,7 +1,7 @@
 'use strict'
-import React, { type ComponentProps, createElement, type CSSProperties, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, PropsOf, RawNodeProps, Theme } from '@src/node.type.js'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, getValueByPath, isNodeInstance } from '@src/node.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -43,32 +43,26 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { ref, children, nodetheme, theme, props: _componentProps, ...remainingRawProps } = rawProps
+    const { ref, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = rawProps
 
     const currentTheme = theme || nodetheme
-    const { style: componentPropsStyle, ...componentProps } = (_componentProps || {}) as Omit<PropsOf<E>, 'children'>
 
-    // Resolve any theme variables in the remaining props
-    const componentPropsStyleWithResolvedTheme = this._resolveObjWithTheme(componentPropsStyle, currentTheme)
-    const { style: stylePropsWithResolvedTheme, ...propsWithResolvedTheme } = this._resolveObjWithTheme(remainingRawProps, currentTheme)
-    // Extract CSS-related properties from the resolved theme-aware props
-    const processedStyleProps = getCSSProps(propsWithResolvedTheme)
-    // Resolve default styles
-    const finalStyleProps = this._resolveDefaultStyle({ ...stylePropsWithResolvedTheme, ...processedStyleProps, ...componentPropsStyleWithResolvedTheme })
-    // Extract remaining props that are valid DOM attributes
-    const processedDOMProps = getDOMProps(propsWithResolvedTheme)
+    const { style: componentStyle, ...componentProps } = nativeProps as Omit<PropsOf<E>, 'children'>
+
+    const resolvedRawProps = resolveObjWithTheme({ ...restRawProps, style: { ...restRawProps?.style, ...componentStyle } }, currentTheme)
+
+    const { style: styleFromResolvedProps, ...themeAwareProps } = resolvedRawProps
+
+    const styleProps = getCSSProps(themeAwareProps)
+    const domProps = getDOMProps(themeAwareProps)
+
+    const finalStyleProps = resolveDefaultStyle({
+      ...styleProps,
+      ...styleFromResolvedProps,
+    })
 
     // Process children while maintaining theme inheritance
-    let normalizedChildren: NodeElement | NodeElement[] = undefined
-    if (children) {
-      if (Array.isArray(children)) {
-        // Process array of children with index for stable keys
-        normalizedChildren = (children as NodeElement[]).map((child, index) => this._processRawNode(child, currentTheme, index))
-      } else {
-        // Process single child
-        normalizedChildren = this._processRawNode(children, currentTheme)
-      }
-    }
+    const normalizedChildren = this._processChildren(children, currentTheme)
 
     // Combine processed props into final normalized form
     this.props = {
@@ -76,128 +70,22 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
       nodetheme: currentTheme,
       theme,
       style: finalStyleProps,
-      ...processedDOMProps,
+      ...domProps,
       ...componentProps,
       children: normalizedChildren,
     }
   }
 
-  /**
-   * Resolves default styles for a given CSSProperties object.
-   * This method ensures that certain default styles, such as `minHeight`, `minWidth`,
-   * and `flexShrink`, are applied based on the provided style properties.
-   *
-   * - If the element is a flex container:
-   * - Sets `flexShrink` to 0 for specific scenarios:
-   * - Column-based layout without wrapping.
-   * - Row-based layout without wrapping (a default direction is assumed to be 'row').
-   * - If the element is not a flex container:
-   * - Defaults `flexShrink` to 0.
-   * @param style The CSSProperties object containing style definitions.
-   * @returns An object with resolved default styles.
-   */
-  private _resolveDefaultStyle(style: CSSProperties) {
-    const { flex, ...restStyle } = style
-    const isFlexContainer = restStyle.display === 'flex'
-    const hasOverflow = !!(restStyle.overflow || restStyle.overflowY || restStyle.overflowX)
-    const isWrapping = restStyle.flexFlow?.includes('wrap') || restStyle.flexWrap === 'wrap'
+  private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
+    if (!children) return undefined
 
-    let flexShrink = undefined
-
-    if (isFlexContainer) {
-      if (!hasOverflow) {
-        const isColumnDirection = restStyle.flexDirection === 'column' || restStyle.flexDirection === 'column-reverse'
-        const isRowDirectionOrDefault = restStyle.flexDirection === 'row' || restStyle.flexDirection === 'row-reverse' || !restStyle.flexDirection
-
-        // Scenario 1: Column-based layout
-        if (isColumnDirection && !isWrapping) {
-          flexShrink = 0
-        }
-        // Scenario 2: Row-based layout without wrapping, this assumes 'row' is the default if flexDirection is not set.
-        else if (isRowDirectionOrDefault && !isWrapping) {
-          flexShrink = 0
-        }
-      }
+    if (Array.isArray(children)) {
+      // Process array of children with index for stable keys
+      return children.map((child, index) => this._processRawNode(child, theme, index))
     } else {
-      // If it's not a flex container, default flex-shrink to 0
-      flexShrink = 0
+      // Process single child
+      return this._processRawNode(children, theme)
     }
-
-    return { flex, flexShrink, minHeight: 0, minWidth: 0, ...restStyle }
-  }
-
-  /**
-   * Resolves theme variable references in an object's values recursively.
-   * Handles nested objects and prevents circular references.
-   * Theme variables are referenced using the format "theme.path.to.value".
-   * @param obj The object whose values should be resolved against the theme
-   * @param theme Optional theme object containing variable definitions
-   * @returns A new object with all theme variables resolved to their values
-   */
-  private _resolveObjWithTheme(obj: Record<string, any> = {}, theme?: Theme) {
-    // Early return if no theme or empty object
-    if (!theme || Object.keys(obj).length === 0) {
-      return obj
-    }
-
-    // Merge parent theme with current theme
-    const mergedTheme: Theme = { ...this.rawProps?.nodetheme, ...theme }
-
-    /**
-     * Recursively resolves theme variables in an object, tracking visited objects
-     * to prevent infinite recursion with circular references.
-     */
-    const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>): Record<string, unknown> => {
-      // Prevent processing same object multiple times
-      if (visited.has(currentObj)) {
-        return currentObj
-      }
-
-      // Track this object to detect circular references
-      visited.add(currentObj)
-
-      const resolvedObj: Record<string, unknown> = {}
-
-      for (const key in currentObj) {
-        const value = currentObj[key]
-
-        // Skip functions and non-plain objects to prevent unintended flattening or
-        // modification of complex instances like React components, DOM elements, or Date objects.
-        if (typeof value === 'function' || (value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)) {
-          resolvedObj[key] = value
-          continue
-        }
-
-        // Resolve theme variables in string values
-        if (typeof value === 'string' && value.includes('theme.')) {
-          let processedValue = value
-          processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-            const themeValue = getValueByPath(mergedTheme, path)
-            // Only convert string/number theme values
-            if (themeValue !== undefined && themeValue !== null) {
-              if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-                return themeValue.default
-              }
-              return themeValue
-            }
-            return match // Keep original if no valid theme value found
-          })
-          resolvedObj[key] = processedValue
-        }
-        // Recursively process nested objects
-        else if (value && typeof value === 'object' && !Array.isArray(value)) {
-          resolvedObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
-        }
-        // Keep other values as-is
-        else {
-          resolvedObj[key] = value
-        }
-      }
-
-      return resolvedObj
-    }
-
-    return resolveRecursively(obj, new Set())
   }
 
   /**
