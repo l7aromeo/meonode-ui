@@ -28,25 +28,16 @@ export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
 /**
  *
  *Resolves theme variable references in an object's values recursively.
- *
  *This function performs a "smart merge" to maintain object reference identity
- *
  *for parts of the object that do not contain resolved theme variables or
- *
  *other modifications. Only creates new objects or properties when a change occurs.
- *
- *
- *
  *Handles nested objects and prevents circular references.
- *
  *Theme variables are referenced using the format "theme.path.to.value".
  * @param obj The object whose values should be resolved against the theme. Defaults to an empty object.
  * @param theme The theme object containing variable definitions. Optional.
  * @returns A new object with all theme variables resolved to their corresponding values,
- *
  * or the original object if no changes were necessary.
  */
-
 export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
   // Early return if no theme or empty object, no resolution needed.
 
@@ -57,14 +48,11 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
   /**
    *
    *Recursively resolves theme variables within an object.
-   *
    *It tracks visited objects to prevent infinite recursion caused by circular references.
-   *
    *This function implements a "smart merge" to preserve object identity for unchanged parts.
    * @param currentObj The current object being processed in the recursion.
    * @param visited A Set to keep track of objects that have already been visited to detect circular references.
    * @returns The processed object with theme variables resolved, or the original `currentObj`
-   *
    * if no changes were made to it or its direct children (excluding deeper nested changes).
    */
   const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>) => {
@@ -83,10 +71,6 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
     let changed = false
 
     for (const key in currentObj) {
-      if (!Object.prototype.hasOwnProperty.call(currentObj, key)) {
-        continue
-      }
-
       const value = currentObj[key]
 
       let newValue: unknown
@@ -102,13 +86,13 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
         newValue = value
       } else if (typeof value === 'string' && value.includes('theme.')) {
         let processedValue = value
-        let stringValueResolved = false
+        let valueResolved = false
 
         processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
           const themeValue = getValueByPath(theme, path)
 
           if (themeValue !== undefined && themeValue !== null) {
-            stringValueResolved = true
+            valueResolved = true
 
             if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
               return themeValue.default
@@ -120,7 +104,7 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
           return match
         })
 
-        if (stringValueResolved && processedValue !== value) {
+        if (valueResolved && processedValue !== value) {
           newValue = processedValue
         } else {
           newValue = value
@@ -144,8 +128,6 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
         resolvedObj[key] = value
       }
     }
-
-    visited.delete(currentObj)
 
     return resolvedObj
   }
