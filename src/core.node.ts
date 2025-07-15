@@ -25,10 +25,16 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
   /** Processed props after theme resolution, style processing, and child normalization */
   public props: FinalNodeProps
 
+  /** Flag to identify BaseNode instances */
   public readonly isBaseNode = true
 
+  /** DOM element used for portal rendering */
   private _portalDOMElement: HTMLDivElement | null = null
+
+  /** React root instance for portal rendering */
   private _portalReactRoot: ReactDOMRoot | null = null
+
+  private _resolveAbleProps: Record<string, any> | null = null
 
   /**
    * Creates a new BaseNode instance that wraps a React element.
@@ -50,7 +56,9 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
     const { style: componentStyle, ...componentProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
-    const resolvedRawProps = resolveObjWithTheme({ ...restRawProps, style: { ...restRawProps?.style, ...componentStyle } }, currentTheme)
+    const resolveAbleProps = { ...restRawProps, style: { ...restRawProps?.style, ...componentStyle } }
+
+    const resolvedRawProps = resolveObjWithTheme(resolveAbleProps, currentTheme)
 
     const { style: styleFromResolvedProps, ...themeAwareProps } = resolvedRawProps
 

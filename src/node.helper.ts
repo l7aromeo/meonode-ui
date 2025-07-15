@@ -26,81 +26,128 @@ export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
 }
 
 /**
- * Resolves theme variable references in an object's values recursively.
- * Handles nested objects and prevents circular references.
- * Theme variables are referenced using the format "theme.path.to.value".
- * @param obj The object whose values should be resolved against the theme
- * @param theme Optional theme object containing variable definitions
- * @returns A new object with all theme variables resolved to their values
+ *
+ *Resolves theme variable references in an object's values recursively.
+ *
+ *This function performs a "smart merge" to maintain object reference identity
+ *
+ *for parts of the object that do not contain resolved theme variables or
+ *
+ *other modifications. Only creates new objects or properties when a change occurs.
+ *
+ *
+ *
+ *Handles nested objects and prevents circular references.
+ *
+ *Theme variables are referenced using the format "theme.path.to.value".
+ * @param obj The object whose values should be resolved against the theme. Defaults to an empty object.
+ * @param theme The theme object containing variable definitions. Optional.
+ * @returns A new object with all theme variables resolved to their corresponding values,
+ *
+ * or the original object if no changes were necessary.
  */
+
 export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
-  // Early return if no theme or empty object
+  // Early return if no theme or empty object, no resolution needed.
+
   if (!theme || Object.keys(obj).length === 0) {
     return obj
   }
 
-  const excludedKeys = new Set(['ref', 'key'])
-
   /**
-   * Recursively resolves theme variables in an object, tracking visited objects
-   * to prevent infinite recursion with circular references.
+   *
+   *Recursively resolves theme variables within an object.
+   *
+   *It tracks visited objects to prevent infinite recursion caused by circular references.
+   *
+   *This function implements a "smart merge" to preserve object identity for unchanged parts.
+   * @param currentObj The current object being processed in the recursion.
+   * @param visited A Set to keep track of objects that have already been visited to detect circular references.
+   * @returns The processed object with theme variables resolved, or the original `currentObj`
+   *
+   * if no changes were made to it or its direct children (excluding deeper nested changes).
    */
-  const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>): Record<string, unknown> => {
-    // Skip functions and non-plain objects to prevent unintended flattening or
-    // modification of complex instances like React components, DOM elements, or Date objects.
-    if (!currentObj || typeof currentObj !== 'object' || Array.isArray(currentObj) || Object.getPrototypeOf(currentObj) !== Object.prototype) {
+  const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>) => {
+    if (currentObj === null || typeof currentObj !== 'object' || Array.isArray(currentObj) || Object.getPrototypeOf(currentObj) !== Object.prototype) {
       return currentObj
     }
 
-    // Prevent processing the same object multiple times
     if (visited.has(currentObj)) {
       return currentObj
     }
 
-    // Track this object to detect circular references
     visited.add(currentObj)
 
+    let resolvedObj: Record<string, unknown> = currentObj
+
+    let changed = false
+
     for (const key in currentObj) {
-      try {
-        const value = currentObj[key]
+      if (!Object.prototype.hasOwnProperty.call(currentObj, key)) {
+        continue
+      }
 
-        // Conditions for direct assignment (no resolution or deep processing needed)
-        if (
-          excludedKeys.has(key) ||
-          typeof value === 'function' ||
-          (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
-          (typeof value === 'string' && !value.includes('theme.')) ||
-          (typeof value !== 'object' && typeof value !== 'string' && typeof value !== 'function')
-        ) {
-          continue
-        }
+      const value = currentObj[key]
 
-        // Resolve theme variables in string values
-        if (typeof value === 'string' && value.includes('theme.')) {
-          let processedValue = value
-          processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-            const themeValue = getValueByPath(theme, path)
-            // Only convert string/number theme values
-            if (themeValue !== undefined && themeValue !== null) {
-              if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-                return themeValue.default
-              }
-              return themeValue
+      let newValue: unknown
+
+      if (
+        typeof value === 'function' ||
+        key === 'ref' ||
+        key === 'key' ||
+        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
+        (typeof value === 'string' && !value.includes('theme.')) ||
+        (typeof value !== 'object' && typeof value !== 'string' && typeof value !== 'function')
+      ) {
+        newValue = value
+      } else if (typeof value === 'string' && value.includes('theme.')) {
+        let processedValue = value
+        let stringValueResolved = false
+
+        processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
+          const themeValue = getValueByPath(theme, path)
+
+          if (themeValue !== undefined && themeValue !== null) {
+            stringValueResolved = true
+
+            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+              return themeValue.default
             }
-            return match // Keep original if no valid theme value found
-          })
-          currentObj[key] = processedValue
+
+            return themeValue
+          }
+
+          return match
+        })
+
+        if (stringValueResolved && processedValue !== value) {
+          newValue = processedValue
+        } else {
+          newValue = value
         }
-        // Recursively process nested objects
-        else {
-          currentObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
+      }
+
+      // Recursively process nested objects.
+      else if (typeof value === 'object' && value !== null) {
+        newValue = resolveRecursively(value as Record<string, unknown>, visited)
+      } else {
+        newValue = value
+      }
+
+      if (newValue !== value) {
+        if (!changed) {
+          resolvedObj = { ...currentObj }
+          changed = true
         }
-      } catch {
-        /* empty */
+        resolvedObj[key] = newValue
+      } else if (changed) {
+        resolvedObj[key] = value
       }
     }
 
-    return currentObj
+    visited.delete(currentObj)
+
+    return resolvedObj
   }
 
   return resolveRecursively(obj, new Set())
