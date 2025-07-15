@@ -236,23 +236,3 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
 
   return result
 }
-
-/**
- * Checks if a property on an object is writable.
- *
- * This function uses `Object.getOwnPropertyDescriptor` to determine if the specified
- * property is writable. If the property descriptor is not found (property does not exist
- * or is inherited), it returns `true` by default.
- * @param obj The object to check.
- * @param key The property name to check for writability.
- * @returns `true` if the property is writable or not explicitly defined, otherwise `false`.
- */
-export function isWritable(obj: Record<string, any>, key: string) {
-  const desc = Object.getOwnPropertyDescriptor(obj, key)
-  // If the property doesn't exist or is inherited, desc will be undefined.
-  // In such cases, it's typically considered writable unless explicitly defined otherwise.
-  if (!desc) {
-    return true // Or handle as needed based on your specific requirements
-  }
-  return Boolean(desc.writable)
-}
