@@ -1,7 +1,7 @@
 'use strict'
 import type { CSSProperties } from 'react'
 import type { NodeInstance, Theme } from '@src/node.type.js'
-import { getValueByPath, isWritable } from '@src/common.helper'
+import { getValueByPath } from '@src/common.helper'
 
 /**
  * Type guard to check if an object is a NodeInstance.
@@ -39,6 +39,8 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
     return obj
   }
 
+  const excludedKeys = new Set(['ref', 'key'])
+
   /**
    * Recursively resolves theme variables in an object, tracking visited objects
    * to prevent infinite recursion with circular references.
@@ -50,7 +52,7 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
       return currentObj
     }
 
-    // Prevent processing same object multiple times
+    // Prevent processing the same object multiple times
     if (visited.has(currentObj)) {
       return currentObj
     }
@@ -59,40 +61,42 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
     visited.add(currentObj)
 
     for (const key in currentObj) {
-      const value = currentObj[key]
+      try {
+        const value = currentObj[key]
 
-      // Conditions for direct assignment (no resolution or deep processing needed)
-      if (
-        typeof value === 'function' ||
-        key === 'ref' ||
-        key === 'key' ||
-        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
-        (typeof value === 'string' && !value.includes('theme.')) ||
-        (typeof value !== 'object' && typeof value !== 'string' && typeof value !== 'function') ||
-        !isWritable(currentObj, key)
-      ) {
-        continue
-      }
+        // Conditions for direct assignment (no resolution or deep processing needed)
+        if (
+          excludedKeys.has(key) ||
+          typeof value === 'function' ||
+          (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
+          (typeof value === 'string' && !value.includes('theme.')) ||
+          (typeof value !== 'object' && typeof value !== 'string' && typeof value !== 'function')
+        ) {
+          continue
+        }
 
-      // Resolve theme variables in string values
-      if (typeof value === 'string' && value.includes('theme.')) {
-        let processedValue = value
-        processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-          const themeValue = getValueByPath(theme, path)
-          // Only convert string/number theme values
-          if (themeValue !== undefined && themeValue !== null) {
-            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-              return themeValue.default
+        // Resolve theme variables in string values
+        if (typeof value === 'string' && value.includes('theme.')) {
+          let processedValue = value
+          processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
+            const themeValue = getValueByPath(theme, path)
+            // Only convert string/number theme values
+            if (themeValue !== undefined && themeValue !== null) {
+              if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+                return themeValue.default
+              }
+              return themeValue
             }
-            return themeValue
-          }
-          return match // Keep original if no valid theme value found
-        })
-        currentObj[key] = processedValue
-      }
-      // Recursively process nested objects
-      else {
-        currentObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
+            return match // Keep original if no valid theme value found
+          })
+          currentObj[key] = processedValue
+        }
+        // Recursively process nested objects
+        else {
+          currentObj[key] = resolveRecursively(value as Record<string, unknown>, visited)
+        }
+      } catch {
+        /* empty */
       }
     }
 
