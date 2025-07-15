@@ -1,9 +1,10 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, PropsOf, RawNodeProps, Theme } from '@src/node.type.js'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
+import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
