@@ -34,8 +34,6 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
   /** React root instance for portal rendering */
   private _portalReactRoot: ReactDOMRoot | null = null
 
-  private _resolveAbleProps: Record<string, any> | null = null
-
   /**
    * Creates a new BaseNode instance that wraps a React element.
    * Processes raw props by:
@@ -50,7 +48,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     this.rawProps = rawProps
 
     // Destructure raw props into relevant parts
-    const { ref, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = rawProps
+    const { ref, key, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = rawProps
 
     const currentTheme = theme || nodetheme
 
@@ -76,6 +74,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     // Combine processed props into final normalized form
     this.props = {
       ref,
+      key,
       nodetheme: currentTheme,
       theme,
       style: finalStyleProps,
