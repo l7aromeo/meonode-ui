@@ -38,7 +38,7 @@ export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
  * or the original object (or array) if no changes were necessary.
  */
 export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
-  if (!theme || Object.keys(obj).length === 0) {
+  if (!theme || (!!theme && typeof theme === 'object' && Object.keys(theme).length === 0) || Object.keys(obj).length === 0) {
     return obj
   }
 
@@ -87,69 +87,63 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
     }
 
     // Handle Plain Objects (only process objects created with {})
-    if (Object.getPrototypeOf(currentObj) === Object.prototype) {
-      let resolvedObj: Record<string, any> = currentObj
-      let changed = false
+    let resolvedObj: Record<string, any> = currentObj
+    let changed = false
 
-      for (const key in currentObj) {
-        if (Object.prototype.hasOwnProperty.call(currentObj, key)) {
-          // Ensure it's an own property
-          const value = currentObj[key]
-          let newValue: any = value
+    for (const key in currentObj) {
+      // Ensure it's an own property
+      const value = currentObj[key]
+      let newValue: any = value
 
-          if (
-            typeof value === 'function' ||
-            (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) || // Exclude plain objects and arrays
-            (typeof value !== 'object' && typeof value !== 'string')
-          ) {
-            newValue = value
-          } else if (typeof value === 'string' && value.includes('theme.')) {
-            let processedValue = value
-            let valueResolved = false
+      if (
+        typeof value === 'function' ||
+        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) || // Exclude plain objects and arrays
+        (typeof value !== 'object' && typeof value !== 'string')
+      ) {
+        newValue = value
+      } else if (typeof value === 'string' && value.includes('theme.')) {
+        let processedValue = value
+        let valueResolved = false
 
-            processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-              const themeValue = getValueByPath(theme, path)
+        processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
+          const themeValue = getValueByPath(theme, path)
 
-              if (themeValue !== undefined && themeValue !== null) {
-                valueResolved = true
+          if (themeValue !== undefined && themeValue !== null) {
+            valueResolved = true
 
-                if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-                  return themeValue.default
-                }
-
-                return themeValue
-              }
-
-              return match
-            })
-
-            if (valueResolved && processedValue !== value) {
-              newValue = processedValue
-            } else {
-              newValue = value
+            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+              return themeValue.default
             }
-          } else if (typeof value === 'object' && value !== null) {
-            // Recursively process nested objects or arrays
-            newValue = resolveRecursively(value, visited)
+
+            return themeValue
           }
 
-          if (newValue !== value) {
-            if (!changed) {
-              resolvedObj = { ...currentObj } // Create a shallow copy only if a change is detected
-              changed = true
-            }
-            resolvedObj[key] = newValue
-          } else if (changed) {
-            // If a change has already occurred, ensure we copy the original values
-            resolvedObj[key] = value
-          }
+          return match
+        })
+
+        if (valueResolved && processedValue !== value) {
+          newValue = processedValue
+        } else {
+          newValue = value
         }
+      } else if (typeof value === 'object' && value !== null) {
+        // Recursively process nested objects or arrays
+        newValue = resolveRecursively(value, visited)
       }
-      return resolvedObj
+
+      if (newValue !== value) {
+        if (!changed) {
+          resolvedObj = { ...currentObj } // Create a shallow copy only if a change is detected
+          changed = true
+        }
+        resolvedObj[key] = newValue
+      } else if (changed) {
+        // If a change has already occurred, ensure we copy the original values
+        resolvedObj[key] = value
+      }
     }
 
-    // If it's an object but not a plain object (e.g., Date, RegExp, custom class instance), return as is.
-    return currentObj
+    return resolvedObj
   }
 
   // Initial call, ensure `obj` could be an array as well

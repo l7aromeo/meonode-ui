@@ -52,7 +52,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
     const currentTheme = theme || nodetheme
 
-    const { style: componentStyle, ...componentProps } = nativeProps as Omit<PropsOf<E>, 'children'>
+    const { style: componentStyle, theme: nativeTheme, ...componentProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
     const resolveAbleProps = { ...restRawProps, style: { ...restRawProps?.style, ...componentStyle } }
 
@@ -76,7 +76,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
       ref,
       key,
       nodetheme: currentTheme,
-      theme,
+      theme: nativeTheme || theme,
       style: finalStyleProps,
       ...domProps,
       ...componentProps,
