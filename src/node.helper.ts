@@ -26,37 +26,34 @@ export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
 }
 
 /**
- *
- *Resolves theme variable references in an object's values recursively.
- *This function performs a "smart merge" to maintain object reference identity
- *for parts of the object that do not contain resolved theme variables or
- *other modifications. Only creates new objects or properties when a change occurs.
- *Handles nested objects and prevents circular references.
- *Theme variables are referenced using the format "theme.path.to.value".
- * @param obj The object whose values should be resolved against the theme. Defaults to an empty object.
+ * Resolves theme variable references in an object's values recursively.
+ * This function performs a "smart merge" to maintain object reference identity
+ * for parts of the object that do not contain resolved theme variables or
+ * other modifications. Only creates new objects or properties when a change occurs.
+ * Handles nested objects and arrays, and prevents circular references.
+ * Theme variables are referenced using the format "theme.path.to.value".
+ * @param obj The object (or array) whose values should be resolved against the theme. Defaults to an empty object.
  * @param theme The theme object containing variable definitions. Optional.
- * @returns A new object with all theme variables resolved to their corresponding values,
- * or the original object if no changes were necessary.
+ * @returns A new object (or array) with all theme variables resolved to their corresponding values,
+ * or the original object (or array) if no changes were necessary.
  */
 export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
-  // Early return if no theme or empty object, no resolution needed.
-
   if (!theme || Object.keys(obj).length === 0) {
     return obj
   }
 
   /**
-   *
-   *Recursively resolves theme variables within an object.
-   *It tracks visited objects to prevent infinite recursion caused by circular references.
-   *This function implements a "smart merge" to preserve object identity for unchanged parts.
-   * @param currentObj The current object being processed in the recursion.
+   * Recursively resolves theme variables within an object or array.
+   * It tracks visited objects to prevent infinite recursion caused by circular references.
+   * This function implements a "smart merge" to preserve object/array identity for unchanged parts.
+   * @param currentObj The current object or array being processed in the recursion.
    * @param visited A Set to keep track of objects that have already been visited to detect circular references.
-   * @returns The processed object with theme variables resolved, or the original `currentObj`
+   * @returns The processed object/array with theme variables resolved, or the original `currentObj`
    * if no changes were made to it or its direct children (excluding deeper nested changes).
    */
-  const resolveRecursively = (currentObj: Record<string, unknown>, visited: Set<Record<string, unknown>>) => {
-    if (currentObj === null || typeof currentObj !== 'object' || Array.isArray(currentObj) || Object.getPrototypeOf(currentObj) !== Object.prototype) {
+  const resolveRecursively = (currentObj: any, visited: Set<any>): any => {
+    // Base cases for non-objects/null, or already visited objects (circular reference)
+    if (currentObj === null || typeof currentObj !== 'object') {
       return currentObj
     }
 
@@ -66,72 +63,96 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
 
     visited.add(currentObj)
 
-    let resolvedObj: Record<string, unknown> = currentObj
+    // Handle Arrays
+    if (Array.isArray(currentObj)) {
+      let resolvedArray: any[] = currentObj
+      let changed = false
 
-    let changed = false
+      for (let i = 0; i < currentObj.length; i++) {
+        const value = currentObj[i]
+        const newValue = resolveRecursively(value, visited) // Recursively process each element
 
-    for (const key in currentObj) {
-      const value = currentObj[key]
-
-      let newValue: unknown
-
-      if (
-        typeof value === 'function' ||
-        key === 'ref' ||
-        key === 'key' ||
-        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
-        (typeof value === 'string' && !value.includes('theme.')) ||
-        (typeof value !== 'object' && typeof value !== 'string' && typeof value !== 'function')
-      ) {
-        newValue = value
-      } else if (typeof value === 'string' && value.includes('theme.')) {
-        let processedValue = value
-        let valueResolved = false
-
-        processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
-          const themeValue = getValueByPath(theme, path)
-
-          if (themeValue !== undefined && themeValue !== null) {
-            valueResolved = true
-
-            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-              return themeValue.default
-            }
-
-            return themeValue
+        if (newValue !== value) {
+          if (!changed) {
+            resolvedArray = [...currentObj] // Create a shallow copy only if a change is detected
+            changed = true
           }
-
-          return match
-        })
-
-        if (valueResolved && processedValue !== value) {
-          newValue = processedValue
-        } else {
-          newValue = value
+          resolvedArray[i] = newValue
+        } else if (changed) {
+          // If a change has already occurred, ensure we copy the original values
+          resolvedArray[i] = value
         }
       }
-
-      // Recursively process nested objects.
-      else if (typeof value === 'object' && value !== null) {
-        newValue = resolveRecursively(value as Record<string, unknown>, visited)
-      } else {
-        newValue = value
-      }
-
-      if (newValue !== value) {
-        if (!changed) {
-          resolvedObj = { ...currentObj }
-          changed = true
-        }
-        resolvedObj[key] = newValue
-      } else if (changed) {
-        resolvedObj[key] = value
-      }
+      return resolvedArray
     }
 
-    return resolvedObj
+    // Handle Plain Objects (only process objects created with {})
+    if (Object.getPrototypeOf(currentObj) === Object.prototype) {
+      let resolvedObj: Record<string, any> = currentObj
+      let changed = false
+
+      for (const key in currentObj) {
+        if (Object.prototype.hasOwnProperty.call(currentObj, key)) {
+          // Ensure it's an own property
+          const value = currentObj[key]
+          let newValue: any = value
+
+          if (
+            typeof value === 'function' ||
+            (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) || // Exclude plain objects and arrays
+            (typeof value !== 'object' && typeof value !== 'string')
+          ) {
+            newValue = value
+          } else if (typeof value === 'string' && value.includes('theme.')) {
+            let processedValue = value
+            let valueResolved = false
+
+            processedValue = processedValue.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (match, path) => {
+              const themeValue = getValueByPath(theme, path)
+
+              if (themeValue !== undefined && themeValue !== null) {
+                valueResolved = true
+
+                if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+                  return themeValue.default
+                }
+
+                return themeValue
+              }
+
+              return match
+            })
+
+            if (valueResolved && processedValue !== value) {
+              newValue = processedValue
+            } else {
+              newValue = value
+            }
+          } else if (typeof value === 'object' && value !== null) {
+            // Recursively process nested objects or arrays
+            newValue = resolveRecursively(value, visited)
+          }
+
+          if (newValue !== value) {
+            if (!changed) {
+              resolvedObj = { ...currentObj } // Create a shallow copy only if a change is detected
+              changed = true
+            }
+            resolvedObj[key] = newValue
+          } else if (changed) {
+            // If a change has already occurred, ensure we copy the original values
+            resolvedObj[key] = value
+          }
+        }
+      }
+      return resolvedObj
+    }
+
+    // If it's an object but not a plain object (e.g., Date, RegExp, custom class instance), return as is.
+    return currentObj
   }
 
+  // Initial call, ensure `obj` could be an array as well
   return resolveRecursively(obj, new Set())
 }
 
