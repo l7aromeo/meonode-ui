@@ -28,8 +28,8 @@ import type { ComponentProps, CSSProperties, ElementType } from 'react'
  * @param path The dot-separated path string (e.g., 'background.primary').
  * @returns The value at the specified path, or undefined if not found.
  */
-export function getValueByPath(obj: Record<string, any> = {}, path: string) {
-  return path.split('.').reduce((acc, key) => acc?.[key], obj)
+export const getValueByPath = (obj: any, path: string) => {
+  return path.split('.').reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : undefined), obj)
 }
 
 /**
