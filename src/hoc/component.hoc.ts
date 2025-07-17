@@ -18,7 +18,7 @@ import { type CSSProperties, type ReactNode } from 'react'
  *
  * If the component supports inline styles (determined via `HasCSSCompatibleStyleProp`), the props also allow `CSSProperties`.
  */
-type ComponentProps<TProps> = TProps extends undefined
+export type ComponentNodeProps<TProps> = TProps extends undefined
   ? Partial<{
       children: NodeElement | NodeElement[]
       theme: Theme
@@ -46,8 +46,8 @@ type ComponentProps<TProps> = TProps extends undefined
  * ```
  */
 export function Component<TProps extends undefined>(
-  component: <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ComponentNode,
-): <TActualProps extends TProps = TProps>(props?: ComponentProps<TActualProps>) => ReactNode | Promise<Awaited<ReactNode>>
+  component: (props: ComponentNodeProps<TProps>) => ComponentNode,
+): (props?: ComponentNodeProps<TProps>) => ReactNode | Promise<Awaited<ReactNode>>
 
 /**
  * Creates a component from a function that uses a defined props interface.
@@ -72,17 +72,15 @@ export function Component<TProps extends undefined>(
  * ```
  */
 export function Component<TProps extends Record<string, any>>(
-  component: <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ComponentNode,
-): <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ReactNode | Promise<Awaited<ReactNode>>
+  component: (props: ComponentNodeProps<TProps>) => ComponentNode,
+): (props: ComponentNodeProps<TProps>) => ReactNode | Promise<Awaited<ReactNode>>
 
 /**
  * Internal implementation of the `Component` HOC.
  * Handles theme propagation, BaseNode conversion, and wrapper creation.
  */
-export function Component<TProps extends Record<string, any> | undefined>(
-  component: <TActualProps extends TProps = TProps>(props: ComponentProps<TActualProps>) => ComponentNode,
-) {
-  type RendererProps = ComponentProps<TProps> & { nodetheme?: Theme }
+export function Component<TProps extends Record<string, any> | undefined>(component: (props: ComponentNodeProps<TProps>) => ComponentNode) {
+  type RendererProps = ComponentNodeProps<TProps> & { nodetheme?: Theme }
 
   const Renderer = (props: RendererProps) => {
     const result = component(props)
@@ -98,7 +96,7 @@ export function Component<TProps extends Record<string, any> | undefined>(
     return result as ReactNode
   }
 
-  return function Func(props: Partial<ComponentProps<TProps>> = {}) {
+  return function Func(props: Partial<ComponentNodeProps<TProps>> = {}) {
     return Node(Renderer, props as never).render()
   }
 }
