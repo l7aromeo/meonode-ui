@@ -120,7 +120,7 @@ export const Static = (props?: NodeProps<'div'>) => Div({ position: 'static', ..
  * @param props Optional properties for the h1 element.
  * @returns An h1 element node.
  */
-export const H1 = (children: NodeElement, props?: Omit<NodeProps<'h1'>, 'children'>) =>
+export const H1 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h1'>, 'children'>) =>
   Node('h1', {
     ...props,
     children,
@@ -132,7 +132,7 @@ export const H1 = (children: NodeElement, props?: Omit<NodeProps<'h1'>, 'childre
  * @param props Optional properties for the h2 element.
  * @returns An h2 element node.
  */
-export const H2 = (children: NodeElement, props?: Omit<NodeProps<'h2'>, 'children'>) =>
+export const H2 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h2'>, 'children'>) =>
   Node('h2', {
     ...props,
     children,
@@ -144,7 +144,7 @@ export const H2 = (children: NodeElement, props?: Omit<NodeProps<'h2'>, 'childre
  * @param props Optional properties for the h3 element.
  * @returns An h3 element node.
  */
-export const H3 = (children: NodeElement, props?: Omit<NodeProps<'h3'>, 'children'>) =>
+export const H3 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h3'>, 'children'>) =>
   Node('h3', {
     ...props,
     children,
@@ -156,7 +156,7 @@ export const H3 = (children: NodeElement, props?: Omit<NodeProps<'h3'>, 'childre
  * @param props Optional properties for the h4 element.
  * @returns An h4 element node.
  */
-export const H4 = (children: NodeElement, props?: Omit<NodeProps<'h4'>, 'children'>) =>
+export const H4 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h4'>, 'children'>) =>
   Node('h4', {
     ...props,
     children,
@@ -168,7 +168,7 @@ export const H4 = (children: NodeElement, props?: Omit<NodeProps<'h4'>, 'childre
  * @param props Optional properties for the h5 element.
  * @returns An h5 element node.
  */
-export const H5 = (children: NodeElement, props?: Omit<NodeProps<'h5'>, 'children'>) =>
+export const H5 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h5'>, 'children'>) =>
   Node('h5', {
     ...props,
     children,
@@ -180,7 +180,7 @@ export const H5 = (children: NodeElement, props?: Omit<NodeProps<'h5'>, 'childre
  * @param props Optional properties for the h6 element.
  * @returns An h6 element node.
  */
-export const H6 = (children: NodeElement, props?: Omit<NodeProps<'h6'>, 'children'>) =>
+export const H6 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h6'>, 'children'>) =>
   Node('h6', {
     ...props,
     children,
@@ -192,7 +192,7 @@ export const H6 = (children: NodeElement, props?: Omit<NodeProps<'h6'>, 'childre
  * @param props Optional properties for the strong element.
  * @returns A strong element node.
  */
-export const Strong = (children: NodeElement, props?: Omit<NodeProps<'strong'>, 'children'>) =>
+export const Strong = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'strong'>, 'children'>) =>
   Node('strong', {
     ...props,
     children,
@@ -204,7 +204,7 @@ export const Strong = (children: NodeElement, props?: Omit<NodeProps<'strong'>, 
  * @param props Optional properties for the em element.
  * @returns An em element node.
  */
-export const Em = (children: NodeElement, props?: Omit<NodeProps<'em'>, 'children'>) =>
+export const Em = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'em'>, 'children'>) =>
   Node('em', {
     ...props,
     children,
@@ -216,7 +216,7 @@ export const Em = (children: NodeElement, props?: Omit<NodeProps<'em'>, 'childre
  * @param props Optional properties for styling and configuring the small element.
  * @returns A small element node that can be rendered in React.
  */
-export const Small = (children: NodeElement, props?: Omit<NodeProps<'small'>, 'children'>) =>
+export const Small = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'small'>, 'children'>) =>
   Node('small', {
     ...props,
     children,
@@ -228,7 +228,7 @@ export const Small = (children: NodeElement, props?: Omit<NodeProps<'small'>, 'c
  * @param props Optional properties for the mark element.
  * @returns A mark element node.
  */
-export const Mark = (children: NodeElement, props?: Omit<NodeProps<'mark'>, 'children'>) =>
+export const Mark = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'mark'>, 'children'>) =>
   Node('mark', {
     ...props,
     children,
@@ -240,7 +240,7 @@ export const Mark = (children: NodeElement, props?: Omit<NodeProps<'mark'>, 'chi
  * @param props Optional properties for the span element.
  * @returns A span element node.
  */
-export const Span = (children: NodeElement, props?: Omit<NodeProps<'span'>, 'children'>) =>
+export const Span = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'span'>, 'children'>) =>
   Node('span', {
     ...props,
     children,
@@ -252,7 +252,7 @@ export const Span = (children: NodeElement, props?: Omit<NodeProps<'span'>, 'chi
  * @param props Optional properties for the p element.
  * @returns A paragraph element node.
  */
-export const P = (children: NodeElement, props?: Omit<NodeProps<'p'>, 'children'>) =>
+export const P = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'p'>, 'children'>) =>
   Node('p', {
     ...props,
     children,
@@ -272,7 +272,7 @@ export const Text = P
  * @param props Optional properties for the pre element.
  * @returns A pre element node.
  */
-export const Pre = (children: NodeElement, props?: Omit<NodeProps<'pre'>, 'children'>) =>
+export const Pre = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'pre'>, 'children'>) =>
   Node('pre', {
     ...props,
     children,
@@ -284,7 +284,7 @@ export const Pre = (children: NodeElement, props?: Omit<NodeProps<'pre'>, 'child
  * @param props Optional properties for the code element.
  * @returns A code element node.
  */
-export const Code = (children: NodeElement, props?: Omit<NodeProps<'code'>, 'children'>) =>
+export const Code = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'code'>, 'children'>) =>
   Node('code', {
     ...props,
     children,
@@ -370,7 +370,7 @@ export const Input = (props?: Omit<NodeProps<'input'>, 'children'>) => Node('inp
  * @param props Optional properties for the button element.
  * @returns A button element node.
  */
-export const Button = (children: NodeElement, props?: Omit<NodeProps<'button'>, 'children'>) =>
+export const Button = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'button'>, 'children'>) =>
   Node('button', {
     ...props,
     children,
@@ -396,7 +396,7 @@ export const Select = (props?: NodeProps<'select'>) => Node('select', props)
  * @param props Optional properties for the option element.
  * @returns An option element node.
  */
-export const Option = (children: NodeElement, props?: Omit<NodeProps<'option'>, 'children'>) =>
+export const Option = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'option'>, 'children'>) =>
   Node('option', {
     ...props,
     children,
@@ -415,7 +415,7 @@ export const Fieldset = (props?: NodeProps<'fieldset'>) => Node('fieldset', prop
  * @param props Optional properties for the legend element.
  * @returns A legend element node.
  */
-export const Legend = (children: NodeElement, props?: Omit<NodeProps<'legend'>, 'children'>) =>
+export const Legend = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'legend'>, 'children'>) =>
   Node('legend', {
     ...props,
     children,
@@ -485,7 +485,7 @@ export const Td = (props?: NodeProps<'td'>) => Node('td', props)
  * @param props Optional properties for the caption element.
  * @returns A caption element node.
  */
-export const Caption = (children: NodeElement, props?: Omit<NodeProps<'caption'>, 'children'>) =>
+export const Caption = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'caption'>, 'children'>) =>
   Node('caption', {
     ...props,
     children,
@@ -769,7 +769,7 @@ export const Figure = (props?: NodeProps<'figure'>) => Node('figure', props)
  * @param props Optional properties for the figcaption element.
  * @returns A figcaption element node.
  */
-export const Figcaption = (children: NodeElement, props?: Omit<NodeProps<'figcaption'>, 'children'>) =>
+export const Figcaption = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'figcaption'>, 'children'>) =>
   Node('figcaption', {
     ...props,
     children,
@@ -809,7 +809,7 @@ export const Details = (props?: NodeProps<'details'>) => Node('details', props)
  * @param props Optional properties for the summary element.
  * @returns A summary element node.
  */
-export const Summary = (children: NodeElement, props?: Omit<NodeProps<'summary'>, 'children'>) =>
+export const Summary = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'summary'>, 'children'>) =>
   Node('summary', {
     ...props,
     children,
@@ -875,7 +875,7 @@ export const Script = (scriptContent?: string, props?: Omit<NodeProps<'script'>,
  * @param props Optional properties for the title element.
  * @returns A title element node.
  */
-export const Title = (children: NodeElement, props?: Omit<NodeProps<'title'>, 'children'>) =>
+export const Title = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'title'>, 'children'>) =>
   Node('title', {
     ...props,
     children,
@@ -896,7 +896,7 @@ export const Base = (props?: Omit<NodeProps<'base'>, 'children'>) => Node('base'
  * @param props Optional properties for the abbr element.
  * @returns An abbr element node.
  */
-export const Abbr = (children: NodeElement, props?: Omit<NodeProps<'abbr'>, 'children'>) =>
+export const Abbr = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'abbr'>, 'children'>) =>
   Node('abbr', {
     ...props,
     children,
@@ -908,7 +908,7 @@ export const Abbr = (children: NodeElement, props?: Omit<NodeProps<'abbr'>, 'chi
  * @param props Optional properties for the b element.
  * @returns A b element node.
  */
-export const B = (children: NodeElement, props?: Omit<NodeProps<'b'>, 'children'>) =>
+export const B = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'b'>, 'children'>) =>
   Node('b', {
     ...props,
     children,
@@ -920,7 +920,7 @@ export const B = (children: NodeElement, props?: Omit<NodeProps<'b'>, 'children'
  * @param props Optional properties for the bdi element.
  * @returns A bdi element node.
  */
-export const Bdi = (children: NodeElement, props?: Omit<NodeProps<'bdi'>, 'children'>) =>
+export const Bdi = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'bdi'>, 'children'>) =>
   Node('bdi', {
     ...props,
     children,
@@ -932,7 +932,7 @@ export const Bdi = (children: NodeElement, props?: Omit<NodeProps<'bdi'>, 'child
  * @param props Optional properties for the bdo element.
  * @returns A bdo element node.
  */
-export const Bdo = (children: NodeElement, props?: Omit<NodeProps<'bdo'>, 'children'>) =>
+export const Bdo = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'bdo'>, 'children'>) =>
   Node('bdo', {
     ...props,
     children,
@@ -944,7 +944,7 @@ export const Bdo = (children: NodeElement, props?: Omit<NodeProps<'bdo'>, 'child
  * @param props Optional properties for the cite element.
  * @returns A cite element node.
  */
-export const Cite = (children: NodeElement, props?: Omit<NodeProps<'cite'>, 'children'>) =>
+export const Cite = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'cite'>, 'children'>) =>
   Node('cite', {
     ...props,
     children,
@@ -956,7 +956,7 @@ export const Cite = (children: NodeElement, props?: Omit<NodeProps<'cite'>, 'chi
  * @param props Optional properties for the data element.
  * @returns A data element node.
  */
-export const Data = (children: NodeElement, props?: Omit<NodeProps<'data'>, 'children'>) =>
+export const Data = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'data'>, 'children'>) =>
   Node('data', {
     ...props,
     children,
@@ -968,7 +968,7 @@ export const Data = (children: NodeElement, props?: Omit<NodeProps<'data'>, 'chi
  * @param props Optional properties for the dfn element.
  * @returns A dfn element node.
  */
-export const Dfn = (children: NodeElement, props?: Omit<NodeProps<'dfn'>, 'children'>) =>
+export const Dfn = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'dfn'>, 'children'>) =>
   Node('dfn', {
     ...props,
     children,
@@ -980,7 +980,7 @@ export const Dfn = (children: NodeElement, props?: Omit<NodeProps<'dfn'>, 'child
  * @param props Optional properties for the i element.
  * @returns An i element node.
  */
-export const I = (children: NodeElement, props?: Omit<NodeProps<'i'>, 'children'>) =>
+export const I = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'i'>, 'children'>) =>
   Node('i', {
     ...props,
     children,
@@ -992,7 +992,7 @@ export const I = (children: NodeElement, props?: Omit<NodeProps<'i'>, 'children'
  * @param props Optional properties for the kbd element.
  * @returns A kbd element node.
  */
-export const Kbd = (children: NodeElement, props?: Omit<NodeProps<'kbd'>, 'children'>) =>
+export const Kbd = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'kbd'>, 'children'>) =>
   Node('kbd', {
     ...props,
     children,
@@ -1004,7 +1004,7 @@ export const Kbd = (children: NodeElement, props?: Omit<NodeProps<'kbd'>, 'child
  * @param props Optional properties for the q element.
  * @returns A q element node.
  */
-export const Q = (children: NodeElement, props?: Omit<NodeProps<'q'>, 'children'>) =>
+export const Q = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'q'>, 'children'>) =>
   Node('q', {
     ...props,
     children,
@@ -1016,7 +1016,7 @@ export const Q = (children: NodeElement, props?: Omit<NodeProps<'q'>, 'children'
  * @param props Optional properties for the rp element.
  * @returns An rp element node.
  */
-export const Rp = (children: NodeElement, props?: Omit<NodeProps<'rp'>, 'children'>) =>
+export const Rp = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'rp'>, 'children'>) =>
   Node('rp', {
     ...props,
     children,
@@ -1028,7 +1028,7 @@ export const Rp = (children: NodeElement, props?: Omit<NodeProps<'rp'>, 'childre
  * @param props Optional properties for the rt element.
  * @returns An rt element node.
  */
-export const Rt = (children: NodeElement, props?: Omit<NodeProps<'rt'>, 'children'>) =>
+export const Rt = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'rt'>, 'children'>) =>
   Node('rt', {
     ...props,
     children,
@@ -1047,7 +1047,7 @@ export const Ruby = (props?: NodeProps<'ruby'>) => Node('ruby', props)
  * @param props Optional properties for the s element.
  * @returns An s element node.
  */
-export const S = (children: NodeElement, props?: Omit<NodeProps<'s'>, 'children'>) =>
+export const S = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'s'>, 'children'>) =>
   Node('s', {
     ...props,
     children,
@@ -1059,7 +1059,7 @@ export const S = (children: NodeElement, props?: Omit<NodeProps<'s'>, 'children'
  * @param props Optional properties for the samp element.
  * @returns A samp element node.
  */
-export const Samp = (children: NodeElement, props?: Omit<NodeProps<'samp'>, 'children'>) =>
+export const Samp = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'samp'>, 'children'>) =>
   Node('samp', {
     ...props,
     children,
@@ -1071,7 +1071,7 @@ export const Samp = (children: NodeElement, props?: Omit<NodeProps<'samp'>, 'chi
  * @param props Optional properties for the sub element.
  * @returns A sub element node.
  */
-export const Sub = (children: NodeElement, props?: Omit<NodeProps<'sub'>, 'children'>) =>
+export const Sub = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'sub'>, 'children'>) =>
   Node('sub', {
     ...props,
     children,
@@ -1083,7 +1083,7 @@ export const Sub = (children: NodeElement, props?: Omit<NodeProps<'sub'>, 'child
  * @param props Optional properties for the sup element.
  * @returns A sup element node.
  */
-export const Sup = (children: NodeElement, props?: Omit<NodeProps<'sup'>, 'children'>) =>
+export const Sup = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'sup'>, 'children'>) =>
   Node('sup', {
     ...props,
     children,
@@ -1095,7 +1095,7 @@ export const Sup = (children: NodeElement, props?: Omit<NodeProps<'sup'>, 'child
  * @param props Optional properties for the time element.
  * @returns A time element node.
  */
-export const Time = (children: NodeElement, props?: Omit<NodeProps<'time'>, 'children'>) =>
+export const Time = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'time'>, 'children'>) =>
   Node('time', {
     ...props,
     children,
@@ -1107,7 +1107,7 @@ export const Time = (children: NodeElement, props?: Omit<NodeProps<'time'>, 'chi
  * @param props Optional properties for the u element.
  * @returns A u element node.
  */
-export const U = (children: NodeElement, props?: Omit<NodeProps<'u'>, 'children'>) =>
+export const U = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'u'>, 'children'>) =>
   Node('u', {
     ...props,
     children,
@@ -1119,7 +1119,7 @@ export const U = (children: NodeElement, props?: Omit<NodeProps<'u'>, 'children'
  * @param props Optional properties for the var element.
  * @returns A var element node.
  */
-export const Var = (children: NodeElement, props?: Omit<NodeProps<'var'>, 'children'>) =>
+export const Var = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'var'>, 'children'>) =>
   Node('var', {
     ...props,
     children,
