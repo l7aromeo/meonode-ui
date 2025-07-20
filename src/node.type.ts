@@ -13,6 +13,15 @@ import type {
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
+// --- Utility Types ---
+// Utility to get keys of required properties in a type T.
+type RequiredKeys<T> = {
+  [K in keyof T]-?: object extends Pick<T, K> ? never : K
+}[keyof T]
+
+// Utility to check if a type T has any required properties.
+export type HasRequiredProps<T> = RequiredKeys<T> extends never ? false : true
+
 /**
  * Union type representing any valid node element in the system.
  * Includes React nodes, component types, node instances, and function-based nodes.
@@ -25,15 +34,6 @@ export type NodeElement =
   | ComponentType<any>
   | NodeInstance<any>
   | ((props?: any) => ReactNode | Promise<Awaited<ReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
-
-/**
- * Defines valid child types that can be passed to a node:
- * - ReactNode: Any valid React child (elements, strings, numbers, etc.)
- * - ElementType: React component types (functions/classes)
- * - NodeInstance: Other node instances in the tree
- * - Function: Lazy child evaluation, useful for conditional rendering and hooks
- */
-export type Children = ReactNode | Promise<Awaited<ReactNode>> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
@@ -55,6 +55,15 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
   /** Creates Portal-compatible React elements for rendering outside of the DOM tree */
   toPortal(): ReactDOMRoot | null
 }
+
+/**
+ * Defines valid child types that can be passed to a node:
+ * - ReactNode: Any valid React child (elements, strings, numbers, etc.)
+ * - ElementType: React component types (functions/classes)
+ * - NodeInstance: Other node instances in the tree
+ * - Function: Lazy child evaluation, useful for conditional rendering and hooks
+ */
+export type Children = ReactNode | Promise<Awaited<ReactNode>> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
 
 /**
  * Extracts the props type from a given element type, handling both intrinsic (HTML) elements
@@ -187,25 +196,11 @@ export type PortalProps<T extends BasePortalProps | Record<string, any>> = T & B
 export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P extends BasePortalProps
   ? (props?: {
       /** Optional provider components to wrap the portal content */
-      provider?:
-        | NodeInstance<any>
-
-        /**
-         * @deprecated
-         * Use a single NodeInstance instead of an array for fixed provider.
-         */
-        | NodeInstance<any>[]
+      provider?: NodeInstance<any>
     }) => ReactDOMRoot | null
   : (
       props: P & {
         /** Optional provider components to wrap the portal content */
-        provider?:
-          | NodeInstance<any>
-
-          /**
-           * @deprecated
-           * Use a single NodeInstance instead of an array for fixed provider.
-           */
-          | NodeInstance<any>[]
+        provider?: NodeInstance<any>
       } & Omit<PortalProps<P>, 'portal'>,
     ) => ReactDOMRoot | null
