@@ -151,7 +151,7 @@ export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { node
  */
 export interface FunctionRendererProps<E extends NodeElement> {
   /** Function that returns the child content to render */
-  render: (props?: NodeProps<E>) => ReactNode | NodeInstance<E>
+  render: (props?: NodeProps<E>) => ReactNode | Promise<Awaited<ReactNode>>
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme

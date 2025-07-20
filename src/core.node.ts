@@ -262,7 +262,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
-        render: rawNode as FunctionRendererProps<ReactNode | NodeInstance<typeof rawNode>>['render'],
+        render: rawNode as FunctionRendererProps<NodeElement>['render'],
         passedTheme: parentTheme,
         key: keyForFunctionRenderer, // Assign the generated key
       })
