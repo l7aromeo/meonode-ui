@@ -1,6 +1,16 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
-import type { FinalNodeProps, FunctionRendererProps, NodeElement, NodeInstance, NodeProps, PropsOf, RawNodeProps, Theme } from '@src/node.type.js'
+import type {
+  FinalNodeProps,
+  FunctionRendererProps,
+  HasRequiredProps,
+  NodeElement,
+  NodeInstance,
+  NodeProps,
+  PropsOf,
+  RawNodeProps,
+  Theme,
+} from '@src/node.type.js'
 import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
 import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
@@ -430,17 +440,32 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 /**
  * Factory function to create a BaseNode instance.
  * @param element The React element type.
- * @param props The props for the node.
+ * @param props The props for the node (optional).
  * @returns NodeInstance<E> - A new BaseNode instance.
  */
-export function Node<E extends NodeElement>(element: E, props: Partial<NodeProps<E>> = {}): NodeInstance<E> {
-  const finalProps: RawNodeProps<E> = { ...props } // Ensure we are working with a mutable copy
+export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): NodeInstance<E> {
+  const finalProps: RawNodeProps<E> = { ...(props || {}) } as RawNodeProps<E>
   if (finalProps.theme && !finalProps.nodetheme) {
-    // If theme is provided but nodetheme is not
-    // Prefer explicit nodetheme if provided
-    finalProps.nodetheme = finalProps.theme // Set nodetheme to theme
+    finalProps.nodetheme = finalProps.theme
   }
-  // 'theme' prop itself is not directly used by BaseNode after this, nodetheme is used.
-  // We can keep `theme` in rawProps if needed for cloning or inspection.
-  return new BaseNode(element, finalProps as RawNodeProps<E>)
+
+  return new BaseNode(element, finalProps)
+}
+
+/**
+ * Creates a curried node factory for a given React element type.
+ *
+ * This utility returns a function that, when called with props, produces a `BaseNode` instance.
+ * It is useful for creating reusable node factories for specific components or element types.
+ * @template E The React element or component type.
+ * @param element The React element or component type to wrap.
+ * @returns A function that takes node props and returns a `NodeInstance<E>`.
+ * @example
+ * const ButtonNode = createNode('button');
+ * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
+ */
+export function createNode<E extends ElementType>(
+  element: E,
+): HasRequiredProps<PropsOf<E>> extends true ? (props: NodeProps<E>) => NodeInstance<E> : (props?: NodeProps<E>) => NodeInstance<E> {
+  return (props?: NodeProps<E>) => Node(element, props)
 }
