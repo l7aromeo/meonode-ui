@@ -5,34 +5,6 @@ import type { ReactNode } from 'react'
 import { type Root as ReactDOMRoot } from 'react-dom/client'
 
 /**
- * Creates a portal component with a fixed set of providers by passing an array of `NodeInstance`s.
- * The content component will be rendered within these providers. This method is considered deprecated.
- * @deprecated Use `Portal(provider: NodeInstance<any>, component: ...)` instead for fixed providers.
- * Passing an array of providers for fixed setup is deprecated and will trigger a console warning.
- * @param provider An array of `NodeInstance`s that will wrap the portal content. Each NodeInstance
- * should represent a React context provider (e.g., `ThemeProvider({ theme })`).
- * @param component The React component function that defines the portal's content. It receives
- * props of type `PortalProps<P>` and should return a `ComponentNode`.
- * @returns A launcher function that, when called, creates and controls the portal instance.
- * @example
- * ```ts
- * // Example of a deprecated usage with an array of fixed providers:
- * const DeprecatedThemedModal = Portal(
- * [ThemeProvider({ theme: 'dark' }), LanguageProvider({ lang: 'en' })],
- * (props) => Div({ children: props.children, style: { background: props.nodetheme?.background } })
- * );
- *
- * const deprecatedModalInstance = DeprecatedThemedModal({ children: "Deprecated content" });
- * // A console warning will be logged when DeprecatedThemedModal is created.
- * deprecatedModalInstance.unmount();
- * ```
- */
-export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
-  provider: NodeInstance<any>[],
-  component: (props: PortalProps<P>) => ComponentNode,
-): PortalLauncher<P>
-
-/**
  * Creates a portal component with a single fixed provider.
  * The content component will be rendered within this provider. This is the preferred method
  * for providing fixed context to your portal content.
@@ -92,7 +64,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
 
 // --- Implementation ---
 export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
-  arg1: NodeInstance<any> | NodeInstance<any>[] | ((props: PortalProps<P>) => ComponentNode),
+  arg1: NodeInstance<any> | ((props: PortalProps<P>) => ComponentNode),
   arg2?: (props: PortalProps<P>) => ComponentNode,
 ) {
   // --- Initialization ---
@@ -102,23 +74,15 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
 
   // --- Argument Parsing and Overload Handling ---
   // Determines which Portal overload was called (e.g., with fixed provider or just component).
-  if (typeof arg2 === 'function' && (arg1 instanceof BaseNode || (Array.isArray(arg1) && arg1.every(item => item instanceof BaseNode)))) {
-    // Handles the case where a fixed provider (single or array) is passed.
-    if (Array.isArray(arg1)) {
-      console.warn('Portal: Passing an array of providers as the first argument is deprecated. Please pass a single NodeInstance instead.')
-      hocFixedProvider = arg1
-    } else {
-      // Wraps a single provider into an array for consistent internal handling.
-      hocFixedProvider = [arg1 as NodeInstance<any>]
-    }
+  if (typeof arg2 === 'function' && arg1 instanceof BaseNode) {
+    // Handles the case where a fixed provider (single) is passed.
+    hocFixedProvider = [arg1 as NodeInstance<any>]
     componentFunction = arg2 as (props: Partial<PortalProps<P>>) => ComponentNode
   } else if (typeof arg1 === 'function' && arg2 === undefined) {
     // Handles the case where only the component function is passed.
     componentFunction = arg1 as (props: Partial<PortalProps<P>>) => ComponentNode
   } else {
-    throw new Error(
-      'Invalid arguments for Portal HOC. Use Portal(component), Portal(providerNodeInstance, component), or (deprecated) Portal(providerArray, component).',
-    )
+    throw new Error('Invalid arguments for Portal HOC. Use Portal(component) or Portal(providerNodeInstance, component).')
   }
 
   // --- Core Content Renderer Function ---
@@ -147,14 +111,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
   return function Func(
     props: Partial<P & NodeProps<any>> & {
       /** Optional provider components to wrap the portal content */
-      provider?:
-        | NodeInstance<any>
-
-        /**
-         * @deprecated
-         * Use a single NodeInstance instead of an array for fixed provider.
-         */
-        | NodeInstance<any>[]
+      provider?: NodeInstance<any>
     },
   ): ReactDOMRoot | null {
     let nodeToPortalize: NodeInstance<any>
@@ -162,10 +119,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
     // Combine fixed and dynamic providers
     const dynamicProviders: NodeInstance<any>[] = []
 
-    if (Array.isArray(props.provider)) {
-      console.warn('Portal: Passing an array of providers as the `provider` prop is deprecated. Please pass a single NodeInstance instead.')
-      dynamicProviders.push(...props.provider)
-    } else if (props.provider) {
+    if (props.provider) {
       dynamicProviders.push(props.provider)
     }
 
