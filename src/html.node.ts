@@ -9,7 +9,7 @@ import { createNode, Node } from '@src/core.node.js'
  * @param props Optional properties for the div element.
  * @returns A div element node.
  */
-export const Div = (props?: NodeProps<'div'>) => Node('div', props)
+export const Div = createNode('div')
 
 /**
  * Represents a root div element with full viewport dimensions and column flex layout.
@@ -18,12 +18,12 @@ export const Div = (props?: NodeProps<'div'>) => Node('div', props)
  * @returns A div element node configured as root container.
  * @example
  * Root({
- *   backgroundColor: 'white',
- *   children: [Header(), Main(), Footer()]
+ * backgroundColor: 'white',
+ * children: [Header(), Main(), Footer()]
  * })
  */
 export const Root = (props?: NodeProps<'div'>) =>
-  Div({
+  Node('div', {
     display: 'flex',
     flexDirection: 'column',
     minHeight: '100vh',
@@ -37,7 +37,7 @@ export const Root = (props?: NodeProps<'div'>) =>
  * @returns A div element node with flexbox column layout.
  */
 export const Column = (props?: NodeProps<'div'>) =>
-  Div({
+  Node('div', {
     display: 'flex',
     flexDirection: 'column',
     ...props,
@@ -49,7 +49,7 @@ export const Column = (props?: NodeProps<'div'>) =>
  * @returns A div element node with flexbox row layout.
  */
 export const Row = (props?: NodeProps<'div'>) =>
-  Div({
+  Node('div', {
     display: 'flex',
     flexDirection: 'row',
     ...props,
@@ -60,7 +60,7 @@ export const Row = (props?: NodeProps<'div'>) =>
  * @param props Optional properties for the grid layout.
  * @returns A div element node with grid layout.
  */
-export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...props })
+export const Grid = (props?: NodeProps<'div'>) => Node('div', { display: 'grid', ...props }) // Remains Node because it applies default styling
 
 /**
  * Represents a centered container with flexbox alignment.
@@ -69,7 +69,7 @@ export const Grid = (props?: NodeProps<'div'>) => Div({ display: 'grid', ...prop
  * @returns A div element node configured for centered content.
  */
 export const Center = (props?: NodeProps<'div'>) =>
-  Div({
+  Node('div', {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -82,35 +82,35 @@ export const Center = (props?: NodeProps<'div'>) =>
  * @param props Optional properties for the fixed positioned element.
  * @returns A div element node with fixed positioning.
  */
-export const Fixed = (props?: NodeProps<'div'>) => Div({ position: 'fixed', ...props })
+export const Fixed = (props?: NodeProps<'div'>) => createNode('div')({ position: 'fixed', ...props })
 
 /**
  * Represents a relatively positioned element.
  * @param props Optional properties for the relatively positioned element.
  * @returns A div element node with relative positioning.
  */
-export const Relative = (props?: NodeProps<'div'>) => Div({ position: 'relative', ...props })
+export const Relative = (props?: NodeProps<'div'>) => createNode('div')({ position: 'relative', ...props })
 
 /**
  * Represents an absolutely positioned element.
  * @param props Optional properties for the absolutely positioned element.
  * @returns A div element node with absolute positioning.
  */
-export const Absolute = (props?: NodeProps<'div'>) => Div({ position: 'absolute', ...props })
+export const Absolute = (props?: NodeProps<'div'>) => createNode('div')({ position: 'absolute', ...props })
 
 /**
  * Represents a sticky positioned element.
  * @param props Optional properties for the sticky positioned element.
  * @returns A div element node with sticky positioning.
  */
-export const Sticky = (props?: NodeProps<'div'>) => Div({ position: 'sticky', ...props })
+export const Sticky = (props?: NodeProps<'div'>) => createNode('div')({ position: 'sticky', ...props })
 
 /**
  * Represents a statically positioned element.
  * @param props Optional properties for the statically positioned element.
  * @returns A div element node with static positioning.
  */
-export const Static = (props?: NodeProps<'div'>) => Div({ position: 'static', ...props })
+export const Static = (props?: NodeProps<'div'>) => createNode('div')({ position: 'static', ...props })
 
 // Typography
 
@@ -295,7 +295,7 @@ export const Code = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the br element.
  * @returns A br element node.
  */
-export const Br = (props?: Omit<NodeProps<'br'>, 'children'>) => Node('br', props)
+export const Br = createNode('br')
 
 // Lists
 
@@ -304,42 +304,42 @@ export const Br = (props?: Omit<NodeProps<'br'>, 'children'>) => Node('br', prop
  * @param props Optional properties for the ol element.
  * @returns An ol element node.
  */
-export const Ol = (props?: NodeProps<'ol'>) => Node('ol', props)
+export const Ol = createNode('ol')
 
 /**
  * Represents an unordered list.
  * @param props Optional properties for the ul element.
  * @returns A ul element node.
  */
-export const Ul = (props?: NodeProps<'ul'>) => Node('ul', props)
+export const Ul = createNode('ul')
 
 /**
  * Represents a list item.
  * @param props Optional properties for the li element.
  * @returns An li element node.
  */
-export const Li = (props?: NodeProps<'li'>) => Node('li', props)
+export const Li = createNode('li')
 
 /**
  * Represents a description list.
  * @param props Optional properties for the dl element.
  * @returns A dl element node.
  */
-export const Dl = (props?: NodeProps<'dl'>) => Node('dl', props)
+export const Dl = createNode('dl')
 
 /**
  * Represents a term in a description list.
  * @param props Optional properties for the dt element.
  * @returns A dt element node.
  */
-export const Dt = (props?: NodeProps<'dt'>) => Node('dt', props)
+export const Dt = createNode('dt')
 
 /**
  * Represents a description in a description list.
  * @param props Optional properties for the dd element.
  * @returns A dd element node.
  */
-export const Dd = (props?: NodeProps<'dd'>) => Node('dd', props)
+export const Dd = createNode('dd')
 
 // Forms and inputs
 
@@ -348,21 +348,21 @@ export const Dd = (props?: NodeProps<'dd'>) => Node('dd', props)
  * @param props Optional properties for the form element.
  * @returns A form element node.
  */
-export const Form = (props?: NodeProps<'form'>) => Node('form', props)
+export const Form = createNode('form')
 
 /**
  * Represents a label for an input element.
  * @param props Optional properties for the label element.
  * @returns A label element node.
  */
-export const Label = (props?: NodeProps<'label'>) => Node('label', props)
+export const Label = createNode('label')
 
 /**
  * Represents an input element.
  * @param props Optional properties for the input element.
  * @returns An input element node.
  */
-export const Input = (props?: Omit<NodeProps<'input'>, 'children'>) => Node('input', props)
+export const Input = createNode('input')
 
 /**
  * Creates a button element node.
@@ -381,14 +381,14 @@ export const Button = (children: NodeElement | NodeElement[], props?: Omit<NodeP
  * @param props Optional properties for the textarea element.
  * @returns A textarea element node.
  */
-export const Textarea = (props?: NodeProps<'textarea'>) => Node('textarea', props)
+export const Textarea = createNode('textarea')
 
 /**
  * Represents a select dropdown element.
  * @param props Optional properties for the select element.
  * @returns A select element node.
  */
-export const Select = (props?: NodeProps<'select'>) => Node('select', props)
+export const Select = createNode('select')
 
 /**
  * Represents an option within a select element.
@@ -407,7 +407,7 @@ export const Option = (children: NodeElement | NodeElement[], props?: Omit<NodeP
  * @param props Optional properties for the fieldset element.
  * @returns A fieldset element node.
  */
-export const Fieldset = (props?: NodeProps<'fieldset'>) => Node('fieldset', props)
+export const Fieldset = createNode('fieldset')
 
 /**
  * Represents a legend for a fieldset.
@@ -426,7 +426,7 @@ export const Legend = (children: NodeElement | NodeElement[], props?: Omit<NodeP
  * @param props Optional properties for the optgroup element.
  * @returns An optgroup element node.
  */
-export const Optgroup = (props?: NodeProps<'optgroup'>) => Node('optgroup', props)
+export const Optgroup = createNode('optgroup')
 
 // Tables
 
@@ -435,49 +435,49 @@ export const Optgroup = (props?: NodeProps<'optgroup'>) => Node('optgroup', prop
  * @param props Optional properties for the table element.
  * @returns A table element node.
  */
-export const Table = (props?: NodeProps<'table'>) => Node('table', props)
+export const Table = createNode('table')
 
 /**
  * Represents a table header section.
  * @param props Optional properties for the thead element.
  * @returns A thead element node.
  */
-export const Thead = (props?: NodeProps<'thead'>) => Node('thead', props)
+export const Thead = createNode('thead')
 
 /**
  * Represents a table body section.
  * @param props Optional properties for the tbody element.
  * @returns A tbody element node.
  */
-export const Tbody = (props?: NodeProps<'tbody'>) => Node('tbody', props)
+export const Tbody = createNode('tbody')
 
 /**
  * Represents a table footer section.
  * @param props Optional properties for the tfoot element.
  * @returns A tfoot element node.
  */
-export const Tfoot = (props?: NodeProps<'tfoot'>) => Node('tfoot', props)
+export const Tfoot = createNode('tfoot')
 
 /**
  * Represents a table row.
  * @param props Optional properties for the tr element.
  * @returns A tr element node.
  */
-export const Tr = (props?: NodeProps<'tr'>) => Node('tr', props)
+export const Tr = createNode('tr')
 
 /**
  * Represents a table header cell.
  * @param props Optional properties for the th element.
  * @returns A th element node.
  */
-export const Th = (props?: NodeProps<'th'>) => Node('th', props)
+export const Th = createNode('th')
 
 /**
  * Represents a table data cell.
  * @param props Optional properties for the td element.
  * @returns A td element node.
  */
-export const Td = (props?: NodeProps<'td'>) => Node('td', props)
+export const Td = createNode('td')
 
 /**
  * Represents a table caption.
@@ -496,14 +496,14 @@ export const Caption = (children: NodeElement | NodeElement[], props?: Omit<Node
  * @param props Optional properties for the colgroup element.
  * @returns A colgroup element node.
  */
-export const Colgroup = (props?: NodeProps<'colgroup'>) => Node('colgroup', props)
+export const Colgroup = createNode('colgroup')
 
 /**
  * Represents a table column.
  * @param props Optional properties for the col element.
  * @returns A col element node.
  */
-export const Col = (props?: Omit<NodeProps<'col'>, 'children'>) => Node('col', props)
+export const Col = createNode('col')
 
 // Media elements
 
@@ -512,56 +512,56 @@ export const Col = (props?: Omit<NodeProps<'col'>, 'children'>) => Node('col', p
  * @param props Optional properties for the img element.
  * @returns An img element node.
  */
-export const Img = (props?: Omit<NodeProps<'img'>, 'children'>) => Node('img', props)
+export const Img = createNode('img')
 
 /**
  * Represents a video element.
  * @param props Optional properties for the video element.
  * @returns A video element node.
  */
-export const Video = (props?: NodeProps<'video'>) => Node('video', props)
+export const Video = createNode('video')
 
 /**
  * Represents an audio element.
  * @param props Optional properties for the audio element.
  * @returns An audio element node.
  */
-export const Audio = (props?: NodeProps<'audio'>) => Node('audio', props)
+export const Audio = createNode('audio')
 
 /**
  * Represents a picture element.
  * @param props Optional properties for the picture element.
  * @returns A picture element node.
  */
-export const Picture = (props?: NodeProps<'picture'>) => Node('picture', props)
+export const Picture = createNode('picture')
 
 /**
  * Represents a source element.
  * @param props Optional properties for the source element.
  * @returns A source element node.
  */
-export const Source = (props?: Omit<NodeProps<'source'>, 'children'>) => Node('source', props)
+export const Source = createNode('source')
 
 /**
  * Represents a text track element.
  * @param props Optional properties for the track element.
  * @returns A track element node.
  */
-export const Track = (props?: Omit<NodeProps<'track'>, 'children'>) => Node('track', props)
+export const Track = createNode('track')
 
 /**
  * Represents a canvas element.
  * @param props Optional properties for the canvas element.
  * @returns A canvas element node.
  */
-export const Canvas = (props?: NodeProps<'canvas'>) => Node('canvas', props)
+export const Canvas = createNode('canvas')
 
 /**
  * Represents an iframe element.
  * @param props Optional properties for the iframe element.
  * @returns An iframe element node.
  */
-export const Iframe = (props?: NodeProps<'iframe'>) => Node('iframe', props)
+export const Iframe = createNode('iframe')
 
 // SVG elements
 
@@ -570,119 +570,119 @@ export const Iframe = (props?: NodeProps<'iframe'>) => Node('iframe', props)
  * @param props Optional properties for the svg element.
  * @returns An svg element node.
  */
-export const Svg = (props?: NodeProps<'svg'>) => Node('svg', props)
+export const Svg = createNode('svg')
 
 /**
  * Represents an SVG path element.
  * @param props Optional properties for the path element.
  * @returns A path element node.
  */
-export const SvgPath = (props?: NodeProps<'path'>) => Node('path', props)
+export const SvgPath = createNode('path')
 
 /**
  * Represents an SVG circle element.
  * @param props Optional properties for the circle element.
  * @returns A circle element node.
  */
-export const SvgCircle = (props?: NodeProps<'circle'>) => Node('circle', props)
+export const SvgCircle = createNode('circle')
 
 /**
  * Represents an SVG ellipse element.
  * @param props Optional properties for the ellipse element.
  * @returns An ellipse element node.
  */
-export const SvgEllipse = (props?: NodeProps<'ellipse'>) => Node('ellipse', props)
+export const SvgEllipse = createNode('ellipse')
 
 /**
  * Represents an SVG line element.
  * @param props Optional properties for the line element.
  * @returns A line element node.
  */
-export const SvgLine = (props?: NodeProps<'line'>) => Node('line', props)
+export const SvgLine = createNode('line')
 
 /**
  * Represents an SVG polyline element.
  * @param props Optional properties for the polyline element.
  * @returns A polyline element node.
  */
-export const SvgPolyline = (props?: NodeProps<'polyline'>) => Node('polyline', props)
+export const SvgPolyline = createNode('polyline')
 
 /**
  * Represents an SVG polygon element.
  * @param props Optional properties for the polygon element.
  * @returns A polygon element node.
  */
-export const SvgPolygon = (props?: NodeProps<'polygon'>) => Node('polygon', props)
+export const SvgPolygon = createNode('polygon')
 
 /**
  * Represents an SVG rectangle element.
  * @param props Optional properties for the rect element.
  * @returns A rect element node.
  */
-export const SvgRect = (props?: NodeProps<'rect'>) => Node('rect', props)
+export const SvgRect = createNode('rect')
 
 /**
  * Represents an SVG use element.
  * @param props Optional properties for the use element.
  * @returns A use element node.
  */
-export const SvgUse = (props?: NodeProps<'use'>) => Node('use', props)
+export const SvgUse = createNode('use')
 
 /**
  * Represents an SVG definitions element.
  * @param props Optional properties for the defs element.
  * @returns A defs element node.
  */
-export const SvgDefs = (props?: NodeProps<'defs'>) => Node('defs', props)
+export const SvgDefs = createNode('defs')
 
 /**
  * Represents an SVG linear gradient element.
  * @param props Optional properties for the linearGradient element.
  * @returns A linearGradient element node.
  */
-export const SvgLinearGradient = (props?: NodeProps<'linearGradient'>) => Node('linearGradient', props)
+export const SvgLinearGradient = createNode('linearGradient')
 
 /**
  * Represents an SVG radial gradient element.
  * @param props Optional properties for the radialGradient element.
  * @returns A radialGradient element node.
  */
-export const SvgRadialGradient = (props?: NodeProps<'radialGradient'>) => Node('radialGradient', props)
+export const SvgRadialGradient = createNode('radialGradient')
 
 /**
  * Represents an SVG gradient stop element.
  * @param props Optional properties for the stop element.
  * @returns A stop element node.
  */
-export const SvgStop = (props?: NodeProps<'stop'>) => Node('stop', props)
+export const SvgStop = createNode('stop')
 
 /**
  * Represents an SVG symbol element.
  * @param props Optional properties for the symbol element.
  * @returns A symbol element node.
  */
-export const SvgSymbol = (props?: NodeProps<'symbol'>) => Node('symbol', props)
+export const SvgSymbol = createNode('symbol')
 
 /**
  * Represents an SVG group element.
  * @param props Optional properties for the g element.
  * @returns A g element node.
  */
-export const SvgG = (props?: NodeProps<'g'>) => Node('g', props)
+export const SvgG = createNode('g')
 
 /**
  * Represents an SVG text element.
  * @param props Optional properties for the text element.
  * @returns A text element node.
  */
-export const SvgText = (props?: NodeProps<'text'>) => Node('text', props)
+export const SvgText = createNode('text')
 
 /**
  * Represents an SVG text span element.
  * @param props Optional properties for the tspan element.
  * @returns A tspan element node.
  */
-export const SvgTspan = (props?: NodeProps<'tspan'>) => Node('tspan', props)
+export const SvgTspan = createNode('tspan')
 
 // Navigation and links
 
@@ -691,14 +691,14 @@ export const SvgTspan = (props?: NodeProps<'tspan'>) => Node('tspan', props)
  * @param props Optional properties for the a element.
  * @returns An a element node.
  */
-export const A = (props?: NodeProps<'a'>) => Node('a', props)
+export const A = createNode('a')
 
 /**
  * Represents a navigation element.
  * @param props Optional properties for the nav element.
  * @returns A nav element node.
  */
-export const Nav = (props?: NodeProps<'nav'>) => Node('nav', props)
+export const Nav = createNode('nav')
 
 // Document structure
 
@@ -707,7 +707,7 @@ export const Nav = (props?: NodeProps<'nav'>) => Node('nav', props)
  * @param props Optional properties for the body element.
  * @returns A body element node.
  */
-export const Body = (props?: NodeProps<'body'>) => Node('body', props)
+export const Body = createNode('body')
 
 /**
  * Represents the main content of a document.
@@ -726,42 +726,42 @@ export const Main = (props?: NodeProps<'main'>) =>
  * @param props Optional properties for the header element.
  * @returns A header element node.
  */
-export const Header = (props?: NodeProps<'header'>) => Node('header', props)
+export const Header = createNode('header')
 
 /**
  * Represents a footer element.
  * @param props Optional properties for the footer element.
  * @returns A footer element node.
  */
-export const Footer = (props?: NodeProps<'footer'>) => Node('footer', props)
+export const Footer = createNode('footer')
 
 /**
  * Represents an aside element.
  * @param props Optional properties for the aside element.
  * @returns An aside element node.
  */
-export const Aside = (props?: NodeProps<'aside'>) => Node('aside', props)
+export const Aside = createNode('aside')
 
 /**
  * Represents a section element.
  * @param props Optional properties for the section element.
  * @returns A section element node.
  */
-export const Section = (props?: NodeProps<'section'>) => Node('section', props)
+export const Section = createNode('section')
 
 /**
  * Represents an article element.
  * @param props Optional properties for the article element.
  * @returns An article element node.
  */
-export const Article = (props?: NodeProps<'article'>) => Node('article', props)
+export const Article = createNode('article')
 
 /**
  * Represents a figure element.
  * @param props Optional properties for the figure element.
  * @returns A figure element node.
  */
-export const Figure = (props?: NodeProps<'figure'>) => Node('figure', props)
+export const Figure = createNode('figure')
 
 /**
  * Represents a figure caption element.
@@ -780,28 +780,28 @@ export const Figcaption = (children: NodeElement | NodeElement[], props?: Omit<N
  * @param props Optional properties for the blockquote element.
  * @returns A blockquote element node.
  */
-export const Blockquote = (props?: NodeProps<'blockquote'>) => Node('blockquote', props)
+export const Blockquote = createNode('blockquote')
 
 /**
  * Represents an address element.
  * @param props Optional properties for the address element.
  * @returns An address element node.
  */
-export const Address = (props?: NodeProps<'address'>) => Node('address', props)
+export const Address = createNode('address')
 
 /**
  * Represents a dialog element.
  * @param props Optional properties for the dialog element.
  * @returns A dialog element node.
  */
-export const Dialog = (props?: NodeProps<'dialog'>) => Node('dialog', props)
+export const Dialog = createNode('dialog')
 
 /**
  * Represents a details element.
  * @param props Optional properties for the details element.
  * @returns A details element node.
  */
-export const Details = (props?: NodeProps<'details'>) => Node('details', props)
+export const Details = createNode('details')
 
 /**
  * Represents a summary element for a details disclosure box.
@@ -822,28 +822,28 @@ export const Summary = (children: NodeElement | NodeElement[], props?: Omit<Node
  * @param props Optional properties for the head element.
  * @returns A head element node.
  */
-export const Head = (props?: NodeProps<'head'>) => Node('head', props)
+export const Head = createNode('head')
 
 /**
  * Represents the root HTML element.
  * @param props Optional properties for the HTML element.
  * @returns An HTML element node.
  */
-export const Html = (props?: NodeProps<'html'>) => Node('html', props)
+export const Html = createNode('html')
 
 /**
  * Represents a meta element.
  * @param props Optional properties for the meta element.
  * @returns A meta element node.
  */
-export const Meta = (props?: Omit<NodeProps<'meta'>, 'children'>) => Node('meta', props)
+export const Meta = createNode('meta')
 
 /**
  * Represents a link element.
  * @param props Optional properties for the link element.
  * @returns A link element node.
  */
-export const Link = (props?: Omit<NodeProps<'link'>, 'children'>) => Node('link', props)
+export const Link = createNode('link')
 
 /**
  * Represents a style element. Its content should be CSS text.
@@ -862,7 +862,7 @@ export const Style = (cssText?: string, props?: Omit<NodeProps<'style'>, 'childr
  * @param props Optional properties for the script element (e.g., src, type, async, defer).
  * @returns A script element node.
  */
-export const Script = createNode('script')
+export const Script = createNode('script') // Already uses createNode
 
 /**
  * Creates a title element node for document head title.
@@ -881,7 +881,7 @@ export const Title = (children: NodeElement | NodeElement[], props?: Omit<NodePr
  * @param props Optional properties for the base element.
  * @returns A base element node.
  */
-export const Base = (props?: Omit<NodeProps<'base'>, 'children'>) => Node('base', props)
+export const Base = createNode('base')
 
 // --- Additional Text-Level Semantics ---
 
@@ -1034,7 +1034,7 @@ export const Rt = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the ruby element.
  * @returns A ruby element node.
  */
-export const Ruby = (props?: NodeProps<'ruby'>) => Node('ruby', props)
+export const Ruby = createNode('ruby')
 
 /**
  * Represents text that is no longer accurate or relevant (strikethrough).
@@ -1125,7 +1125,7 @@ export const Var = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the wbr element.
  * @returns A wbr element node.
  */
-export const Wbr = (props?: Omit<NodeProps<'wbr'>, 'children'>) => Node('wbr', props)
+export const Wbr = createNode('wbr')
 
 // --- Additional Grouping Content ---
 
@@ -1134,21 +1134,21 @@ export const Wbr = (props?: Omit<NodeProps<'wbr'>, 'children'>) => Node('wbr', p
  * @param props Optional properties for the hr element.
  * @returns An hr element node.
  */
-export const Hr = (props?: Omit<NodeProps<'hr'>, 'children'>) => Node('hr', props)
+export const Hr = createNode('hr')
 
 /**
  * Represents a group of commands that a user can perform or activate.
  * @param props Optional properties for the menu element.
  * @returns A menu element node.
  */
-export const Menu = (props?: NodeProps<'menu'>) => Node('menu', props)
+export const Menu = createNode('menu')
 
 /**
  * Represents the parts of a document or application that contain search or filtering controls.
  * @param props Optional properties for the search element.
  * @returns A search element node.
  */
-export const Search = (props?: NodeProps<'search'>) => Node('search', props)
+export const Search = createNode('search')
 
 // --- Additional Embedded Content ---
 
@@ -1157,35 +1157,35 @@ export const Search = (props?: NodeProps<'search'>) => Node('search', props)
  * @param props Optional properties for the embed element.
  * @returns An embed element node.
  */
-export const Embed = (props?: Omit<NodeProps<'embed'>, 'children'>) => Node('embed', props)
+export const Embed = createNode('embed')
 
 /**
- * Represents an external resource, which can be treated as an image, a nested browsing context, or content to be handled by a plugin.
+ * Represents an external resource, which can be treated as an image, a nested Browse context, or content to be handled by a plugin.
  * @param props Optional properties for the object element.
  * @returns An object element node.
  */
-export const ObjectElement = (props?: NodeProps<'object'>) => Node('object', props) // Renamed to ObjectElement to avoid conflict with JavaScript's Object
+export const ObjectElement = createNode('object') // Renamed to ObjectElement to avoid conflict with JavaScript's Object
 
 /**
  * Defines parameters for an <object> element. This is a void element.
  * @param props Optional properties for the param element.
  * @returns A param element node.
  */
-export const Param = (props?: Omit<NodeProps<'param'>, 'children'>) => Node('param', props)
+export const Param = createNode('param')
 
 /**
  * Represents an image map, with clickable areas.
  * @param props Optional properties for the map element.
  * @returns A map element node.
  */
-export const MapElement = (props?: NodeProps<'map'>) => Node('map', props) // Renamed to MapElement to avoid conflict with JavaScript's Map
+export const MapElement = createNode('map') // Renamed to MapElement to avoid conflict with JavaScript's Map
 
 /**
  * Defines a client-side image map area. This is a void element.
  * @param props Optional properties for the area element.
  * @returns An area element node.
  */
-export const Area = (props?: Omit<NodeProps<'area'>, 'children'>) => Node('area', props)
+export const Area = createNode('area')
 
 // --- Additional Forms Elements ---
 
@@ -1194,28 +1194,28 @@ export const Area = (props?: Omit<NodeProps<'area'>, 'children'>) => Node('area'
  * @param props Optional properties for the datalist element.
  * @returns A datalist element node.
  */
-export const Datalist = (props?: NodeProps<'datalist'>) => Node('datalist', props)
+export const Datalist = createNode('datalist')
 
 /**
  * Represents the result of a calculation or user action.
  * @param props Optional properties for the output element.
  * @returns An output element node.
  */
-export const Output = (props?: NodeProps<'output'>) => Node('output', props)
+export const Output = createNode('output')
 
 /**
  * Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.
  * @param props Optional properties for the progress element.
  * @returns A progress element node.
  */
-export const Progress = (props?: NodeProps<'progress'>) => Node('progress', props)
+export const Progress = createNode('progress')
 
 /**
  * Represents either a scalar value within a known range or a fractional value.
  * @param props Optional properties for the meter element.
  * @returns A meter element node.
  */
-export const Meter = (props?: NodeProps<'meter'>) => Node('meter', props)
+export const Meter = createNode('meter')
 
 // --- Additional Scripting & Document Elements ---
 
@@ -1224,14 +1224,14 @@ export const Meter = (props?: NodeProps<'meter'>) => Node('meter', props)
  * @param props Optional properties for the noscript element.
  * @returns A noscript element node.
  */
-export const Noscript = (props?: NodeProps<'noscript'>) => Node('noscript', props)
+export const Noscript = createNode('noscript')
 
 /**
  * A mechanism for holding HTML that is not to be rendered immediately when a page is loaded but may be instantiated subsequently during runtime using JavaScript.
  * @param props Optional properties for the template element.
  * @returns A template element node.
  */
-export const Template = (props?: NodeProps<'template'>) => Node('template', props)
+export const Template = createNode('template')
 
 // --- Additional Sections Elements ---
 
@@ -1240,4 +1240,4 @@ export const Template = (props?: NodeProps<'template'>) => Node('template', prop
  * @param props Optional properties for the hgroup element.
  * @returns An hgroup element node.
  */
-export const Hgroup = (props?: NodeProps<'hgroup'>) => Node('hgroup', props)
+export const Hgroup = createNode('hgroup')
