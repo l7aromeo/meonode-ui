@@ -1,15 +1,15 @@
 'use strict'
-import type {
-  Attributes as ReactAttributes,
-  ComponentProps,
-  CSSProperties,
-  ReactNode,
-  JSX,
-  ElementType,
-  ComponentType,
-  JSXElementConstructor,
-  Component,
-  Ref,
+import React, {
+  type Attributes as ReactAttributes,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+  type JSX,
+  type ElementType,
+  type ComponentType,
+  type JSXElementConstructor,
+  type Component,
+  type Ref,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -151,7 +151,7 @@ export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { node
  */
 export interface FunctionRendererProps<E extends NodeElement> {
   /** Function that returns the child content to render */
-  render: (props?: NodeProps<E>) => ReactNode | Promise<Awaited<ReactNode>>
+  render: (props?: NodeProps<E>) => ReactNode | Promise<Awaited<ReactNode>> | React.Component | NodeInstance<E>
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme

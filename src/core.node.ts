@@ -236,7 +236,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
     // Case 1: Child is already a BaseNode instance
     if (rawNode instanceof BaseNode) {
-      const childInstance = rawNode as BaseNode<any>
+      const childInstance = rawNode
       const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
       const themeForNewNode = childRawProps.theme || childRawProps.nodetheme || parentTheme // Prefer child's own theme
 
@@ -262,9 +262,9 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
-        render: rawNode as FunctionRendererProps<NodeElement>['render'],
+        render: rawNode as never,
         passedTheme: parentTheme,
-        key: keyForFunctionRenderer, // Assign the generated key
+        key: keyForFunctionRenderer,
       })
     }
 
