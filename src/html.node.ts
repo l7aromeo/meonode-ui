@@ -1,6 +1,6 @@
 'use strict'
 import type { NodeElement, NodeProps } from '@src/node.type.js'
-import { Node } from '@src/core.node.js'
+import { createNode, Node } from '@src/core.node.js'
 
 // Layout components
 
@@ -859,15 +859,10 @@ export const Style = (cssText?: string, props?: Omit<NodeProps<'style'>, 'childr
 
 /**
  * Represents a script element. For inline scripts, its content should be JavaScript text.
- * @param scriptContent Optional JavaScript code as a string for inline scripts.
  * @param props Optional properties for the script element (e.g., src, type, async, defer).
  * @returns A script element node.
  */
-export const Script = (scriptContent?: string, props?: Omit<NodeProps<'script'>, 'children'>) =>
-  Node('script', {
-    ...props,
-    children: scriptContent,
-  })
+export const Script = createNode('script')
 
 /**
  * Creates a title element node for document head title.
