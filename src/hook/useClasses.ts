@@ -195,8 +195,16 @@ function collectRules(sxBlock: StyleObject, currentSelector: string): string[] {
     if (typeof value === 'object' && value !== null) {
       if (key.startsWith('&')) {
         // Handles nested selectors (e.g., '&:hover', '& span')
-        const newSelector = key.replace(/&/g, currentSelector)
-        rules.push(...collectRules(value as StyleObject, newSelector))
+        // Split comma-separated selectors and process each part
+        const nestedSelectors = key
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s.length > 0)
+
+        for (const nestedSelectorPart of nestedSelectors) {
+          const newSelector = nestedSelectorPart.replace(/&/g, currentSelector)
+          rules.push(...collectRules(value as StyleObject, newSelector))
+        }
       } else if (key.startsWith('@')) {
         // Warns about deeply nested at-rules, as they are processed at top-level or directly under the base class.
         console.warn(
