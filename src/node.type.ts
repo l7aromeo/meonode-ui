@@ -131,7 +131,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
     props: Partial<Omit<PropsOf<E>, 'children'>>
     children: Children | Children[]
     theme: Theme
-  }>
+  }> & { [key: string]: any }
 
 /**
  * BaseNode's internal props type, extending NodeProps:
