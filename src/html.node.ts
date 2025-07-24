@@ -847,15 +847,10 @@ export const Link = createNode('link')
 
 /**
  * Represents a style element. Its content should be CSS text.
- * @param cssText Optional CSS code as a string.
  * @param props Optional properties for the style element.
  * @returns A style element node.
  */
-export const Style = (cssText?: string, props?: Omit<NodeProps<'style'>, 'children'>) =>
-  Node('style', {
-    ...props,
-    children: cssText,
-  })
+export const Style = createNode('style')
 
 /**
  * Represents a script element. For inline scripts, its content should be JavaScript text.
