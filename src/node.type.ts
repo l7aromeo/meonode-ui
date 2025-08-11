@@ -10,6 +10,8 @@ import React, {
   type JSXElementConstructor,
   type Component,
   type Ref,
+  type ExoticComponent,
+  type FragmentProps,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -23,17 +25,23 @@ type RequiredKeys<T> = {
 export type HasRequiredProps<T> = RequiredKeys<T> extends never ? false : true
 
 /**
- * Union type representing any valid node element in the system.
- * Includes React nodes, component types, node instances, and function-based nodes.
+ * Excludes array types from ReactNode, ensuring a single, non-array React element or primitive.
+ */
+export type NonArrayReactNode = Exclude<ReactNode, ReactNode[]>
+
+/**
+ * Defines the various types that can represent a "node" in the Meonode system.
+ * This includes React elements, components, promises resolving to React nodes, and NodeInstance objects.
  */
 export type NodeElement =
-  | ReactNode
-  | Promise<Awaited<ReactNode>>
+  | ExoticComponent<FragmentProps>
+  | NonArrayReactNode
+  | Promise<Awaited<NonArrayReactNode>>
   | Component<any, any, any>
   | ElementType
   | ComponentType<any>
   | NodeInstance<any>
-  | ((props?: any) => ReactNode | Promise<Awaited<ReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
+  | ((props?: any) => NonArrayReactNode | Promise<Awaited<NonArrayReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
 
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.

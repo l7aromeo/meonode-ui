@@ -1,5 +1,5 @@
 'use strict'
-import React, { type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import React, { Fragment, type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
 import type {
   FinalNodeProps,
   FunctionRendererProps,
@@ -12,7 +12,7 @@ import type {
   Theme,
 } from '@src/node.type.js'
 import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
-import { isForwardRef, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
+import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper'
 
@@ -383,9 +383,14 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
     }
 
     // Prepare props for React.createElement
-    const propsForCreateElement: ComponentProps<ElementType> & { key?: Key } = {
-      ...(otherProps as ComponentProps<ElementType>),
-      key,
+    let propsForCreateElement: ComponentProps<ElementType> & { key?: Key }
+    if (this.element === Fragment || isFragment(this.element)) {
+      propsForCreateElement = { key }
+    } else {
+      propsForCreateElement = {
+        ...(otherProps as ComponentProps<ElementType>),
+        key,
+      }
     }
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
