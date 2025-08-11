@@ -1,7 +1,7 @@
 {
   "name": "@meonode/ui",
   "description": "A structured approach to component composition, direct CSS-first prop styling, built-in theming, smart prop handling (including raw property pass-through), and dynamic children.",
-  "version": "0.1.110",
+  "version": "0.1.111",
   "type": "module",
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
