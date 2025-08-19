@@ -112,7 +112,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
     props: Partial<P & NodeProps<any>> & {
       /** Optional provider components to wrap the portal content */
       provider?: NodeInstance<any>
-    },
+    } = {},
   ): ReactDOMRoot | null {
     let nodeToPortalize: NodeInstance<any>
 
