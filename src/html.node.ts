@@ -1,6 +1,5 @@
 'use strict'
-import type { NodeElement, NodeProps } from '@src/node.type.js'
-import { createNode, Node } from '@src/core.node.js'
+import { createNode, createChildrenFirstNode } from '@src/core.node.js'
 
 // Layout components
 
@@ -22,45 +21,39 @@ export const Div = createNode('div')
  * children: [Header(), Main(), Footer()]
  * })
  */
-export const Root = (props?: NodeProps<'div'>) =>
-  Node('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    minWidth: '100vw',
-    ...props,
-  })
+export const Root = createNode('div', {
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: '100vh',
+  minWidth: '100vw',
+})
 
 /**
  * Represents a column layout using flexbox.
  * @param props Optional properties for the column layout.
  * @returns A div element node with flexbox column layout.
  */
-export const Column = (props?: NodeProps<'div'>) =>
-  Node('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    ...props,
-  })
+export const Column = createNode('div', {
+  display: 'flex',
+  flexDirection: 'column',
+})
 
 /**
  * Represents a row layout using flexbox.
  * @param props Optional properties for the row layout.
  * @returns A div element node with flexbox row layout.
  */
-export const Row = (props?: NodeProps<'div'>) =>
-  Node('div', {
-    display: 'flex',
-    flexDirection: 'row',
-    ...props,
-  })
+export const Row = createNode('div', {
+  display: 'flex',
+  flexDirection: 'row',
+})
 
 /**
  * Represents a grid layout.
  * @param props Optional properties for the grid layout.
  * @returns A div element node with grid layout.
  */
-export const Grid = (props?: NodeProps<'div'>) => Node('div', { display: 'grid', ...props }) // Remains Node because it applies default styling
+export const Grid = createNode('div', { display: 'grid' })
 
 /**
  * Represents a centered container with flexbox alignment.
@@ -68,49 +61,47 @@ export const Grid = (props?: NodeProps<'div'>) => Node('div', { display: 'grid',
  * @param props Optional properties for the div element.
  * @returns A div element node configured for centered content.
  */
-export const Center = (props?: NodeProps<'div'>) =>
-  Node('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...props,
-  })
+export const Center = createNode('div', {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+})
 
 /**
  * Represents a fixed positioned element.
  * @param props Optional properties for the fixed positioned element.
  * @returns A div element node with fixed positioning.
  */
-export const Fixed = (props?: NodeProps<'div'>) => createNode('div')({ position: 'fixed', ...props })
+export const Fixed = createNode('div', { position: 'fixed' })
 
 /**
  * Represents a relatively positioned element.
  * @param props Optional properties for the relatively positioned element.
  * @returns A div element node with relative positioning.
  */
-export const Relative = (props?: NodeProps<'div'>) => createNode('div')({ position: 'relative', ...props })
+export const Relative = createNode('div', { position: 'relative' })
 
 /**
  * Represents an absolutely positioned element.
  * @param props Optional properties for the absolutely positioned element.
  * @returns A div element node with absolute positioning.
  */
-export const Absolute = (props?: NodeProps<'div'>) => createNode('div')({ position: 'absolute', ...props })
+export const Absolute = createNode('div', { position: 'absolute' })
 
 /**
  * Represents a sticky positioned element.
  * @param props Optional properties for the sticky positioned element.
  * @returns A div element node with sticky positioning.
  */
-export const Sticky = (props?: NodeProps<'div'>) => createNode('div')({ position: 'sticky', ...props })
+export const Sticky = createNode('div', { position: 'sticky' })
 
 /**
  * Represents a statically positioned element.
  * @param props Optional properties for the statically positioned element.
  * @returns A div element node with static positioning.
  */
-export const Static = (props?: NodeProps<'div'>) => createNode('div')({ position: 'static', ...props })
+export const Static = createNode('div', { position: 'static' })
 
 // Typography
 
@@ -120,11 +111,7 @@ export const Static = (props?: NodeProps<'div'>) => createNode('div')({ position
  * @param props Optional properties for the h1 element.
  * @returns An h1 element node.
  */
-export const H1 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h1'>, 'children'>) =>
-  Node('h1', {
-    ...props,
-    children,
-  })
+export const H1 = createChildrenFirstNode('h1')
 
 /**
  * Creates an h2 heading element node.
@@ -132,11 +119,7 @@ export const H1 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the h2 element.
  * @returns An h2 element node.
  */
-export const H2 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h2'>, 'children'>) =>
-  Node('h2', {
-    ...props,
-    children,
-  })
+export const H2 = createChildrenFirstNode('h2')
 
 /**
  * Creates an h3 heading element node.
@@ -144,11 +127,7 @@ export const H2 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the h3 element.
  * @returns An h3 element node.
  */
-export const H3 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h3'>, 'children'>) =>
-  Node('h3', {
-    ...props,
-    children,
-  })
+export const H3 = createChildrenFirstNode('h3')
 
 /**
  * Creates an h4 heading element node.
@@ -156,11 +135,7 @@ export const H3 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the h4 element.
  * @returns An h4 element node.
  */
-export const H4 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h4'>, 'children'>) =>
-  Node('h4', {
-    ...props,
-    children,
-  })
+export const H4 = createChildrenFirstNode('h4')
 
 /**
  * Creates an h5 heading element node.
@@ -168,11 +143,7 @@ export const H4 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the h5 element.
  * @returns An h5 element node.
  */
-export const H5 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h5'>, 'children'>) =>
-  Node('h5', {
-    ...props,
-    children,
-  })
+export const H5 = createChildrenFirstNode('h5')
 
 /**
  * Creates an h6 heading element node.
@@ -180,11 +151,7 @@ export const H5 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the h6 element.
  * @returns An h6 element node.
  */
-export const H6 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'h6'>, 'children'>) =>
-  Node('h6', {
-    ...props,
-    children,
-  })
+export const H6 = createChildrenFirstNode('h6')
 
 /**
  * Creates a strong element node for important text.
@@ -192,11 +159,7 @@ export const H6 = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the strong element.
  * @returns A strong element node.
  */
-export const Strong = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'strong'>, 'children'>) =>
-  Node('strong', {
-    ...props,
-    children,
-  })
+export const Strong = createChildrenFirstNode('strong')
 
 /**
  * Creates an em element node for emphasized text.
@@ -204,11 +167,7 @@ export const Strong = (children: NodeElement | NodeElement[], props?: Omit<NodeP
  * @param props Optional properties for the em element.
  * @returns An em element node.
  */
-export const Em = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'em'>, 'children'>) =>
-  Node('em', {
-    ...props,
-    children,
-  })
+export const Em = createChildrenFirstNode('em')
 
 /**
  * Creates a small element node for side-comments and small print.
@@ -216,11 +175,7 @@ export const Em = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for styling and configuring the small element.
  * @returns A small element node that can be rendered in React.
  */
-export const Small = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'small'>, 'children'>) =>
-  Node('small', {
-    ...props,
-    children,
-  })
+export const Small = createChildrenFirstNode('small')
 
 /**
  * Creates a mark element node for highlighted text.
@@ -228,11 +183,7 @@ export const Small = (children: NodeElement | NodeElement[], props?: Omit<NodePr
  * @param props Optional properties for the mark element.
  * @returns A mark element node.
  */
-export const Mark = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'mark'>, 'children'>) =>
-  Node('mark', {
-    ...props,
-    children,
-  })
+export const Mark = createChildrenFirstNode('mark')
 
 /**
  * Creates a span element node.
@@ -240,11 +191,7 @@ export const Mark = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the span element.
  * @returns A span element node.
  */
-export const Span = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'span'>, 'children'>) =>
-  Node('span', {
-    ...props,
-    children,
-  })
+export const Span = createChildrenFirstNode('span')
 
 /**
  * Creates a paragraph element node.
@@ -252,11 +199,7 @@ export const Span = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the p element.
  * @returns A paragraph element node.
  */
-export const P = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'p'>, 'children'>) =>
-  Node('p', {
-    ...props,
-    children,
-  })
+export const P = createChildrenFirstNode('p')
 
 /**
  * Renders a semantic block of text using a `<p>` element.
@@ -272,11 +215,7 @@ export const Text = P
  * @param props Optional properties for the pre element.
  * @returns A pre element node.
  */
-export const Pre = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'pre'>, 'children'>) =>
-  Node('pre', {
-    ...props,
-    children,
-  })
+export const Pre = createChildrenFirstNode('pre')
 
 /**
  * Creates a code element node for displaying code snippets.
@@ -284,11 +223,7 @@ export const Pre = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the code element.
  * @returns A code element node.
  */
-export const Code = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'code'>, 'children'>) =>
-  Node('code', {
-    ...props,
-    children,
-  })
+export const Code = createChildrenFirstNode('code')
 
 /**
  * Represents a line break element.
@@ -370,11 +305,7 @@ export const Input = createNode('input')
  * @param props Optional properties for the button element.
  * @returns A button element node.
  */
-export const Button = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'button'>, 'children'>) =>
-  Node('button', {
-    ...props,
-    children,
-  })
+export const Button = createChildrenFirstNode('button')
 
 /**
  * Represents a textarea element for multiline text input.
@@ -396,11 +327,7 @@ export const Select = createNode('select')
  * @param props Optional properties for the option element.
  * @returns An option element node.
  */
-export const Option = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'option'>, 'children'>) =>
-  Node('option', {
-    ...props,
-    children,
-  })
+export const Option = createChildrenFirstNode('option')
 
 /**
  * Represents a fieldset element for grouping form elements.
@@ -415,11 +342,7 @@ export const Fieldset = createNode('fieldset')
  * @param props Optional properties for the legend element.
  * @returns A legend element node.
  */
-export const Legend = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'legend'>, 'children'>) =>
-  Node('legend', {
-    ...props,
-    children,
-  })
+export const Legend = createChildrenFirstNode('legend')
 
 /**
  * Represents an option group within a select element.
@@ -485,11 +408,7 @@ export const Td = createNode('td')
  * @param props Optional properties for the caption element.
  * @returns A caption element node.
  */
-export const Caption = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'caption'>, 'children'>) =>
-  Node('caption', {
-    ...props,
-    children,
-  })
+export const Caption = createChildrenFirstNode('caption')
 
 /**
  * Represents a table column group.
@@ -714,12 +633,10 @@ export const Body = createNode('body')
  * @param props Optional properties for the main element.
  * @returns A main element node.
  */
-export const Main = (props?: NodeProps<'main'>) =>
-  Node('main', {
-    display: 'flex',
-    flexDirection: 'column',
-    ...props,
-  })
+export const Main = createNode('main', {
+  display: 'flex',
+  flexDirection: 'column',
+})
 
 /**
  * Represents a header element.
@@ -769,11 +686,7 @@ export const Figure = createNode('figure')
  * @param props Optional properties for the figcaption element.
  * @returns A figcaption element node.
  */
-export const Figcaption = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'figcaption'>, 'children'>) =>
-  Node('figcaption', {
-    ...props,
-    children,
-  })
+export const Figcaption = createChildrenFirstNode('figcaption')
 
 /**
  * Represents a blockquote element.
@@ -809,11 +722,7 @@ export const Details = createNode('details')
  * @param props Optional properties for the summary element.
  * @returns A summary element node.
  */
-export const Summary = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'summary'>, 'children'>) =>
-  Node('summary', {
-    ...props,
-    children,
-  })
+export const Summary = createChildrenFirstNode('summary')
 
 // Document head elements
 
@@ -857,7 +766,7 @@ export const Style = createNode('style')
  * @param props Optional properties for the script element (e.g., src, type, async, defer).
  * @returns A script element node.
  */
-export const Script = createNode('script') // Already uses createNode
+export const Script = createNode('script')
 
 /**
  * Creates a title element node for document head title.
@@ -865,11 +774,7 @@ export const Script = createNode('script') // Already uses createNode
  * @param props Optional properties for the title element.
  * @returns A title element node.
  */
-export const Title = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'title'>, 'children'>) =>
-  Node('title', {
-    ...props,
-    children,
-  })
+export const Title = createChildrenFirstNode('title')
 
 /**
  * Represents a base element.
@@ -886,11 +791,7 @@ export const Base = createNode('base')
  * @param props Optional properties for the abbr element.
  * @returns An abbr element node.
  */
-export const Abbr = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'abbr'>, 'children'>) =>
-  Node('abbr', {
-    ...props,
-    children,
-  })
+export const Abbr = createChildrenFirstNode('abbr')
 
 /**
  * Represents text that should be stylistically offset from normal prose (traditionally bold).
@@ -898,11 +799,7 @@ export const Abbr = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the b element.
  * @returns A b element node.
  */
-export const B = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'b'>, 'children'>) =>
-  Node('b', {
-    ...props,
-    children,
-  })
+export const B = createChildrenFirstNode('b')
 
 /**
  * Represents text that is isolated from its surroundings for bidirectional text formatting.
@@ -910,11 +807,7 @@ export const B = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<
  * @param props Optional properties for the bdi element.
  * @returns A bdi element node.
  */
-export const Bdi = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'bdi'>, 'children'>) =>
-  Node('bdi', {
-    ...props,
-    children,
-  })
+export const Bdi = createChildrenFirstNode('bdi')
 
 /**
  * Overrides the current text directionality.
@@ -922,11 +815,7 @@ export const Bdi = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the bdo element.
  * @returns A bdo element node.
  */
-export const Bdo = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'bdo'>, 'children'>) =>
-  Node('bdo', {
-    ...props,
-    children,
-  })
+export const Bdo = createChildrenFirstNode('bdo')
 
 /**
  * Represents the title of a work (e.g., a book, a song, an essay).
@@ -934,11 +823,7 @@ export const Bdo = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the cite element.
  * @returns A cite element node.
  */
-export const Cite = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'cite'>, 'children'>) =>
-  Node('cite', {
-    ...props,
-    children,
-  })
+export const Cite = createChildrenFirstNode('cite')
 
 /**
  * Links a piece of content with a machine-readable translation.
@@ -946,11 +831,7 @@ export const Cite = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the data element.
  * @returns A data element node.
  */
-export const Data = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'data'>, 'children'>) =>
-  Node('data', {
-    ...props,
-    children,
-  })
+export const Data = createChildrenFirstNode('data')
 
 /**
  * Represents a definition of a term.
@@ -958,11 +839,7 @@ export const Data = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the dfn element.
  * @returns A dfn element node.
  */
-export const Dfn = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'dfn'>, 'children'>) =>
-  Node('dfn', {
-    ...props,
-    children,
-  })
+export const Dfn = createChildrenFirstNode('dfn')
 
 /**
  * Represents text in an alternate voice or mood (traditionally italic).
@@ -970,11 +847,7 @@ export const Dfn = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the i element.
  * @returns An i element node.
  */
-export const I = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'i'>, 'children'>) =>
-  Node('i', {
-    ...props,
-    children,
-  })
+export const I = createChildrenFirstNode('i')
 
 /**
  * Represents user input (typically keyboard input).
@@ -982,11 +855,7 @@ export const I = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<
  * @param props Optional properties for the kbd element.
  * @returns A kbd element node.
  */
-export const Kbd = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'kbd'>, 'children'>) =>
-  Node('kbd', {
-    ...props,
-    children,
-  })
+export const Kbd = createChildrenFirstNode('kbd')
 
 /**
  * Represents an inline quotation.
@@ -994,11 +863,7 @@ export const Kbd = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the q element.
  * @returns A q element node.
  */
-export const Q = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'q'>, 'children'>) =>
-  Node('q', {
-    ...props,
-    children,
-  })
+export const Q = createChildrenFirstNode('q')
 
 /**
  * Represents fallback parenthesis for ruby annotations.
@@ -1006,11 +871,7 @@ export const Q = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<
  * @param props Optional properties for the rp element.
  * @returns An rp element node.
  */
-export const Rp = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'rp'>, 'children'>) =>
-  Node('rp', {
-    ...props,
-    children,
-  })
+export const Rp = createChildrenFirstNode('rp')
 
 /**
  * Represents the ruby text component of a ruby annotation.
@@ -1018,11 +879,7 @@ export const Rp = (children: NodeElement | NodeElement[], props?: Omit<NodeProps
  * @param props Optional properties for the rt element.
  * @returns An rt element node.
  */
-export const Rt = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'rt'>, 'children'>) =>
-  Node('rt', {
-    ...props,
-    children,
-  })
+export const Rt = createChildrenFirstNode('rt')
 
 /**
  * Represents a ruby annotation.
@@ -1037,11 +894,7 @@ export const Ruby = createNode('ruby')
  * @param props Optional properties for the s element.
  * @returns An s element node.
  */
-export const S = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'s'>, 'children'>) =>
-  Node('s', {
-    ...props,
-    children,
-  })
+export const S = createChildrenFirstNode('s')
 
 /**
  * Represents sample output from a computer program.
@@ -1049,11 +902,7 @@ export const S = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<
  * @param props Optional properties for the samp element.
  * @returns A samp element node.
  */
-export const Samp = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'samp'>, 'children'>) =>
-  Node('samp', {
-    ...props,
-    children,
-  })
+export const Samp = createChildrenFirstNode('samp')
 
 /**
  * Represents subscript text.
@@ -1061,11 +910,7 @@ export const Samp = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the sub element.
  * @returns A sub element node.
  */
-export const Sub = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'sub'>, 'children'>) =>
-  Node('sub', {
-    ...props,
-    children,
-  })
+export const Sub = createChildrenFirstNode('sub')
 
 /**
  * Represents superscript text.
@@ -1073,11 +918,7 @@ export const Sub = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the sup element.
  * @returns A sup element node.
  */
-export const Sup = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'sup'>, 'children'>) =>
-  Node('sup', {
-    ...props,
-    children,
-  })
+export const Sup = createChildrenFirstNode('sup')
 
 /**
  * Represents a specific period in time or a date.
@@ -1085,11 +926,7 @@ export const Sup = (children: NodeElement | NodeElement[], props?: Omit<NodeProp
  * @param props Optional properties for the time element.
  * @returns A time element node.
  */
-export const Time = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'time'>, 'children'>) =>
-  Node('time', {
-    ...props,
-    children,
-  })
+export const Time = createChildrenFirstNode('time')
 
 /**
  * Represents text that should be rendered with an unarticulated, non-textual annotation (traditionally underline).
@@ -1097,11 +934,7 @@ export const Time = (children: NodeElement | NodeElement[], props?: Omit<NodePro
  * @param props Optional properties for the u element.
  * @returns A u element node.
  */
-export const U = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'u'>, 'children'>) =>
-  Node('u', {
-    ...props,
-    children,
-  })
+export const U = createChildrenFirstNode('u')
 
 /**
  * Represents a variable in a mathematical expression or programming context.
@@ -1109,11 +942,7 @@ export const U = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<
  * @param props Optional properties for the var element.
  * @returns A var element node.
  */
-export const Var = (children: NodeElement | NodeElement[], props?: Omit<NodeProps<'var'>, 'children'>) =>
-  Node('var', {
-    ...props,
-    children,
-  })
+export const Var = createChildrenFirstNode('var')
 
 /**
  * Represents a word break opportunity. This is a void element.
@@ -1159,7 +988,7 @@ export const Embed = createNode('embed')
  * @param props Optional properties for the object element.
  * @returns An object element node.
  */
-export const ObjectElement = createNode('object') // Renamed to ObjectElement to avoid conflict with JavaScript's Object
+export const ObjectElement = createNode('object')
 
 /**
  * Defines parameters for an <object> element. This is a void element.
@@ -1173,7 +1002,7 @@ export const Param = createNode('param')
  * @param props Optional properties for the map element.
  * @returns A map element node.
  */
-export const MapElement = createNode('map') // Renamed to MapElement to avoid conflict with JavaScript's Map
+export const MapElement = createNode('map')
 
 /**
  * Defines a client-side image map area. This is a void element.
