@@ -1,5 +1,5 @@
 'use strict'
-import React, { Fragment, type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode } from 'react'
+import React, { Fragment, type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode, type ReactElement } from 'react'
 import type {
   FinalNodeProps,
   FunctionRendererProps,
@@ -353,7 +353,7 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
    * Recursively processes child nodes and uses `React.createElement` to construct the final React element.
    * @returns A ReactNode representing the rendered element.
    */
-  public render(): ReactNode {
+  public render(): ReactElement {
     if (!isValidElementType(this.element)) {
       const elementType = getComponentType(this.element)
       throw new Error(`Invalid element type: ${elementType} provided!`)
@@ -458,19 +458,62 @@ export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): N
 }
 
 /**
- * Creates a curried node factory for a given React element type.
+ * Creates a curried node factory for a given React element or component type.
  *
- * This utility returns a function that, when called with props, produces a `BaseNode` instance.
- * It is useful for creating reusable node factories for specific components or element types.
+ * Returns a function that, when called with props, produces a `BaseNode` instance.
+ * Useful for creating reusable node factories for specific components or element types.
  * @template E The React element or component type.
+ * @template AdditionalInitialProps Additional props to merge with node props.
  * @param element The React element or component type to wrap.
+ * @param initialProps Initial props to apply to every node instance.
  * @returns A function that takes node props and returns a `NodeInstance<E>`.
  * @example
- * const ButtonNode = createNode('button');
+ * const ButtonNode = createNode('button', { type: 'button' });
  * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
  */
-export function createNode<E extends ElementType>(
+export function createNode<AdditionalInitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
   element: E,
-): HasRequiredProps<PropsOf<E>> extends true ? (props: NodeProps<E>) => NodeInstance<E> : (props?: NodeProps<E>) => NodeInstance<E> {
-  return (props?: NodeProps<E>) => Node(element, props)
+  initialProps?: NodeProps<E> & AdditionalInitialProps,
+): HasRequiredProps<PropsOf<E>> extends true
+  ? <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>
+  : <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E> {
+  return <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) =>
+    Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalInitialProps & AdditionalProps)
+}
+
+/**
+ * Creates a node factory function where the first argument is `children` and the second is `props`.
+ *
+ * This is useful for ergonomic creation of nodes where children are the primary concern,
+ * such as for layout or container components.
+ *
+ * The returned function takes `children` as the first argument and `props` (excluding `children`) as the second.
+ * It merges any `initialProps` provided at factory creation, then creates a `BaseNode` instance.
+ *
+ * Type parameters:
+ * - `AdditionalInitialProps`: Extra props to merge with node props.
+ * - `E`: The React element or component type.
+ * @param element The React element or component type to wrap.
+ * @param initialProps Initial props to apply to every node instance (excluding `children`).
+ * @returns A function that takes `children` and `props`, returning a `NodeInstance<E>`.
+ * @example
+ * const DivNode = createChildrenFirstNode('div');
+ * const myDiv = DivNode([<span key="1" />, <span key="2" />], { className: 'container' });
+ */
+export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
+  element: E,
+  initialProps?: Omit<NodeProps<E> & AdditionalInitialProps, 'children'>,
+): HasRequiredProps<PropsOf<E>> extends true
+  ? <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(
+      children: NodeElement | NodeElement[],
+      props: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+    ) => NodeInstance<E>
+  : <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(
+      children?: NodeElement | NodeElement[],
+      props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+    ) => NodeInstance<E> {
+  return <AdditionalProps extends Record<string, any> = Record<string, any>>(
+    children?: NodeElement | NodeElement[],
+    props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+  ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalInitialProps & AdditionalProps)
 }
