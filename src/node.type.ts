@@ -12,6 +12,7 @@ import React, {
   type Ref,
   type ExoticComponent,
   type FragmentProps,
+  type ReactElement,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 
@@ -58,7 +59,7 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
   readonly isBaseNode: true
 
   /** Converts this node instance into a renderable React element/tree */
-  render(): ReactNode
+  render(): ReactElement
 
   /** Creates Portal-compatible React elements for rendering outside of the DOM tree */
   toPortal(): ReactDOMRoot | null
