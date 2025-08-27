@@ -65,15 +65,6 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
 }
 
 /**
- * Defines valid child types that can be passed to a node:
- * - ReactNode: Any valid React child (elements, strings, numbers, etc.)
- * - ElementType: React component types (functions/classes)
- * - NodeInstance: Other node instances in the tree
- * - Function: Lazy child evaluation, useful for conditional rendering and hooks
- */
-export type Children = ReactNode | Promise<Awaited<ReactNode>> | Component<any> | NodeElement | NodeInstance<any> | ComponentNode
-
-/**
  * Extracts the props type from a given element type, handling both intrinsic (HTML) elements
  * and custom React components, including MUI's OverridableComponent.
  * @template E - The element type to extract props from
@@ -108,7 +99,7 @@ export type Theme = Partial<{
 export type FinalNodeProps = ReactAttributes & {
   ref?: Ref<unknown>
   style?: CSSProperties
-  children?: Children | Children[]
+  children?: NodeElement | NodeElement[]
   theme?: Theme
   nodetheme?: Theme
 }
@@ -137,9 +128,9 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   Partial<{
     props: Partial<Omit<PropsOf<E>, 'children'>>
-    children: Children | Children[]
+    children: NodeElement | NodeElement[]
     theme: Theme
-  }> & { [key: string]: any }
+  }>
 
 /**
  * BaseNode's internal props type, extending NodeProps:
