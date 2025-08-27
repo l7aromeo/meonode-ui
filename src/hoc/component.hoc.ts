@@ -2,7 +2,7 @@
 
 import { BaseNode, Node } from '@src/core.node'
 import type { ComponentNode, HasCSSCompatibleStyleProp, NodeElement, Theme } from '@src/node.type'
-import { type CSSProperties, type ReactNode } from 'react'
+import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 
 /**
  * Props definition for components wrapped using the `Component` higher-order function.
@@ -47,7 +47,7 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
  */
 export function Component<TProps extends undefined>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props?: ComponentNodeProps<TProps>) => ReactNode | Promise<Awaited<ReactNode>>
+): (props?: ComponentNodeProps<TProps>) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Creates a component from a function that uses a defined props interface.
@@ -73,7 +73,7 @@ export function Component<TProps extends undefined>(
  */
 export function Component<TProps extends Record<string, any>>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props: ComponentNodeProps<TProps>) => ReactNode | Promise<Awaited<ReactNode>>
+): (props: ComponentNodeProps<TProps>) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Internal implementation of the `Component` HOC.
