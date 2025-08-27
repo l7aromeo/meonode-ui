@@ -25,7 +25,7 @@ import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '
  * - Style processing with theme variables
  * @template E The type of React element or component this node represents
  */
-export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstance<E> {
+export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   /** The underlying React element or component type that this node represents */
   public element: E
 
@@ -443,13 +443,20 @@ export class BaseNode<E extends NodeElement = NodeElement> implements NodeInstan
 }
 
 /**
- * Factory function to create a BaseNode instance.
- * @param element The React element type.
+ * Factory function to create a `BaseNode` instance.
+ * @template AdditionalProps Additional props to merge with node props.
+ * @template E The React element or component type.
+ * @param element The React element or component type to wrap.
  * @param props The props for the node (optional).
- * @returns NodeInstance<E> - A new BaseNode instance.
+ * @param additionalProps Additional props to merge into the node (optional).
+ * @returns A new `BaseNode` instance as a `NodeInstance<E>`.
  */
-export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): NodeInstance<E> {
-  const finalProps: RawNodeProps<E> = { ...(props || {}) } as RawNodeProps<E>
+export function Node<AdditionalProps extends Record<string, any>, E extends NodeElement>(
+  element: E,
+  props: NodeProps<E> & AdditionalProps = {} as NodeProps<E> & AdditionalProps,
+  additionalProps: AdditionalProps = {} as AdditionalProps,
+): NodeInstance<E> {
+  const finalProps = { ...props, ...additionalProps } as RawNodeProps<E> & AdditionalProps
   if (finalProps.theme && !finalProps.nodetheme) {
     finalProps.nodetheme = finalProps.theme
   }
@@ -462,8 +469,8 @@ export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): N
  *
  * Returns a function that, when called with props, produces a `BaseNode` instance.
  * Useful for creating reusable node factories for specific components or element types.
+ * @template AdditionalInitialProps Additional initial props to merge with node props.
  * @template E The React element or component type.
- * @template InitialProps Additional props to merge with node props.
  * @param element The React element or component type to wrap.
  * @param initialProps Initial props to apply to every node instance.
  * @returns A function that takes node props and returns a `NodeInstance<E>`.
@@ -471,9 +478,9 @@ export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): N
  * const ButtonNode = createNode('button', { type: 'button' });
  * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
  */
-export function createNode<InitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
+export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElement>(
   element: E,
-  initialProps?: NodeProps<E> & InitialProps,
+  initialProps?: NodeProps<E> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
   ? <AdditionalProps extends Record<string, any> = Record<string, any>>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>
   : <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E> {
@@ -484,25 +491,25 @@ export function createNode<InitialProps extends Record<string, any> = Record<str
 /**
  * Creates a node factory function where the first argument is `children` and the second is `props`.
  *
- * This is useful for ergonomic creation of nodes where children are the primary concern,
- * such as for layout or container components.
+ * Useful for ergonomic creation of nodes where children are the primary concern,
+ * such as layout or container components.
  *
  * The returned function takes `children` as the first argument and `props` (excluding `children`) as the second.
  * It merges any `initialProps` provided at factory creation, then creates a `BaseNode` instance.
  *
  * Type parameters:
- * - `InitialProps`: Extra props to merge with node props.
+ * - `AdditionalInitialProps`: Extra props to merge with node props.
  * - `E`: The React element or component type.
  * @param element The React element or component type to wrap.
  * @param initialProps Initial props to apply to every node instance (excluding `children`).
  * @returns A function that takes `children` and `props`, returning a `NodeInstance<E>`.
  * @example
- * const DivNode = createChildrenFirstNode('div');
- * const myDiv = DivNode([<span key="1" />, <span key="2" />], { className: 'container' });
+ * const Text = createChildrenFirstNode('p');
+ * const myDiv = Text('Hello', { className: 'text-lg' });
  */
-export function createChildrenFirstNode<InitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
+export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends ElementType>(
   element: E,
-  initialProps?: Omit<NodeProps<E> & InitialProps, 'children'>,
+  initialProps?: Omit<NodeProps<E> & AdditionalInitialProps, 'children'>,
 ): HasRequiredProps<PropsOf<E>> extends true
   ? <AdditionalProps extends Record<string, any> = Record<string, any>>(
       children: NodeElement | NodeElement[],

@@ -1,7 +1,6 @@
 'use strict'
 import React, {
   type Attributes as ReactAttributes,
-  type ComponentProps,
   type CSSProperties,
   type ReactNode,
   type JSX,
@@ -66,15 +65,20 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
 }
 
 /**
- * Extracts the props type from a given element type, handling both intrinsic (HTML) elements
- * and custom React components, including MUI's OverridableComponent.
- * @template E - The element type to extract props from
+ * Infers the props type for a given NodeElement.
+ * - For intrinsic JSX elements (e.g., 'div', 'span'), returns the corresponding JSX.IntrinsicElements props.
+ * - For React components (function or class), infers the props from the component type.
+ * - For objects with a `props` property, infers the type from that property.
+ * - Otherwise, resolves to `never`.
+ * @template E - The NodeElement type to extract props from.
  */
 export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElements
   ? JSX.IntrinsicElements[E]
-  : E extends JSXElementConstructor<any>
-    ? ComponentProps<E>
-    : NodeInstance<E>
+  : E extends JSXElementConstructor<infer P>
+    ? P
+    : E extends { props: infer Q }
+      ? Q
+      : never
 
 /**
  * Theme configuration object that can be passed through the node tree.
