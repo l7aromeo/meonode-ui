@@ -463,7 +463,7 @@ export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): N
  * Returns a function that, when called with props, produces a `BaseNode` instance.
  * Useful for creating reusable node factories for specific components or element types.
  * @template E The React element or component type.
- * @template AdditionalInitialProps Additional props to merge with node props.
+ * @template InitialProps Additional props to merge with node props.
  * @param element The React element or component type to wrap.
  * @param initialProps Initial props to apply to every node instance.
  * @returns A function that takes node props and returns a `NodeInstance<E>`.
@@ -471,14 +471,14 @@ export function Node<E extends NodeElement>(element: E, props?: NodeProps<E>): N
  * const ButtonNode = createNode('button', { type: 'button' });
  * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
  */
-export function createNode<AdditionalInitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
+export function createNode<InitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
   element: E,
-  initialProps?: NodeProps<E> & AdditionalInitialProps,
+  initialProps?: NodeProps<E> & InitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>
-  : <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E> {
+  ? <AdditionalProps extends Record<string, any> = Record<string, any>>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>
+  : <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E> {
   return <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) =>
-    Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalInitialProps & AdditionalProps)
+    Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps)
 }
 
 /**
@@ -491,7 +491,7 @@ export function createNode<AdditionalInitialProps extends Record<string, any> = 
  * It merges any `initialProps` provided at factory creation, then creates a `BaseNode` instance.
  *
  * Type parameters:
- * - `AdditionalInitialProps`: Extra props to merge with node props.
+ * - `InitialProps`: Extra props to merge with node props.
  * - `E`: The React element or component type.
  * @param element The React element or component type to wrap.
  * @param initialProps Initial props to apply to every node instance (excluding `children`).
@@ -500,20 +500,20 @@ export function createNode<AdditionalInitialProps extends Record<string, any> = 
  * const DivNode = createChildrenFirstNode('div');
  * const myDiv = DivNode([<span key="1" />, <span key="2" />], { className: 'container' });
  */
-export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
+export function createChildrenFirstNode<InitialProps extends Record<string, any> = Record<string, any>, E extends ElementType = ElementType>(
   element: E,
-  initialProps?: Omit<NodeProps<E> & AdditionalInitialProps, 'children'>,
+  initialProps?: Omit<NodeProps<E> & InitialProps, 'children'>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(
+  ? <AdditionalProps extends Record<string, any> = Record<string, any>>(
       children: NodeElement | NodeElement[],
       props: Omit<NodeProps<E> & AdditionalProps, 'children'>,
     ) => NodeInstance<E>
-  : <AdditionalProps extends Record<string, any> = AdditionalInitialProps>(
+  : <AdditionalProps extends Record<string, any> = Record<string, any>>(
       children?: NodeElement | NodeElement[],
       props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
     ) => NodeInstance<E> {
   return <AdditionalProps extends Record<string, any> = Record<string, any>>(
     children?: NodeElement | NodeElement[],
     props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
-  ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalInitialProps & AdditionalProps)
+  ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
 }
