@@ -42,10 +42,10 @@
     "@babel/core": "^7.28.3",
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-typescript": "^7.27.1",
-    "@eslint/js": "^9.34.0",
     "@emotion/cache": "^11.14.0",
-    "@types/react": "^19.1.11",
-    "@types/react-dom": "^19.1.8",
+    "@eslint/js": "^9.34.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",
     "@typescript/native-preview": "^7.0.0-dev.20250827.1",
@@ -64,9 +64,9 @@
   },
   "packageManager": "yarn@4.9.1",
   "peerDependencies": {
+    "@emotion/cache": "^11.14.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "@emotion/cache": "^11.14.0"
+    "react-dom": "^18.3.1"
   },
   "repository": {
     "type": "git",
