@@ -63,20 +63,18 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     const currentTheme = theme || nodetheme
 
-    const { style: componentStyle, theme: nativeTheme, ...componentProps } = nativeProps as Omit<PropsOf<E>, 'children'>
+    const { style: nativeStyle, theme: nativeTheme, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
-    const resolveAbleProps = { ...restRawProps, style: { ...restRawProps?.style, ...componentStyle } }
-
-    const resolvedRawProps = resolveObjWithTheme(resolveAbleProps, currentTheme)
-
-    const { style: styleFromResolvedProps, ...themeAwareProps } = resolvedRawProps
+    const resolvedRawProps = resolveObjWithTheme(restRawProps, currentTheme)
+    const resolvedNativeStyle = resolveObjWithTheme(nativeStyle, currentTheme)
+    const { style: resolvedStyleProps, css, ...themeAwareProps } = resolvedRawProps
 
     const styleProps = getCSSProps(themeAwareProps)
     const domProps = getDOMProps(themeAwareProps)
 
     const finalStyleProps = resolveDefaultStyle({
       ...styleProps,
-      ...styleFromResolvedProps,
+      ...resolvedStyleProps,
     })
 
     // Process children while maintaining theme inheritance
@@ -88,9 +86,10 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       key,
       nodetheme: currentTheme,
       theme: nativeTheme || theme,
-      style: finalStyleProps,
+      css: { ...finalStyleProps, ...css },
+      style: resolvedNativeStyle,
       ...domProps,
-      ...componentProps,
+      ...restNativeProps,
       children: normalizedChildren,
     }
   }
@@ -398,9 +397,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       }
     }
 
-    // If the element has style or css props, render using the StyledRenderer component
+    // If the element has css props, render using the StyledRenderer component
     // This allows for styles to be handled by emotion
-    if (this.element && (propsForCreateElement.style || propsForCreateElement.css)) {
+    if (this.element && propsForCreateElement.css) {
       return createElement(
         StyledRenderer,
         {
