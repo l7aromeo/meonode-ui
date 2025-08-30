@@ -361,12 +361,14 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     const { children: childrenInProps, key, ...otherProps } = this.props // Extract children and key
 
-    let finalChildren: ReactNode | ReactNode[] | undefined = undefined // More accurate type
+    let finalChildren: ReactNode = undefined
 
     if (childrenInProps !== undefined && childrenInProps !== null) {
       if (Array.isArray(childrenInProps)) {
         if (childrenInProps.length > 0) {
-          const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement)) // Normalize each child in the array
+          // Normalize each child in the array
+          const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement))
+
           // Check if all children are null/undefined (e.g., conditional rendering resulted in nothing)
           if (mappedArray.every(child => child === null || child === undefined)) {
             finalChildren = undefined
