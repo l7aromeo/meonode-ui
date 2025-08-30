@@ -1938,9 +1938,9 @@ __metadata:
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.41.0"
   peerDependencies:
-    "@emotion/cache": ^11.14.0
-    react: ^18.3.1
-    react-dom: ^18.3.1
+    "@emotion/cache": ">=11.14.0"
+    react: ">=18.3.1"
+    react-dom: ">=18.3.1"
   languageName: unknown
   linkType: soft
 
