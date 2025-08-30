@@ -1,6 +1,6 @@
 'use strict'
 import type { CSSProperties } from 'react'
-import type { NodeInstance, Theme } from '@src/node.type.js'
+import type { NodeInstance, Theme } from '@src/node.type'
 import { getValueByPath } from '@src/common.helper'
 
 /**

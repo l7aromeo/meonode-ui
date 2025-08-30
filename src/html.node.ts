@@ -1,5 +1,5 @@
 'use strict'
-import { createNode, createChildrenFirstNode } from '@src/core.node.js'
+import { createNode, createChildrenFirstNode } from '@src/core.node'
 
 // Layout components
 

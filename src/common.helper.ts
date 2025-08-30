@@ -12,7 +12,7 @@ import {
   isStrictMode,
   isSuspense,
   isSuspenseList,
-} from '@src/react-is.helper.js'
+} from '@src/react-is.helper'
 import type { FinalNodeProps, NodeElement } from '@src/node.type'
 import cssProperties from '@src/data/css-properties'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
