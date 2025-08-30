@@ -359,7 +359,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
 
-    const { children: childrenInProps, key, ...otherProps } = this.props // Extract children and key
+    // Extract children and key
+    const { children: childrenInProps, key, ...otherProps } = this.props
 
     let finalChildren: ReactNode = undefined
 
@@ -376,7 +377,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
             finalChildren = mappedArray
           }
         } else {
-          finalChildren = undefined // Empty array of children
+          // Empty array of children
+          finalChildren = undefined
         }
       } else {
         // Single child
