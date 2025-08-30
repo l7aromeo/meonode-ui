@@ -14,6 +14,7 @@ import React, {
   type ReactElement,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
+import type { CSSObject } from '@emotion/react'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -132,9 +133,10 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   Partial<{
-    props: Partial<Omit<PropsOf<E>, 'children'>>
+    props: Partial<Omit<PropsOf<E>, 'children' | keyof CSSProperties>>
     children: NodeElement | NodeElement[]
     theme: Theme
+    css: CSSObject
   }>
 
 /**

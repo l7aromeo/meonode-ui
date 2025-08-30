@@ -13,6 +13,10 @@
     "./hook": {
       "import": "./dist/hook/index.js",
       "types": "./dist/hook/index.d.ts"
+    },
+    "./nextjs-registry": {
+      "import": "./dist/nextjs-registry/index.js",
+      "types": "./dist/nextjs-registry/index.d.ts"
     }
   },
   "files": [
@@ -22,13 +26,16 @@
     "README.md"
   ],
   "scripts": {
-    "watch:build": "yarn dlx nodemon --watch src --ext ts,js,json --exec \"yarn build\"",
+    "watch:build": "yarn dlx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
-    "build": "rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.js\" && tsgo --diagnostics && tsc-alias",
+    "build": "rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo --diagnostics && tsc-alias",
     "publish:pre": "./prepublish.sh && yarn version -i prerelease && yarn npm publish --tag next",
     "publish:patch": "./prepublish.sh && yarn version -i patch && yarn npm publish --tag latest",
     "publish:minor": "./prepublish.sh && yarn version -i minor && yarn npm publish --tag latest",
     "publish:major": "./prepublish.sh && yarn version -i major && yarn npm publish --tag latest"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.28.3",
@@ -36,6 +43,7 @@
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-typescript": "^7.27.1",
     "@eslint/js": "^9.34.0",
+    "@emotion/cache": "^11.14.0",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.8",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
@@ -47,6 +55,7 @@
     "eslint-plugin-jsdoc": "^54.1.1",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-unused-imports": "^4.2.0",
+    "next": "^15.5.2",
     "prettier": "^3.6.2",
     "react-dom": "^19.1.1",
     "tsc-alias": "^1.8.16",
@@ -55,8 +64,9 @@
   },
   "packageManager": "yarn@4.9.1",
   "peerDependencies": {
-    "react": "*",
-    "react-dom": "*"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@emotion/cache": "^11.14.0"
   },
   "repository": {
     "type": "git",

@@ -15,6 +15,7 @@ import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/n
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper'
+import { StyledRenderer } from '@src/components'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -395,6 +396,17 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
         ...(otherProps as ComponentProps<ElementType>),
         key,
       }
+    }
+
+    if (this.element && propsForCreateElement.style) {
+      return createElement(
+        StyledRenderer,
+        {
+          element: this.element,
+          ...propsForCreateElement,
+        },
+        finalChildren,
+      )
     }
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
