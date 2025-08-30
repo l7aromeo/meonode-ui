@@ -398,7 +398,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       }
     }
 
-    if (this.element && propsForCreateElement.style) {
+    // If the element has style or css props, render using the StyledRenderer component
+    // This allows for styles to be handled by emotion
+    if (this.element && (propsForCreateElement.style || propsForCreateElement.css)) {
       return createElement(
         StyledRenderer,
         {
