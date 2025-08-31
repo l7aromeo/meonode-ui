@@ -1,8 +1,8 @@
 # @meonode/ui
 
-[![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@meonode/ui)](https://bundlephobia.com/package/@meonode/ui)
+[](https://www.npmjs.com/package/@meonode/ui)
+[](https://opensource.org/licenses/MIT)
+[](https://bundlephobia.com/package/@meonode/ui)
 
 ## **Build React UIs with Type-Safe Fluency Without JSX Syntax**
 
@@ -50,15 +50,7 @@ const App = Component(() =>
 );
 ```
 
-## 🚀 Why Choose @meonode/ui?
-
-- **🎯 Type-Safe by Design** - Complete TypeScript support with intelligent autocomplete for styles, props, and theme paths
-- **🎨 Theme-Aware Everything** - Write styles directly in props with automatic theme value resolution
-- **🧩 Function-Based Composition** - Build UIs using intuitive function calls instead of JSX complexity
-- **💫 Advanced CSS Control** - Direct CSS property styling with support for complex selectors and pseudo-classes
-- **🌐 Contextual Theming** - Theme values cascade seamlessly through component hierarchies
-- **⚡ Performance Optimized** - Minimal bundle footprint with efficient tree-shaking
-- **🔄 React Native** - Full compatibility with React 18+ features, hooks, and ecosystem
+-----
 
 ## 📦 Installation
 
@@ -73,7 +65,7 @@ yarn add @meonode/ui react
 pnpm add @meonode/ui react
 ```
 
----
+-----
 
 ## ⚙️ CSS Engine Architecture
 
@@ -119,11 +111,11 @@ const emotionStyles = css`
 
 ### Key Benefits of Emotion Integration
 
-- **🎯 **Performance**: Automatic CSS optimization and dead code elimination
-- **🧩 **Dynamic Styling**: Runtime theme value resolution and conditional styles
-- **🔄 **Server-Side Rendering**: Full SSR support with automatic critical CSS extraction
-- **📱 **Responsive Design**: Native media query support with optimal performance
-- **🎨 **Advanced Features**: Pseudo-classes, keyframe animations, and complex selectors
+- **🎯 Performance**: Automatic CSS optimization and dead code elimination
+- **🧩 Dynamic Styling**: Runtime theme value resolution and conditional styles
+- **🔄 Server-Side Rendering**: Full SSR support with automatic critical CSS extraction
+- **📱 Responsive Design**: Native media query support with optimal performance
+- **🎨 Advanced Features**: Pseudo-classes, keyframe animations, and complex selectors
 
 ### Theme Resolution Engine
 
@@ -164,11 +156,11 @@ const ThemedComponent = () => (
 
 ### Style Processing Pipeline
 
-1. **Parse Props**: MeoNode separates CSS properties from DOM attributes
-2. **Resolve Theme**: Theme path strings are resolved to actual values
-3. **Generate Emotion CSS**: Styles are converted to Emotion's CSS format
-4. **Optimize**: Emotion handles deduplication, vendor prefixing, and optimization
-5. **Inject**: Styles are injected into the document head with unique class names
+1.  **Parse Props**: MeoNode separates CSS properties from DOM attributes
+2.  **Resolve Theme**: Theme path strings are resolved to actual values
+3.  **Generate Emotion CSS**: Styles are converted to Emotion's CSS format
+4.  **Optimize**: Emotion handles deduplication, vendor prefixing, and optimization
+5.  **Inject**: Styles are injected into the document head with unique class names
 
 ### Advanced Emotion Features Exposed
 
@@ -239,11 +231,11 @@ import createCache from '@emotion/cache';
 // This is handled internally by MeoNode for optimal SSR performance
 ```
 
----
+-----
 
 ## 📚 Core Concepts
 
-### 1. 🏗️ Component Architecture
+### 1\. 🏗️ Component Architecture
 
 MeoNode uses function-based component creation for maximum flexibility:
 
@@ -282,7 +274,7 @@ const UserCard = Component<{ user: { name: string; role: string } }>(({ user }) 
 );
 ```
 
-### 2. 🎨 Advanced Theming System
+### 2\. 🎨 Advanced Theming System
 
 Create comprehensive design systems with nested theme objects:
 
@@ -347,7 +339,7 @@ const ThemedButton = Component(() =>
 );
 ```
 
-### 3. 🎯 Advanced CSS Properties & Selectors
+### 3\. 🎯 Advanced CSS Properties & Selectors
 
 MeoNode provides powerful CSS manipulation through the `css` property for complex styling scenarios:
 
@@ -436,7 +428,7 @@ const InteractiveCard = Component(() =>
 );
 ```
 
-### 4. 🔧 Smart Prop Handling
+### 4\. 🔧 Smart Prop Handling
 
 Automatic differentiation between CSS properties and DOM attributes:
 
@@ -480,7 +472,7 @@ const SmartCard = Component<CardProps>(({ title, urgent, ...restProps }) =>
 );
 ```
 
-### 5. 🌟 Dynamic Children & Composition
+### 5\. 🌟 Dynamic Children & Composition
 
 Handle complex child patterns with ease:
 
@@ -513,7 +505,7 @@ const DynamicList = Component<{ items: string[]; header?: string }>(({ items, he
 );
 ```
 
-### 6. 🚪 Portal System with Context Integration
+### 6\. 🚪 Portal System with Context Integration
 
 Create modals, tooltips, and overlays with full context access:
 
@@ -606,497 +598,42 @@ const App = Component(() => {
 });
 ```
 
----
+-----
 
 ## 🎯 Why Choose @meonode/ui?
 
 ### **Revolutionary Development Experience**
+
 - **🎯 Type-Safe by Design** - Complete TypeScript integration with intelligent autocomplete for styles, props, and theme paths
 - **🎨 Theme-Aware Everything** - Write styles directly in props with automatic theme value resolution and inheritance
 - **🧩 Function-Based Composition** - Intuitive component building using structured function calls instead of JSX complexity
 - **💫 Advanced CSS Control** - Full CSS capabilities including pseudo-classes, media queries, and complex selectors
 - **🌐 Contextual Theming** - Theme values propagate automatically through nested component hierarchies
-- **⚡ Performance Optimized** - Minimal runtime overhead with efficient tree-shaking and bundle optimization
+- **⚡ Performance Optimized** - Fast theme resolution and efficient CSS in JS powered by @emotion/react
 
 ### **Enterprise-Ready Features**
+
 - **🔄 React Ecosystem Compatible** - Seamless integration with hooks, HOCs, context, and React 18+ concurrent features
 - **🚪 Powerful Portal System** - Advanced portal management with context provider integration for modals and overlays
 - **📱 Responsive by Default** - Built-in responsive design patterns with media query support
 - **♿ Accessibility First** - Semantic HTML output with ARIA support and keyboard navigation
 
----
-
-## 📦 Installation
-
-```bash
-# Using npm
-npm install @meonode/ui react
-
-# Using yarn
-yarn add @meonode/ui react
-
-# Using pnpm
-pnpm add @meonode/ui react
-```
-
-### Peer Dependencies
-- `react`: ^18.0.0
-- `react-dom`: ^18.0.0
-
----
-
-## 🛠️ Advanced Usage Patterns
-
-### Complex CSS Manipulation Example
-
-```tsx
-import { Component, Div, H1, Button, P } from '@meonode/ui';
-
-const AdvancedStyledComponent = Component(() =>
-  Div({
-    padding: '32px',
-    borderRadius: '16px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    position: 'relative',
-    overflow: 'hidden',
-    
-    // Advanced CSS with complex selectors and animations
-    css: {
-      // Pseudo-element for background pattern
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        top: '-50%',
-        left: '-50%',
-        width: '200%',
-        height: '200%',
-        background: `
-          radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)
-        `,
-        backgroundSize: '20px 20px',
-        animation: 'float 20s ease-in-out infinite',
-        zIndex: 1
-      },
-      
-      // Keyframe animations
-      '@keyframes float': {
-        '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
-        '33%': { transform: 'translate(30px, -30px) rotate(120deg)' },
-        '66%': { transform: 'translate(-20px, 20px) rotate(240deg)' }
-      },
-      
-      // Complex hover interactions
-      '&:hover': {
-        transform: 'scale(1.02)',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-        
-        // Nested hover effects
-        '& h1': {
-          color: '#fff',
-          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-        },
-        
-        '& button': {
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.3)'
-        }
-      },
-      
-      // Responsive breakpoints
-      '@media (max-width: 768px)': {
-        padding: '20px',
-        borderRadius: '12px',
-        
-        '& h1': {
-          fontSize: '1.5rem'
-        }
-      },
-      
-      '@media (max-width: 480px)': {
-        padding: '16px',
-        margin: '8px',
-        
-        '&::before': {
-          display: 'none' // Hide animation on mobile
-        }
-      },
-      
-      // Child element styling
-      '& > *': {
-        position: 'relative',
-        zIndex: 2
-      },
-      
-      // Specific child selectors
-      '& h1 + p': {
-        marginTop: '12px',
-        opacity: 0.9
-      },
-      
-      // State-based styling
-      '&[data-loading="true"]': {
-        opacity: 0.7,
-        pointerEvents: 'none',
-        
-        '&::after': {
-          content: '"Loading..."',
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          color: 'white',
-          fontWeight: 'bold'
-        }
-      }
-    },
-    
-    children: [
-      H1('Advanced Styled Component', {
-        color: 'white',
-        fontSize: '2rem',
-        marginBottom: 16,
-        transition: 'all 0.3s ease'
-      }),
-      P('This demonstrates complex CSS capabilities including animations, pseudo-elements, responsive design, and advanced selectors.', {
-        color: 'rgba(255,255,255,0.9)',
-        lineHeight: 1.6,
-        marginBottom: 24
-      }),
-      Button('Interactive Button', {
-        padding: '12px 24px',
-        borderRadius: '8px',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        color: 'white',
-        border: '1px solid rgba(255,255,255,0.2)',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        onClick: () => console.log('Advanced button clicked!')
-      })
-    ]
-  })
-);
-```
-
-### State Management Integration
-
-```tsx
-import { Component, Div, H1, Button, Text } from '@meonode/ui';
-import { useState, useEffect } from 'react';
-
-const StatefulCounter = Component(() => {
-  const [count, setCount] = useState(0);
-  const [theme, setTheme] = useState('light');
-  
-  const currentTheme = {
-    light: {
-      bg: '#ffffff',
-      text: '#333333',
-      accent: '#2196F3'
-    },
-    dark: {
-      bg: '#1a1a1a',
-      text: '#ffffff',
-      accent: '#64B5F6'
-    }
-  }[theme];
-
-  return Div({
-    theme: currentTheme,
-    padding: '32px',
-    borderRadius: '16px',
-    backgroundColor: 'theme.bg',
-    color: 'theme.text',
-    transition: 'all 0.3s ease',
-    
-    css: {
-      '& button': {
-        margin: '0 8px',
-        transition: 'all 0.2s ease'
-      },
-      
-      '& button:hover': {
-        transform: 'translateY(-2px)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-      }
-    },
-    
-    children: [
-      H1(`Count: ${count}`, {
-        fontSize: '2.5rem',
-        marginBottom: 24,
-        color: 'theme.accent',
-        textAlign: 'center'
-      }),
-      
-      Div({
-        display: 'flex',
-        justifyContent: 'center',
-        gap: 16,
-        marginBottom: 24,
-        children: [
-          Button('Decrease', {
-            backgroundColor: '#F44336',
-            color: 'white',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            onClick: () => setCount(c => c - 1)
-          }),
-          Button('Increase', {
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            onClick: () => setCount(c => c + 1)
-          })
-        ]
-      }),
-      
-      Button(`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`, {
-        backgroundColor: 'theme.accent',
-        color: theme === 'light' ? 'white' : 'black',
-        padding: '10px 20px',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        onClick: () => setTheme(t => t === 'light' ? 'dark' : 'light')
-      })
-    ]
-  })
-);
-```
-
----
-
-## 🚀 Real-World Example
-
-Here's a complete example showcasing MeoNode's capabilities:
-
-```tsx
-import { Component, Root, Center, Column, H1, Button, Text, Portal } from '@meonode/ui';
-import { useEffect, useState } from 'react';
-
-const theme = {
-  primary: {
-    default: '#FF6B6B',
-    content: '#4A0000',
-  },
-  secondary: {
-    default: '#6BCB77',
-    content: '#0A3B0F',
-  },
-  base: {
-    default: '#F8F8F8',
-    content: '#333333',
-    accent: '#88B04B',
-  },
-};
-
-const surprises = [
-  'MeoNode makes UI delightful!',
-  'Intuitive design, pure simplicity.',
-  'Build beautiful interfaces, effortlessly.',
-  'Type-safe, composable, and a joy to use!',
-];
-
-const MeoNodePlayground = Component(() => {
-  const [message, setMessage] = useState('');
-  const [lastIndex, setLastIndex] = useState<number | null>(null);
-
-  function getNextSurprise() {
-    let index: number;
-    do {
-      index = Math.floor(Math.random() * surprises.length);
-    } while (index === lastIndex && surprises.length > 1);
-
-    setLastIndex(index);
-    setMessage(surprises[index]);
-  }
-
-  useEffect(() => {
-    console.log('👋 Hello developer! Welcome to MeoNode UI.');
-  }, []);
-
-  return Root({
-    theme,
-    backgroundColor: 'theme.base.default',
-    color: 'theme.base.content',
-    children: Center({
-      flex: 1,
-      padding: 48,
-      children: Column({
-        css: {
-          '& button:hover': {
-            backgroundColor: 'cyan',
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.18)',
-            color: 'black',
-            transform: 'translateY(-2px)',
-          },
-          '& button:active': {
-            transform: 'translateY(0px)',
-          }
-        },
-        gap: 32,
-        maxWidth: '32rem',
-        textAlign: 'center',
-        children: [
-          H1('MeoNode Playground', {
-            fontSize: '3.5rem',
-            marginBottom: '1rem',
-            color: 'theme.primary.default',
-            textShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }),
-          
-          Text(message || 'Click a button to discover something new!', {
-            fontSize: '1.2rem',
-            color: 'theme.base.content',
-            paddingBottom: '1.5rem',
-            lineHeight: 1.6
-          }),
-          
-          Row({
-            gap: 20,
-            justifyContent: 'center',
-            children: [
-              Button('👋 Say Hello', {
-                backgroundColor: 'theme.primary.default',
-                color: 'theme.primary.content',
-                fontWeight: 'bold',
-                padding: '14px 28px',
-                borderRadius: 12,
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.36)',
-                transition: 'all 0.2s ease-in-out',
-                fontSize: '1.2rem',
-                cursor: 'pointer',
-                onClick: () => setMessage('👋 Hello developer! Welcome to MeoNode UI.'),
-              }),
-              
-              Button('🎉 Surprise Me', {
-                backgroundColor: 'theme.secondary.default',
-                color: 'theme.secondary.content',
-                fontWeight: 'bold',
-                padding: '14px 28px',
-                borderRadius: 12,
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.36)',
-                transition: 'all 0.2s ease-in-out',
-                cursor: 'pointer',
-                fontSize: '1.2rem',
-                onClick: getNextSurprise,
-              }),
-            ],
-          }),
-
-          Button('Show Modal', {
-            backgroundColor: 'black',
-            color: 'white',
-            fontWeight: 'bold',
-            padding: '14px 28px',
-            borderRadius: 12,
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.36)',
-            transition: 'all 0.2s ease-in-out',
-            cursor: 'pointer',
-            fontSize: '1.2rem',
-            onClick: () => DemoModal({ name: 'Developer' }),
-          }),
-        ],
-      }),
-    }),
-  });
-});
-
-// Enhanced Modal with animations
-const DemoModal = Portal<{ name: string }>(({ portal, name }) => {
-  useEffect(() => {
-    const timer = setTimeout(portal.unmount, 3000);
-    return () => clearTimeout(timer);
-  }, [portal]);
-
-  return Center({
-    theme,
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(5px)',
-    zIndex: 9999,
-    
-    onClick: (e) => {
-      if (e.currentTarget === e.target) portal.unmount();
-    },
-    
-    children: Column({
-      backgroundColor: 'theme.base.default',
-      borderRadius: 16,
-      padding: '32px',
-      boxShadow: '0 20px 40px rgba(255, 107, 107, 0.3)',
-      border: '2px solid theme.primary.default',
-      maxWidth: '400px',
-      margin: '20px',
-      
-      css: {
-        animation: 'modalEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        '@keyframes modalEnter': {
-          from: { 
-            opacity: 0,
-            transform: 'scale(0.8) translateY(-20px)' 
-          },
-          to: { 
-            opacity: 1,
-            transform: 'scale(1) translateY(0)' 
-          }
-        }
-      },
-      
-      children: [
-        H1(`Hello ${name}! 👋`, {
-          color: 'theme.primary.default',
-          fontSize: '1.8rem',
-          marginBottom: 16,
-          textAlign: 'center'
-        }),
-        
-        P('This modal demonstrates MeoNode\'s portal system with theme integration and advanced CSS animations.', {
-          color: 'theme.base.content',
-          lineHeight: 1.6,
-          textAlign: 'center',
-          marginBottom: 24
-        }),
-        
-        Button('Close Modal', {
-          backgroundColor: 'theme.primary.default',
-          color: 'theme.primary.content',
-          padding: '10px 20px',
-          borderRadius: 8,
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          width: '100%',
-          onClick: portal.unmount
-        })
-      ]
-    })
-  });
-});
-```
-
----
+-----
 
 ## 📖 API Reference
 
 ### Core Functions
 
-| Function    | Signature                                                                                                                                  | Description                                                                                                                                                                                                      |
-|-------------|---------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Node`      | `(element: string \| ComponentType, baseProps?: object) => NodeFactory`                                                                    | Creates a configurable UI node factory that supports flexible properties, dynamic styling, and theme resolution.                                                                                                |
-| `Component` | `(render: (props: P) => ComponentNode) => React.Component<P>`                                                                               | Transforms node trees into reusable React components with built-in type safety, prop handling, and seamless React integration.                                                                                  |
-| `Portal`    | `(component: (props: P & PortalProps) => ComponentNode) \| (provider: NodeElement, component: (props: P & PortalProps) => ComponentNode)` | Creates React Portal components with optional context provider wrapping. Components receive portal controls for programmatic mounting/unmounting and lifecycle management. |
+| Function | Signature | Description |
+| :--- | :--- | :--- |
+| `Node` | `(element: string \| ComponentType, baseProps?: object) => NodeFactory` | Creates a configurable UI node factory that supports flexible properties, dynamic styling, and theme resolution. |
+| `Component` | `(render: (props: P) => ComponentNode) => React.Component<P>` | Transforms node trees into reusable React components with built-in type safety, prop handling, and seamless React integration. |
+| `Portal` | `(component: (props: P & PortalProps) => ComponentNode) \| (provider: NodeElement, component: (props: P & PortalProps) => ComponentNode)` | Creates React Portal components with optional context provider wrapping. Components receive portal controls for programmatic mounting/unmounting and lifecycle management. |
 
 ### Pre-built Components
 
 | Component Category | Components | Description |
-|-------------------|------------|-------------|
+| :--- | :--- | :--- |
 | **Layout** | `Root`, `Center`, `Column`, `Row`, `Div`, `Section`, `Header`, `Footer`, `Main`, `Nav` | Semantic layout primitives with flexbox and grid support |
 | **Typography** | `H1`, `H2`, `H3`, `H4`, `H5`, `H6`, `P`, `Text`, `Span`, `Strong`, `Em` | Typography elements with theme-aware styling |
 | **Interactive** | `Button`, `Link`, `Input`, `Select`, `Textarea`, `Checkbox`, `Radio` | Form controls and interactive elements |
@@ -1115,11 +652,11 @@ interface PortalProps {
 }
 ```
 
----
+-----
 
 ## 🎨 Design Patterns
 
-### 1. Theme-First Design System
+### 1\. Theme-First Design System
 
 ```tsx
 // Complete design system setup
@@ -1226,7 +763,7 @@ const ThemedCard = Component<{ variant?: 'default' | 'success' | 'warning' | 'er
 );
 ```
 
-### 2. Responsive Design Patterns
+### 2\. Responsive Design Patterns
 
 ```tsx
 const ResponsiveGrid = Component<{ items: Array<{ title: string; content: string }> }>(
@@ -1279,7 +816,7 @@ const ResponsiveGrid = Component<{ items: Array<{ title: string; content: string
 );
 ```
 
-### 3. Form Composition
+### 3\. Form Composition
 
 ```tsx
 const ContactForm = Component(() => {
@@ -1384,7 +921,7 @@ const ContactForm = Component(() => {
 });
 ```
 
----
+-----
 
 ## 🔧 Advanced Techniques
 
@@ -1513,7 +1050,7 @@ const SafeApp = Component(() =>
 );
 ```
 
----
+-----
 
 ## 🌟 Real-World Example Application
 
@@ -1882,35 +1419,39 @@ const MeoNodeShowcase = Component(() => {
 export default MeoNodeShowcase;
 ```
 
----
+-----
 
 ## 📋 Best Practices
 
-### 1. **Theme Organization**
+### 1\. **Theme Organization**
+
 - Structure themes hierarchically with logical groupings
 - Use semantic naming for colors (primary, secondary, success, etc.)
 - Include both light and dark variants in your theme system
 - Define spacing and typography scales for consistency
 
-### 2. **Component Composition**
+### 2\. **Component Composition**
+
 - Keep components focused and single-purpose
 - Use the `Component` wrapper for reusable elements
 - Leverage prop spreading for flexible component APIs
 - Combine multiple simple components to create complex interfaces
 
-### 3. **Performance Optimization**
+### 3\. **Performance Optimization**
+
 - Use React.memo for expensive components when needed
 - Leverage the built-in tree-shaking capabilities
 - Minimize theme object recreations in render functions
 - Use CSS-in-JS patterns responsibly for optimal performance
 
-### 4. **CSS Architecture**
+### 4\. **CSS Architecture**
+
 - Prefer theme values over hardcoded styles
 - Use the `css` property for complex selectors and animations
 - Implement responsive design through media queries
 - Maintain consistent hover and focus states across components
 
----
+-----
 
 ## 🔗 Integration Examples
 
@@ -1946,28 +1487,30 @@ const AppWithRedux = Component(() =>
 );
 ```
 
----
+-----
 
 ## 🌐 Community & Resources
 
 ### Example Repository
+
 Explore a complete Next.js application showcasing MeoNode UI best practices...
 
 **[🔗 MeoNode + Next.js Example](https://github.com/l7aromeo/react-meonode)**
 **[🔗 Open in CodeSandbox](https://codesandbox.io/p/github/l7aromeo/react-meonode/main?import=true)**
 
 This repository demonstrates:
+
 - Server Component integration
 - Redux state management with preloaded state
 - Responsive design patterns
 - Advanced portal usage
 - Theme system implementation
 
----
+-----
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Here's how to get started:
+We welcome contributions from the community\! Here's how to get started:
 
 ### Development Setup
 
@@ -1995,24 +1538,24 @@ npm run build
 
 ### Contribution Guidelines
 
-1. **🍴 Fork** the repository and create your feature branch
-2. **🔧 Install dependencies** and ensure tests pass
-3. **✨ Create your feature** with comprehensive tests
-4. **📝 Update documentation** for any new features
-5. **🧪 Test thoroughly** across different scenarios
-6. **📤 Submit a Pull Request** with a clear description
+1.  **🍴 Fork** the repository and create your feature branch
+2.  **🔧 Install dependencies** and ensure tests pass
+3.  **✨ Create your feature** with comprehensive tests
+4.  **📝 Update documentation** for any new features
+5.  **🧪 Test thoroughly** across different scenarios
+6.  **📤 Submit a Pull Request** with a clear description
 
 ### Development Standards
 
 - **TypeScript First** - All code must include proper type definitions
-- **Test Coverage** - Maintain >95% test coverage for new features
+- **Test Coverage** - Maintain \>95% test coverage for new features
 - **Documentation** - Update README and examples for new features
 - **Performance** - Ensure no performance regressions
 - **Accessibility** - Follow WCAG guidelines for new components
 
 For major changes or new features, please open an issue first to discuss your proposal with the maintainers.
 
----
+-----
 
 ## 📄 License & Support
 
@@ -2025,7 +1568,7 @@ For major changes or new features, please open an issue first to discuss your pr
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/l7aromeo/meonode-ui/discussions)
 - 📧 **Discord**: [l7aromeo](https://discord.com/users/704803255561224264)
 
----
+-----
 
 *Empowering developers to build exceptional UIs with type-safe, theme-aware, function-based React components.*
 
