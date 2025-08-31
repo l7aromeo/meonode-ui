@@ -1,8 +1,8 @@
 # @meonode/ui
 
-[](https://www.npmjs.com/package/@meonode/ui)
-[](https://opensource.org/licenses/MIT)
-[](https://bundlephobia.com/package/@meonode/ui)
+[![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@meonode/ui)](https://bundlephobia.com/package/@meonode/ui)
 
 ## **Build React UIs with Type-Safe Fluency Without JSX Syntax**
 
