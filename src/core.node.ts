@@ -394,6 +394,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       propsForCreateElement = {
         ...(otherProps as ComponentProps<ElementType>),
         key,
+        suppressHydrationWarning: true,
       }
     }
 
