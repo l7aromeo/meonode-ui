@@ -10,10 +10,6 @@
       "import": "./dist/main.js",
       "types": "./dist/main.d.ts"
     },
-    "./hook": {
-      "import": "./dist/hook/index.js",
-      "types": "./dist/hook/index.d.ts"
-    },
     "./nextjs-registry": {
       "import": "./dist/nextjs-registry/index.js",
       "types": "./dist/nextjs-registry/index.d.ts"
