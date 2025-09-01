@@ -15,8 +15,6 @@ import React, {
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 import type { CSSInterpolation } from '@emotion/serialize'
-import { css } from '@emotion/react'
-css({ '@media (min-width: 200px)': {} })
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
