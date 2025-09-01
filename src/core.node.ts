@@ -361,7 +361,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     }
 
     // Extract children and key
-    const { children: childrenInProps, key, ...otherProps } = this.props
+    const { children: childrenInProps, key, nativeProps, ...otherProps } = this.props
 
     let finalChildren: ReactNode = undefined
 
@@ -395,10 +395,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       propsForCreateElement = {
         ...(otherProps as ComponentProps<ElementType>),
         key,
-        ...otherProps.nativeProps,
+        ...nativeProps,
         suppressHydrationWarning: true,
       }
-      delete propsForCreateElement.nativeProps
     }
 
     // If the element has css props, render using the StyledRenderer component
