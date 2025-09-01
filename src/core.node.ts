@@ -16,6 +16,7 @@ import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElement
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper'
 import { StyledRenderer } from '@src/components'
+import type { StyledRendererProps } from '@src/components/styled-renderer.client'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -63,7 +64,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     const currentTheme = theme || nodetheme
 
-    const { style: nativeStyle, theme: nativeTheme, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
+    const { style: nativeStyle, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
     const resolvedRawProps = resolveObjWithTheme(restRawProps, currentTheme)
     const resolvedNativeStyle = resolveObjWithTheme(nativeStyle, currentTheme)
@@ -85,11 +86,11 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       ref,
       key,
       nodetheme: currentTheme,
-      theme: nativeTheme || theme,
+      theme,
       css: { ...finalStyleProps, ...css },
       style: resolvedNativeStyle,
       ...domProps,
-      ...restNativeProps,
+      nativeProps: restNativeProps,
       children: normalizedChildren,
     }
   }
@@ -387,15 +388,17 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     }
 
     // Prepare props for React.createElement
-    let propsForCreateElement: ComponentProps<ElementType> & { key?: Key }
+    let propsForCreateElement: Omit<FinalNodeProps, 'children'>
     if (this.element === Fragment || isFragment(this.element)) {
       propsForCreateElement = { key }
     } else {
       propsForCreateElement = {
         ...(otherProps as ComponentProps<ElementType>),
         key,
+        ...otherProps.nativeProps,
         suppressHydrationWarning: true,
       }
+      delete propsForCreateElement.nativeProps
     }
 
     // If the element has css props, render using the StyledRenderer component
@@ -405,9 +408,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
         StyledRenderer,
         {
           element: this.element,
-          ...propsForCreateElement,
+          ...(propsForCreateElement as Omit<StyledRendererProps<E>, 'element'>),
         },
-        finalChildren,
+        finalChildren as ReactNode,
       )
     }
 

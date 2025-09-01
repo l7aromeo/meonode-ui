@@ -1,16 +1,21 @@
 'use client'
 
-import React, { type JSX } from 'react'
+import { type JSX, type ReactNode } from 'react'
 import { jsx } from '@emotion/react'
 import type { CSSInterpolation } from '@emotion/serialize'
+import type { NodeElement } from '@src/node.type'
 
-interface StyledRendererProps {
-  element: keyof JSX.IntrinsicElements
-  children: React.ReactNode
-  css: CSSInterpolation
-  [key: string]: any
+export interface StyledRendererProps<E extends NodeElement> {
+  element: E
+  children: ReactNode
+  css?: CSSInterpolation
 }
 
-export default function StyledRenderer({ element, css, children, ...props }: StyledRendererProps) {
-  return jsx(element, { ...props, css }, children)
+export default function StyledRenderer<E extends NodeElement, TProps extends Record<string, any>>({
+  element,
+  css,
+  children,
+  ...props
+}: StyledRendererProps<E> & TProps) {
+  return jsx(element as keyof JSX.IntrinsicElements, { ...props, css }, children)
 }
