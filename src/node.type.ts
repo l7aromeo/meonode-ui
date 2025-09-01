@@ -14,7 +14,9 @@ import React, {
   type ReactElement,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
-import type { CSSObject } from '@emotion/react'
+import type { CSSInterpolation } from '@emotion/serialize'
+import { css } from '@emotion/react'
+css({ '@media (min-width: 200px)': {} })
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -136,7 +138,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
     props: Partial<Omit<PropsOf<E>, 'children' | keyof CSSProperties>>
     children: NodeElement | NodeElement[]
     theme: Theme
-    css: CSSObject
+    css: CSSInterpolation
   }>
 
 /**
