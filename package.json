@@ -93,6 +93,8 @@
     "web-development",
     "no-jsx",
     "component-library",
-    "accessible-components"
+    "accessible-components",
+    "meonode-ui",
+    "meonode"
   ]
 }
