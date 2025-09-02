@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-09-02
+
+### Added
+- **core**: Exposed the original element via the created Node for easier access and debugging.
+    ```typescript
+    import { createNode } from "@meonode/ui";
+
+    // Create a Node wrapping a 'div' element
+    const MyComp = createNode('div');
+
+    // Access the underlying element type
+    console.log(MyComp.element); // 'div'
+    ```
+
 ## [0.2.3] - 2025-09-01
 
 ### Fixed
