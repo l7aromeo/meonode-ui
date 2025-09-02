@@ -14,39 +14,39 @@ A revolutionary approach to React component composition featuring function-based
 import { Component, Root, Center, Column, H1, Button, Text } from '@meonode/ui';
 
 const theme = {
-    primary: { default: '#FF6B6B', content: '#4A0000' },
-    secondary: { default: '#6BCB77', content: '#0A3B0F' },
-    base: { default: '#F8F8F8', content: '#333333' }
+  primary: { default: '#FF6B6B', content: '#4A0000' },
+  secondary: { default: '#6BCB77', content: '#0A3B0F' },
+  base: { default: '#F8F8F8', content: '#333333' }
 };
 
 const App = Component(() =>
-    Root({
-        theme,
-        backgroundColor: 'theme.base.default',
-        children: Center({
-            padding: 40,
-            children: Column({
-                gap: 24,
-                textAlign: 'center',
-                children: [
-                    H1('Welcome to MeoNode', {
-                        fontSize: '3rem',
-                        color: 'theme.primary.default',
-                        marginBottom: 16
-                    }),
-                    Button('Get Started', {
-                        backgroundColor: 'theme.primary.default',
-                        color: 'theme.primary.content',
-                        padding: '12px 24px',
-                        borderRadius: 8,
-                        fontSize: '1.1rem',
-                        cursor: 'pointer',
-                        onClick: () => alert('Hello MeoNode!')
-                    })
-                ]
-            })
-        })
+  Root({
+    theme,
+    backgroundColor: 'theme.base.default',
+    children: Center({
+      padding: 40,
+      children: Column({
+        gap: 24,
+        textAlign: 'center',
+        children: [
+          H1('Welcome to MeoNode', {
+            fontSize: '3rem',
+            color: 'theme.primary.default',
+            marginBottom: 16
+          }),
+          Button('Get Started', {
+            backgroundColor: 'theme.primary.default',
+            color: 'theme.primary.content',
+            padding: '12px 24px',
+            borderRadius: 8,
+            fontSize: '1.1rem',
+            cursor: 'pointer',
+            onClick: () => alert('Hello MeoNode!')
+          })
+        ]
+      })
     })
+  })
 );
 ```
 
