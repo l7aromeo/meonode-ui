@@ -502,10 +502,13 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
   element: E,
   initialProps?: NodeProps<E> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? <AdditionalProps extends Record<string, any> = Record<string, any>>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>
-  : <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E> {
-  return <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) =>
+  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>) & { element: E }
+  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E>) & { element: E } {
+  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) =>
     Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps)
+
+  Instance.element = element
+  return Instance
 }
 
 /**
@@ -531,16 +534,19 @@ export function createChildrenFirstNode<AdditionalInitialProps extends Record<st
   element: E,
   initialProps?: Omit<NodeProps<E> & AdditionalInitialProps, 'children'>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? <AdditionalProps extends Record<string, any> = Record<string, any>>(
+  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(
       children: NodeElement | NodeElement[],
       props: Omit<NodeProps<E> & AdditionalProps, 'children'>,
-    ) => NodeInstance<E>
-  : <AdditionalProps extends Record<string, any> = Record<string, any>>(
+    ) => NodeInstance<E>) & { element: E }
+  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(
       children?: NodeElement | NodeElement[],
       props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
-    ) => NodeInstance<E> {
-  return <AdditionalProps extends Record<string, any> = Record<string, any>>(
+    ) => NodeInstance<E>) & { element: E } {
+  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(
     children?: NodeElement | NodeElement[],
     props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
   ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
+
+  Instance.element = element
+  return Instance
 }
