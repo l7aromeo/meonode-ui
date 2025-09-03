@@ -1,6 +1,6 @@
 'use strict'
-import { BaseNode, Node } from '@src/core.node'
-import type { BasePortalProps, ComponentNode, NodeInstance, NodeProps, PortalLauncher, PortalProps, Theme } from '@src/node.type'
+import { BaseNode, Node } from '@src/core.node.js'
+import type { BasePortalProps, ComponentNode, NodeInstance, NodeProps, PortalLauncher, PortalProps, Theme } from '@src/node.type.js'
 import type { ReactNode } from 'react'
 import { type Root as ReactDOMRoot } from 'react-dom/client'
 

@@ -1,7 +1,7 @@
 'use strict'
 
-import { BaseNode, Node } from '@src/core.node'
-import type { ComponentNode, HasCSSCompatibleStyleProp, NodeElement, Theme } from '@src/node.type'
+import { BaseNode, Node } from '@src/core.node.js'
+import type { ComponentNode, HasCSSCompatibleStyleProp, NodeElement, Theme } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 
 /**

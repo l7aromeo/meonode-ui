@@ -11,11 +11,11 @@ import type {
   RawNodeProps,
   Theme,
 } from '@src/node.type'
-import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper'
-import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper'
+import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
+import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper'
-import { StyledRenderer } from '@src/components'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper.js'
+import { StyledRenderer } from '@src/components/index.js'
 import type { StyledRendererProps } from '@src/components/styled-renderer.client'
 
 /**
