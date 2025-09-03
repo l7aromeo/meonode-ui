@@ -10,13 +10,13 @@ import type {
   PropsOf,
   RawNodeProps,
   Theme,
-} from '@src/node.type'
+} from '@src/node.type.js'
 import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper.js'
 import { StyledRenderer } from '@src/components/index.js'
-import type { StyledRendererProps } from '@src/components/styled-renderer.client'
+import type { StyledRendererProps } from '@src/components/styled-renderer.client.js'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
