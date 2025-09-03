@@ -43,13 +43,13 @@
     "@eslint/js": "^9.34.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
-    "@typescript-eslint/eslint-plugin": "^8.41.0",
-    "@typescript-eslint/parser": "^8.41.0",
-    "@typescript/native-preview": "^7.0.0-dev.20250827.1",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@typescript/native-preview": "^7.0.0-dev.20250903.1",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-minify": "^0.5.2",
     "eslint": "^9.34.0",
-    "eslint-plugin-jsdoc": "^54.1.1",
+    "eslint-plugin-jsdoc": "^54.3.1",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-unused-imports": "^4.2.0",
     "next": "^15.5.2",
@@ -57,7 +57,7 @@
     "react-dom": "^19.1.1",
     "tsc-alias": "^1.8.16",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.41.0"
+    "typescript-eslint": "^8.42.0"
   },
   "packageManager": "yarn@4.9.1",
   "peerDependencies": {
