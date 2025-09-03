@@ -224,15 +224,25 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const componentType = getComponentType(rawNode) // Determine the type of the raw node
 
     // Helper to generate an indexed key if no explicit key is present and an index is available.
-    const generateIndexedKeyIfNeeded = (element: NodeElement, existingKey?: Key | null): Key | null | undefined => {
-      if (existingKey !== undefined && existingKey !== null) {
+    const generateIndexedKeyIfNeeded = ({
+      element,
+      existingKey,
+      children,
+    }: {
+      element: NodeElement
+      existingKey?: Key | null
+      children?: NodeElement | NodeElement[]
+    }): Key | null | undefined => {
+      if (existingKey) {
         return existingKey
-      }
-      if (childIndex !== undefined) {
+      } else {
         const elementName = getElementTypeName(element) // Get element type name for key generation
+        if (children && Array.isArray(children) && childIndex !== undefined) {
+          // If the BaseNode has children, include the count in the key for better uniqueness
+          return `${elementName}-${childIndex}-${children.length}`
+        }
         return `${elementName}-${childIndex}`
       }
-      return undefined // No explicit key, and not an array child, so BaseNode constructor will handle.
     }
 
     // Case 1: Child is already a BaseNode instance
@@ -241,7 +251,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
       const themeForNewNode = childRawProps.theme || childRawProps.nodetheme || parentTheme // Prefer child's own theme
 
-      const keyForChildNode = generateIndexedKeyIfNeeded(childInstance.element, childRawProps.key)
+      const keyForChildNode = generateIndexedKeyIfNeeded({ element: childInstance.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
 
       return new BaseNode(childInstance.element, {
         ...childRawProps,
@@ -259,7 +269,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = generateIndexedKeyIfNeeded(this._functionRenderer, undefined) // Generate key for function renderer
+      const keyForFunctionRenderer = generateIndexedKeyIfNeeded({ element: this._functionRenderer }) // Generate key for function renderer
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
@@ -277,7 +287,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
 
       const themeForChild = combinedProps.theme || combinedProps.nodetheme || parentTheme
-      const keyForChildNode = generateIndexedKeyIfNeeded(rawNode.type as ElementType, rawNode.key)
+      const keyForChildNode = generateIndexedKeyIfNeeded({ element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
 
       return new BaseNode(rawNode.type as ElementType, {
         ...combinedProps, // Pass the combined props
@@ -289,7 +299,10 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Case 5: Child is an ElementType (string tag, class component, Memo/ForwardRef)
     if (isReactClassComponent(rawNode) || (componentType === 'object' && (isMemo(rawNode) || isForwardRef(rawNode)))) {
       // ElementTypes don't have an intrinsic key from the rawNode itself.
-      const keyForChildNode = generateIndexedKeyIfNeeded(rawNode as ElementType, undefined)
+      const keyForChildNode = generateIndexedKeyIfNeeded({
+        element: rawNode as ElementType,
+        children: typeof rawNode === 'object' && 'props' in rawNode ? rawNode.props?.children : undefined,
+      })
       return new BaseNode(rawNode as ElementType, {
         nodetheme: parentTheme, // Apply parent theme
         key: keyForChildNode,
