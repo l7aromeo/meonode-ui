@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-09-04
+
+- **deps**: update TypeScript ESLint, native-preview, and jsdoc to latest versions
+- **core.node**: improve generateIndexedKeyIfNeeded to accept object parameters and enhance key uniqueness with children count
+- **imports**: update import paths to include file extensions for compatibility
+
 ## [0.2.5] - 2025-09-03
 
 - **imports**: Update import paths to include file extensions for compatibility.
