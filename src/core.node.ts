@@ -213,18 +213,18 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * (`elementName_child_index`) is generated for new BaseNode instances.
    * @param rawNode The raw child element to process.
    * @param parentTheme The theme inherited from the parent node.
-   * @param childIndex Optional index of the child if it's part of an array.
+   * @param nodeIndex Optional index of the child if it's part of an array.
    * @returns The processed child.
    */
   public _processRawNode(
     rawNode: NodeElement,
     parentTheme?: Theme,
-    childIndex?: number, // Index for generating stable keys for array children
+    nodeIndex?: number, // Index for generating stable keys for array children
   ): NodeElement {
     const componentType = getComponentType(rawNode) // Determine the type of the raw node
 
     // Helper to generate an indexed key if no explicit key is present and an index is available.
-    const generateIndexedKeyIfNeeded = ({
+    const generateKey = ({
       element,
       existingKey,
       children,
@@ -233,16 +233,14 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       existingKey?: Key | null
       children?: NodeElement | NodeElement[]
     }): Key | null | undefined => {
-      if (existingKey) {
-        return existingKey
-      } else {
-        const elementName = getElementTypeName(element) // Get element type name for key generation
-        if (children && Array.isArray(children) && childIndex !== undefined) {
-          // If the BaseNode has children, include the count in the key for better uniqueness
-          return `${elementName}-${childIndex}-${children.length}`
-        }
-        return `${elementName}-${childIndex}`
+      if (existingKey) return existingKey
+
+      const elementName = getElementTypeName(element)
+      if (Array.isArray(children) && children.length > 0) {
+        return nodeIndex !== undefined ? `${elementName}-${nodeIndex}-${children.length}` : `${elementName}-${children.length}`
       }
+      if (nodeIndex !== undefined) return `${elementName}-${nodeIndex}`
+      return elementName
     }
 
     // Case 1: Child is already a BaseNode instance
@@ -251,7 +249,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
       const themeForNewNode = childRawProps.theme || childRawProps.nodetheme || parentTheme // Prefer child's own theme
 
-      const keyForChildNode = generateIndexedKeyIfNeeded({ element: childInstance.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
+      const keyForChildNode = generateKey({ element: childInstance.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
 
       return new BaseNode(childInstance.element, {
         ...childRawProps,
@@ -269,7 +267,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = generateIndexedKeyIfNeeded({ element: this._functionRenderer }) // Generate key for function renderer
+      const keyForFunctionRenderer = generateKey({ element: this._functionRenderer }) // Generate key for function renderer
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
@@ -287,7 +285,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
 
       const themeForChild = combinedProps.theme || combinedProps.nodetheme || parentTheme
-      const keyForChildNode = generateIndexedKeyIfNeeded({ element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
+      const keyForChildNode = generateKey({ element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
 
       return new BaseNode(rawNode.type as ElementType, {
         ...combinedProps, // Pass the combined props
@@ -299,7 +297,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Case 5: Child is an ElementType (string tag, class component, Memo/ForwardRef)
     if (isReactClassComponent(rawNode) || (componentType === 'object' && (isMemo(rawNode) || isForwardRef(rawNode)))) {
       // ElementTypes don't have an intrinsic key from the rawNode itself.
-      const keyForChildNode = generateIndexedKeyIfNeeded({
+      const keyForChildNode = generateKey({
         element: rawNode as ElementType,
         children: typeof rawNode === 'object' && 'props' in rawNode ? rawNode.props?.children : undefined,
       })
@@ -313,7 +311,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if ((rawNode as unknown as React.Component) instanceof React.Component) {
       const element = (rawNode as unknown as React.Component).render()
       // Recursively process the rendered element with a parent theme and index if available
-      return this._processRawNode(element, parentTheme, childIndex)
+      return this._processRawNode(element, parentTheme, nodeIndex)
     }
 
     // Case 7: Fallback for other ReactNode types (e.g., Fragments, Portals if not caught by isValidElement)
