@@ -7,7 +7,7 @@ import type { NodeElement } from '@src/node.type.js'
 
 export interface StyledRendererProps<E extends NodeElement> {
   element: E
-  children: ReactNode
+  children?: ReactNode
   css?: CSSInterpolation
 }
 
