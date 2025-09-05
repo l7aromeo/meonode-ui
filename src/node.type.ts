@@ -219,4 +219,5 @@ export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P 
  * @template E - The node element type
  * @template AdditionalProps - The additional props to merge in
  */
-export type MergedProps<E extends NodeElement, AdditionalProps extends Record<string, any>> = Omit<NodeProps<E>, keyof AdditionalProps> & AdditionalProps
+export type MergedProps<E extends NodeElement, AdditionalProps extends Record<string, any>> = Omit<NodeProps<E> & AdditionalProps, keyof AdditionalProps> &
+  AdditionalProps
