@@ -1,7 +1,7 @@
 'use strict'
 import type { CSSProperties } from 'react'
 import type { NodeInstance, Theme } from '@src/node.type.js'
-import { getValueByPath } from '@src/common.helper.js'
+import { getValueByPath } from '@src/helper/common.helper.js'
 
 /**
  * Type guard to check if an object is a NodeInstance.

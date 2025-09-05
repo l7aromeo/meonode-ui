@@ -11,12 +11,11 @@ import type {
   RawNodeProps,
   Theme,
 } from '@src/node.type.js'
-import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/node.helper.js'
-import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/react-is.helper.js'
+import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/helper/node.helper.js'
+import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/common.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/helper/common.helper.js'
 import { StyledRenderer } from '@src/components/index.js'
-import type { StyledRendererProps } from '@src/components/styled-renderer.client.js'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -418,7 +417,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
         StyledRenderer,
         {
           element: this.element,
-          ...(propsForCreateElement as Omit<StyledRendererProps<E>, 'element'>),
+          ...propsForCreateElement,
         },
         finalChildren as ReactNode,
       )

@@ -1,5 +1,5 @@
 export { Node, createNode } from '@src/core.node.js'
 export * from '@src/hoc/index.js'
-export * from '@src/node.helper.js'
+export * from '@src/helper/node.helper.js'
 export * from '@src/node.type.js'
-export * from '@src/html.node.js'
+export * from '@src/components/html.node.js'
