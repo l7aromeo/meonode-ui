@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2025-09-05
+
+### Fixed
+- **core.types**: corrected `MergedProps` definition to restore proper TypeScript inference and props autocomplete
+    - Fixes regression from v0.2.8 where `createNode` and `createChildrenFirstNode` lost autocomplete for props due to incorrect `MergedProps` typing
+
 ## [0.2.8] - 2025-09-05
 
 ### Changed
