@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-09-05
+
+### Changed
+- **core.node**: refactor props handling to use a single utility type:
+    - `MergedProps<E, AdditionalProps>` — merges `NodeProps<E>` with custom props, giving precedence to overlapping keys from `AdditionalProps`.
+- Simplifies and unifies the typing system for node factories (`createNode`, `createChildrenFirstNode`).
+- Improves developer experience when working with prebuilt components:
+    - Example:
+      ```typescript
+      import { Div, Input } from '@meonode/ui'
+  
+      // Add new props
+      Div<{ field: string }>({ field: 'Hello' })
+  
+      // Override existing React props
+      Input<{ onChange: (e: { target: { value: string } }) }>({
+        onChange: ({ target }) => console.log(target.value),
+      })
+      ```
+  Extending prebuilt components is now safer and more predictable, with generic props always taking precedence when keys overlap.
+
+- **helpers**: reorganize helper files and update import paths
+
+### Fixed
+- **styled-renderer**: make `children` prop optional in `StyledRendererProps`
+
 ## [0.2.7] - 2025-09-04
 
 ### Changed
