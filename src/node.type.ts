@@ -212,3 +212,11 @@ export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P 
         provider?: NodeInstance<any>
       } & Omit<PortalProps<P>, 'portal'>,
     ) => ReactDOMRoot | null
+
+/**
+ * Merges `NodeProps<E>` with additional custom props, giving precedence to `AdditionalProps`.
+ * Useful for extending node props with extra properties, while overriding any overlapping keys.
+ * @template E - The node element type
+ * @template AdditionalProps - The additional props to merge in
+ */
+export type MergedProps<E extends NodeElement, AdditionalProps extends Record<string, any>> = Omit<NodeProps<E>, keyof AdditionalProps> & AdditionalProps

@@ -1,6 +1,7 @@
 'use strict'
 import React, { Fragment, type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode, type ReactElement } from 'react'
 import type {
+  MergedProps,
   FinalNodeProps,
   FunctionRendererProps,
   HasRequiredProps,
@@ -15,7 +16,7 @@ import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/h
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/helper/common.helper.js'
-import { StyledRenderer } from '@src/components/index.js'
+import StyledRenderer from '@src/components/styled-renderer.client.js'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -483,7 +484,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
  */
 export function Node<AdditionalProps extends Record<string, any>, E extends NodeElement>(
   element: E,
-  props: NodeProps<E> & AdditionalProps = {} as NodeProps<E> & AdditionalProps,
+  props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
   additionalProps: AdditionalProps = {} as AdditionalProps,
 ): NodeInstance<E> {
   const finalProps = { ...props, ...additionalProps } as RawNodeProps<E> & AdditionalProps
@@ -510,11 +511,11 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
  */
 export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElement>(
   element: E,
-  initialProps?: NodeProps<E> & AdditionalInitialProps,
+  initialProps?: MergedProps<E, AdditionalInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(props: NodeProps<E> & AdditionalProps) => NodeInstance<E>) & { element: E }
-  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) => NodeInstance<E>) & { element: E } {
-  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: NodeProps<E> & AdditionalProps) =>
+  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(props: MergedProps<E, AdditionalProps>) => NodeInstance<E>) & { element: E }
+  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>) => NodeInstance<E>) & { element: E } {
+  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>) =>
     Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps)
 
   Instance.element = element
@@ -542,19 +543,19 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
  */
 export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends ElementType>(
   element: E,
-  initialProps?: Omit<NodeProps<E> & AdditionalInitialProps, 'children'>,
+  initialProps?: Omit<NodeProps<E>, keyof AdditionalInitialProps | 'children'> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
   ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(
       children: NodeElement | NodeElement[],
-      props: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+      props: Omit<MergedProps<E, AdditionalProps>, 'children'>,
     ) => NodeInstance<E>) & { element: E }
   : (<AdditionalProps extends Record<string, any> = Record<string, any>>(
       children?: NodeElement | NodeElement[],
-      props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+      props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
     ) => NodeInstance<E>) & { element: E } {
   const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(
     children?: NodeElement | NodeElement[],
-    props?: Omit<NodeProps<E> & AdditionalProps, 'children'>,
+    props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
   ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
 
   Instance.element = element
