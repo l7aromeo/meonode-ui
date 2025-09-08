@@ -117,43 +117,6 @@ const emotionStyles = css`
 - **📱 Responsive Design**: Native media query support with optimal performance
 - **🎨 Advanced Features**: Pseudo-classes, keyframe animations, and complex selectors
 
-### Theme Resolution Engine
-
-```tsx
-// MeoNode's theme engine automatically resolves nested theme paths:
-const theme = {
-  colors: {
-    primary: {
-      500: '#3B82F6',
-      600: '#2563EB'
-    }
-  }
-};
-
-// This syntax:
-backgroundColor: 'theme.colors.primary.500'
-
-// Gets resolved by the engine to:
-backgroundColor: '#3B82F6'
-
-// The resolution happens through Emotion's theming system:
-import { ThemeProvider } from '@emotion/react';
-
-// MeoNode wraps your components automatically:
-const ThemedComponent = () => (
-  <ThemeProvider theme={theme}>
-    <div css={{
-      backgroundColor: theme.colors.primary[500], // Resolved automatically
-      '&:hover': {
-        backgroundColor: theme.colors.primary[600]
-      }
-    }}>
-      Content
-    </div>
-  </ThemeProvider>
-);
-```
-
 ### Style Processing Pipeline
 
 1.  **Parse Props**: MeoNode separates CSS properties from DOM attributes
