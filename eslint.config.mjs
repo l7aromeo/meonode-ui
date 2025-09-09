@@ -1,4 +1,4 @@
-import js from "@eslint/js";
+import js from '@eslint/js'
 import tsEslint from 'typescript-eslint'
 import prettier from 'eslint-plugin-prettier'
 import unusedImports from 'eslint-plugin-unused-imports'
@@ -7,7 +7,7 @@ import jsDoc from 'eslint-plugin-jsdoc'
 
 const eslintConfig = [
   {
-    ignores: ["**/dist/**", "**/build/**"], // Add other directories you wish to ignore
+    ignores: ['**/dist/**', '**/build/**'], // Add other directories you wish to ignore
   },
   jsDoc.configs['flat/stylistic-typescript'],
   js.configs.recommended,
@@ -21,7 +21,7 @@ const eslintConfig = [
     plugins: {
       prettier,
       unusedImports,
-      jsDoc
+      jsDoc,
     },
     rules: {
       'prettier/prettier': 'error',
@@ -29,29 +29,33 @@ const eslintConfig = [
       '@typescript-eslint/no-unsafe-function-type': 'off',
       '@typescript-eslint/consistent-type-definitions': 'error',
       '@typescript-eslint/no-unused-vars': [
-        "error", {
-          "args": "all",
-          "argsIgnorePattern": "^_",
-          "caughtErrors": "all",
-          "caughtErrorsIgnorePattern": "^_",
-          "destructuredArrayIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "ignoreRestSiblings": true
-        }],
+        'error',
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
       'unusedImports/no-unused-imports': 'error',
       'unusedImports/no-unused-vars': [
-        "error", {
-          "args": "all",
-          "argsIgnorePattern": "^_",
-          "caughtErrors": "all",
-          "caughtErrorsIgnorePattern": "^_",
-          "destructuredArrayIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "ignoreRestSiblings": true
-        }],
-      'jsDoc/require-description': 'warn'
+        'error',
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
+      'jsDoc/require-description': 'warn',
     },
-  }
-];
+  },
+]
 
-export default eslintConfig;
+export default eslintConfig
