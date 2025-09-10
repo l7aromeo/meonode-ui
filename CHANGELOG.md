@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] - 2025-09-10
+
+### Added
+- **core**: add top-level `render` function for a cleaner and simpler API when mounting a Meonode instance to the DOM. This abstracts away the need to manually use `react-dom/client`.
+  - **Before**:
+    ```typescript
+    import { createRoot } from 'react-dom/client';
+    import { Div } from '@meonode/core';
+
+    const container = document.getElementById('root');
+    const root = createRoot(container);
+    root.render(Div({ children: 'Hello' }).render());
+    ```
+  - **After**:
+    ```typescript
+    import { Div } from '@meonode/ui';
+    import { render } from '@meonode/ui/client';
+
+    const container = document.getElementById('root');
+    render(Div({ children: 'Hello' }), container);
+    ```
+- **constants**: add `NO_STYLE_TAGS` array and `noStyleTagsSet` for quick lookup of tags that should not receive styles
+
+### Enhanced
+- **core**: enhance `StyledRenderer` integration to check for no-style tags
+
+### Changed
+- **helper**: update CSS property set to use constants and add no-style tag check
+- **package**: update dependencies to latest versions
+- **directory**: rename `data` directory to `constants` for clarity
+- **file**: rename `cssProperties.ts` to `cssProperties.const.ts` to reflect its purpose
+
 ## [0.2.9] - 2025-09-05
 
 ### Fixed
@@ -26,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       Div<{ field: string }>({ field: 'Hello' })
   
       // Override existing React props
-      Input<{ onChange: (e: { target: { value: string } }) }>({
+      Input<{ onChange: (e: { target: { value: string } }) => void }>({
         onChange: ({ target }) => console.log(target.value),
       })
       ```
