@@ -12,11 +12,12 @@ import type {
   RawNodeProps,
   Theme,
 } from '@src/node.type.js'
-import { isNodeInstance, resolveDefaultStyle } from '@src/helper/node.helper.js'
+import { createStableHash, isNodeInstance, resolveDefaultStyle } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, shallowEqual } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
+import { ObjHelper } from '@src/helper/obj.helper.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 
 /**
@@ -31,23 +32,25 @@ import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   /** The underlying React element or component type that this node represents */
   public element: E
-
   /** Original props passed during construction, preserved for cloning/recreation */
   public rawProps: RawNodeProps<E> = {}
-
-  /** Processed props after theme resolution, style processing, and child normalization */
-  public props: FinalNodeProps
-
   /** Flag to identify BaseNode instances */
   public readonly isBaseNode = true
 
+  /** Processed props after theme resolution, style processing, and child normalization */
+  private _props?: FinalNodeProps
   /** DOM element used for portal rendering */
   private _portalDOMElement: HTMLDivElement | null = null
-
   /** React root instance for portal rendering */
   private _portalReactRoot: ReactDOMRoot | null = null
-
-  private static _childProcessingCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
+  /** Cache for processed children on the server (uses stringified keys for effective caching) */
+  private static _childProcessingCache = new Map<string, NodeElement | NodeElement[]>()
+  /** Cache for processed children on the client (uses WeakMap for array identity) */
+  private static _childProcessingClientCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
+  /** Hash of the current children and theme to detect changes */
+  private _childrenHash?: string
+  /** Cache for normalized children */
+  private _normalizedChildren?: ReactNode
 
   /**
    * Creates a new BaseNode instance that wraps a React element.
@@ -61,9 +64,19 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   constructor(element: E, rawProps: RawNodeProps<E> = {}) {
     this.element = element
     this.rawProps = rawProps
+  }
 
+  // Lazy getter for processed props
+  public get props(): FinalNodeProps {
+    if (!this._props) {
+      this._props = this._processProps()
+    }
+    return this._props
+  }
+
+  private _processProps(): FinalNodeProps {
     // Destructure raw props into relevant parts
-    const { ref, key, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = rawProps
+    const { ref, key, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = this.rawProps
 
     const currentTheme = theme || nodetheme
 
@@ -85,7 +98,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const normalizedChildren = this._processChildren(children, currentTheme)
 
     // Combine processed props into final normalized form
-    this.props = {
+    return {
       ref,
       key,
       nodetheme: currentTheme,
@@ -101,17 +114,36 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
-    // For server-side rendering, we can be more aggressive with caching
-    // since we don't worry about stale closures
-    const cacheKey = Array.isArray(children) ? children : [children]
+    // On server, use a Map with a stringified key for more effective caching.
+    if (typeof window === 'undefined') {
+      try {
+        const cacheKey = ObjHelper.stringify({ children, theme })
 
-    if (BaseNode._childProcessingCache.has(cacheKey)) {
-      return BaseNode._childProcessingCache.get(cacheKey)
+        if (BaseNode._childProcessingCache.has(cacheKey)) {
+          return BaseNode._childProcessingCache.get(cacheKey)
+        }
+
+        const result = Array.isArray(children)
+          ? children.map((child, index) => this._processRawNode(child, theme, index))
+          : this._processRawNode(children, theme)
+
+        BaseNode._childProcessingCache.set(cacheKey, result)
+        return result
+      } catch {
+        // If stringify fails for any reason, fall back to no-cache behavior.
+        return Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+      }
     }
 
+    // Fallback to original logic on the client (or if server-side caching fails)
+    // The original logic is kept for the client, though it's not very effective.
+    const cacheKey = Array.isArray(children) ? children : [children]
+    const clientCache = BaseNode._childProcessingClientCache // Use a different cache for client
+    if (clientCache.has(cacheKey)) {
+      return clientCache.get(cacheKey)
+    }
     const result = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
-
-    BaseNode._childProcessingCache.set(cacheKey, result)
+    clientCache.set(cacheKey, result)
     return result
   }
 
@@ -139,6 +171,14 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // 1. BaseNode instance: re-wrap to apply key/theme if needed
     if (processedElement instanceof BaseNode) {
       const nodetheme = processedElement.rawProps?.theme || processedElement.rawProps?.nodetheme || passedTheme
+      // Avoid creating new BaseNode if props are identical
+      if (
+        shallowEqual(commonBaseNodeProps, { key: processedElement.rawProps?.key }) &&
+        nodetheme === (processedElement.rawProps?.nodetheme || processedElement.rawProps?.theme)
+      ) {
+        return processedElement.render()
+      }
+
       return new BaseNode(processedElement.element, {
         ...processedElement.rawProps,
         ...commonBaseNodeProps,
@@ -215,6 +255,33 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     return result
   }
 
+  // Helper to generate an indexed key if no explicit key is present and an index is available.
+  private _generateKey = ({
+    nodeIndex,
+    element,
+    existingKey,
+    children,
+  }: {
+    nodeIndex?: number
+    element: NodeElement
+    existingKey?: Key | null
+    children?: NodeElement | NodeElement[]
+  }): Key | null | undefined => {
+    if (existingKey) return existingKey
+    const elementName = getElementTypeName(element)
+
+    let generatedKey: string
+    if (Array.isArray(children) && children.length > 0) {
+      generatedKey = nodeIndex !== undefined ? `${elementName}-${nodeIndex}-${children.length}` : `${elementName}-${children.length}`
+    } else if (nodeIndex !== undefined) {
+      generatedKey = `${elementName}-${nodeIndex}`
+    } else {
+      generatedKey = elementName
+    }
+
+    return generatedKey
+  }
+
   /**
    * Processes a single raw child element, converting it into a ProcessedChild.
    * If the child is part of an array and lacks an explicit key, a stable indexed key
@@ -224,32 +291,12 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @param nodeIndex Optional index of the child if it's part of an array.
    * @returns The processed child.
    */
-  public _processRawNode(
+  private _processRawNode(
     rawNode: NodeElement,
     parentTheme?: Theme,
     nodeIndex?: number, // Index for generating stable keys for array children
   ): NodeElement {
     const componentType = getComponentType(rawNode) // Determine the type of the raw node
-
-    // Helper to generate an indexed key if no explicit key is present and an index is available.
-    const generateKey = ({
-      element,
-      existingKey,
-      children,
-    }: {
-      element: NodeElement
-      existingKey?: Key | null
-      children?: NodeElement | NodeElement[]
-    }): Key | null | undefined => {
-      if (existingKey) return existingKey
-
-      const elementName = getElementTypeName(element)
-      if (Array.isArray(children) && children.length > 0) {
-        return nodeIndex !== undefined ? `${elementName}-${nodeIndex}-${children.length}` : `${elementName}-${children.length}`
-      }
-      if (nodeIndex !== undefined) return `${elementName}-${nodeIndex}`
-      return elementName
-    }
 
     // Case 1: Child is already a BaseNode instance
     if (rawNode instanceof BaseNode) {
@@ -257,7 +304,12 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const childRawProps = childInstance.rawProps || {} // Get initial raw props of the child
       const themeForNewNode = childRawProps.theme || childRawProps.nodetheme || parentTheme // Prefer child's own theme
 
-      const keyForChildNode = generateKey({ element: childInstance.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
+      // Check if we can reuse the existing node
+      if (childRawProps.nodetheme === themeForNewNode && childRawProps.key !== undefined) {
+        return childInstance
+      }
+
+      const keyForChildNode = this._generateKey({ nodeIndex, element: childInstance.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
 
       return new BaseNode(childInstance.element, {
         ...childRawProps,
@@ -275,7 +327,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = generateKey({ element: this._functionRenderer }) // Generate key for function renderer
+      const keyForFunctionRenderer = this._generateKey({ nodeIndex, element: this._functionRenderer }) // Generate key for function renderer
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
@@ -293,7 +345,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
 
       const themeForChild = combinedProps.theme || combinedProps.nodetheme || parentTheme
-      const keyForChildNode = generateKey({ element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
+      const keyForChildNode = this._generateKey({ nodeIndex, element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
 
       return new BaseNode(rawNode.type as ElementType, {
         ...combinedProps, // Pass the combined props
@@ -305,7 +357,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Case 5: Child is an ElementType (string tag, class component, Memo/ForwardRef)
     if (isReactClassComponent(rawNode) || (componentType === 'object' && (isMemo(rawNode) || isForwardRef(rawNode)))) {
       // ElementTypes don't have an intrinsic key from the rawNode itself.
-      const keyForChildNode = generateKey({
+      const keyForChildNode = this._generateKey({
+        nodeIndex,
         element: rawNode as ElementType,
         children: typeof rawNode === 'object' && 'props' in rawNode ? rawNode.props?.children : undefined,
       })
@@ -385,25 +438,25 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     let finalChildren: ReactNode = undefined
 
     if (childrenInProps !== undefined && childrenInProps !== null) {
-      if (Array.isArray(childrenInProps)) {
-        if (childrenInProps.length > 0) {
-          // Normalize each child in the array
-          const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement))
+      if (!this._normalizedChildren || this._childrenHash !== createStableHash(childrenInProps, this.props.nodetheme || this.props.theme)) {
+        if (Array.isArray(childrenInProps)) {
+          if (childrenInProps.length > 0) {
+            const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement))
 
-          // Check if all children are null/undefined (e.g., conditional rendering resulted in nothing)
-          if (mappedArray.every(child => child === null || child === undefined)) {
-            finalChildren = undefined
+            if (mappedArray.every(child => child === null || child === undefined)) {
+              this._normalizedChildren = undefined
+            } else {
+              this._normalizedChildren = mappedArray
+            }
           } else {
-            finalChildren = mappedArray
+            this._normalizedChildren = undefined
           }
         } else {
-          // Empty array of children
-          finalChildren = undefined
+          this._normalizedChildren = this._normalizeChild(childrenInProps as NodeElement)
         }
-      } else {
-        // Single child
-        finalChildren = this._normalizeChild(childrenInProps as NodeElement)
       }
+
+      finalChildren = this._normalizedChildren
     }
 
     // Prepare props for React.createElement
