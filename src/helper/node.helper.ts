@@ -1,6 +1,8 @@
 'use strict'
 import type { CSSProperties } from 'react'
-import type { NodeInstance } from '@src/node.type.js'
+import type { NodeElement, NodeInstance, Theme } from '@src/node.type.js'
+import { getElementTypeName } from '@src/helper/common.helper.js'
+import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**
  * Type guard to check if an object is a NodeInstance.
@@ -204,4 +206,52 @@ export const resolveDefaultStyle = (style: CSSProperties) => {
     minWidth: 0, // Fix flex item scrolling issues
     ...restStyle, // User styles take precedence over defaults
   }
+}
+
+/**
+ * Creates a stable hash string based on the provided children and optional theme.
+ *
+ * This function generates a hash that represents the structure and types of the given
+ * children nodes, along with an optional theme. The hash is designed to be stable across
+ * renders, meaning that the same input will always produce the same hash output.
+ *
+ * The hashing strategy includes:
+ * - For arrays of children, it includes the length and samples the types of the first few children.
+ * - For single child nodes, it includes the type of the node.
+ * - For primitive values (strings, numbers, etc.), it includes their type.
+ * - If a theme is provided, it includes a stringified version of the theme.
+ *
+ * This approach avoids deep traversal of potentially large or complex node trees,
+ * focusing instead on key characteristics that are likely to change when the structure
+ * or content changes.
+ * @param children The child nodes to hash, which can be a single node or an array of nodes.
+ * @param theme An optional theme object or string to include in the hash.
+ * @returns A stable hash string representing the structure and types of the children and theme.
+ */
+export function createStableHash(children: NodeElement | NodeElement[], theme?: Theme): string {
+  let hash = ''
+
+  if (theme) {
+    hash += `t:${typeof theme === 'object' ? ObjHelper.stringify(theme) : String(theme)};`
+  }
+
+  if (Array.isArray(children)) {
+    hash += `a:${children.length};`
+    // Sample first few children for hash to avoid deep traversal
+    const sampleSize = Math.min(3, children.length)
+    for (let i = 0; i < sampleSize; i++) {
+      const child = children[i]
+      if (child && typeof child === 'object' && 'type' in child) {
+        hash += `c${i}:${getElementTypeName(child.type)};`
+      } else {
+        hash += `c${i}:${typeof child};`
+      }
+    }
+  } else if (children && typeof children === 'object' && 'type' in children) {
+    hash += `s:${getElementTypeName((children as any).type)};`
+  } else {
+    hash += `s:${typeof children};`
+  }
+
+  return hash
 }
