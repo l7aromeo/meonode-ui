@@ -15,7 +15,7 @@ import type {
 import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName } from '@src/helper/common.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 
 /**
@@ -411,9 +411,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       }
     }
 
-    // If the element has css props, render using the StyledRenderer component
-    // This allows for styles to be handled by emotion
-    if (this.element && propsForCreateElement.css) {
+    // If the element has a `css` prop and has style tag, render using the `StyledRenderer` component
+    // This enables emotion-based style handling for the element
+    if (this.element && !hasNoStyleTag(this.element) && propsForCreateElement.css) {
       return createElement(
         StyledRenderer,
         {
