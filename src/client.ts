@@ -1,4 +1,4 @@
-import type { NodeInstance } from '@src/node.type'
+import type { NodeInstance } from '@src/node.type.js'
 import { createRoot } from 'react-dom/client'
 
 /**
