@@ -15,6 +15,7 @@ import React, {
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 import type { CSSInterpolation } from '@emotion/serialize'
+import type { NO_STYLE_TAGS } from '@src/constants/common.const'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -123,6 +124,16 @@ export type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does
     : false // No, 'style' exists but is not CSSProperties (e.g., style: string)
   : false // No, P does not have a 'style' prop at all
 
+/** List of HTML tags that should not receive style props */
+export type NoStyleTags = (typeof NO_STYLE_TAGS)[number]
+
+/**
+ * Helper type to determine if the element E is a tag that should not receive style props.
+ * Uses the NO_STYLE_TAGS constant to check against known tags.
+ * @template E - The element type (e.g., 'div', 'span', 'script')
+ */
+export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true : false
+
 /**
  * Public API for node creation props, providing a flexible and type-safe interface:
  * - Preserves original component props while allowing direct style properties (conditionally)
@@ -134,11 +145,11 @@ export type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does
 export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'theme' | 'props'> &
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
+  (HasNoStyleProp<E> extends true ? Partial<{ css: CSSInterpolation }> : object) &
   Partial<{
     props: Partial<Omit<PropsOf<E>, 'children'>>
     children: NodeElement | NodeElement[]
     theme: Theme
-    css: CSSInterpolation
   }>
 
 /**

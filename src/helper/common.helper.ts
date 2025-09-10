@@ -14,8 +14,9 @@ import {
   isSuspenseList,
 } from '@src/helper/react-is.helper.js'
 import type { FinalNodeProps, NodeElement } from '@src/node.type.js'
-import cssProperties from '@src/data/css-properties.js'
+import cssProperties from '@src/constants/css-properties.const.js'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
+import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constants/common.const.js'
 
 /**
  * Retrieves a deeply nested value from an object using a dot-separated string path.
@@ -235,4 +236,14 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
   }
 
   return result
+}
+
+/**
+ * Checks if a given tag is in the set of tags that should not receive style props.
+ * @param tag The tag name to check (e.g., 'script', 'style').
+ * @returns `true` if the tag is in the no-style set, otherwise `false`.
+ */
+export function hasNoStyleTag(tag?: NodeElement): boolean {
+  if (!tag || typeof tag !== 'string') return false
+  return noStyleTagsSet.has(tag.toLowerCase() as (typeof NO_STYLE_TAGS)[number])
 }

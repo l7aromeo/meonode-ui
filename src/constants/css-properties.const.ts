@@ -687,6 +687,6 @@ const cssProperties = [
   'writingMode',
   'zIndex',
   'zoom',
-]
+] as const
 
 export default cssProperties
