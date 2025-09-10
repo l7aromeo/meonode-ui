@@ -1,5 +1,6 @@
 import { getValueByPath } from '@src/helper/common.helper.js'
 import type { Theme } from '@src/node.type.js'
+import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**
  * Cache manager for theme resolution operations.
@@ -38,20 +39,8 @@ class ThemeResolverCache {
    * Generate a stable cache key from object and theme
    */
   private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
-    const replacer = () => {
-      const seen = new WeakSet()
-      return (_key: string, value: any) => {
-        if (typeof value === 'object' && value !== null) {
-          if (seen.has(value)) {
-            return '[Circular]'
-          }
-          seen.add(value)
-        }
-        return value
-      }
-    }
     // Use a more efficient key generation for better performance
-    return `${JSON.stringify(obj, replacer())}_${JSON.stringify(theme, replacer())}`
+    return `${ObjHelper.stringify(obj)}_${ObjHelper.stringify(theme)}`
   }
 
   /**
@@ -81,7 +70,7 @@ class ThemeResolverCache {
    * Get cached theme path lookup
    */
   getPathLookup(theme: Theme, path: string): any | null {
-    const pathKey = `${JSON.stringify(theme)}_${path}`
+    const pathKey = `${ObjHelper.stringify(theme)}_${path}`
 
     if (this._pathLookupCache.has(pathKey)) {
       this._stats.pathHits++
@@ -96,7 +85,7 @@ class ThemeResolverCache {
    * Cache theme path lookup result
    */
   setPathLookup(theme: Theme, path: string, value: any): void {
-    const pathKey = `${JSON.stringify(theme)}_${path}`
+    const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     this._pathLookupCache.set(pathKey, value)
   }
 
