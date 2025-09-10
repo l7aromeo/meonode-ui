@@ -12,11 +12,12 @@ import type {
   RawNodeProps,
   Theme,
 } from '@src/node.type.js'
-import { isNodeInstance, resolveDefaultStyle, resolveObjWithTheme } from '@src/helper/node.helper.js'
+import { isNodeInstance, resolveDefaultStyle } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
+import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 
 /**
  * Represents a node in a React component tree with theme and styling capabilities.
@@ -45,6 +46,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
   /** React root instance for portal rendering */
   private _portalReactRoot: ReactDOMRoot | null = null
+
+  private static _childProcessingCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
 
   /**
    * Creates a new BaseNode instance that wraps a React element.
@@ -98,13 +101,18 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
-    if (Array.isArray(children)) {
-      // Process array of children with index for stable keys
-      return children.map((child, index) => this._processRawNode(child, theme, index))
-    } else {
-      // Process single child
-      return this._processRawNode(children, theme)
+    // For server-side rendering, we can be more aggressive with caching
+    // since we don't worry about stale closures
+    const cacheKey = Array.isArray(children) ? children : [children]
+
+    if (BaseNode._childProcessingCache.has(cacheKey)) {
+      return BaseNode._childProcessingCache.get(cacheKey)
     }
+
+    const result = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+
+    BaseNode._childProcessingCache.set(cacheKey, result)
+    return result
   }
 
   /**
