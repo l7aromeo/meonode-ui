@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Before**:
     ```typescript
     import { createRoot } from 'react-dom/client';
-    import { Div } from '@meonode/core';
+    import { Div } from '@meonode/ui';
 
     const container = document.getElementById('root');
     const root = createRoot(container);
