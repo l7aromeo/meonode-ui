@@ -15,7 +15,7 @@ import React, {
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
 import type { CSSInterpolation } from '@emotion/serialize'
-import type { NO_STYLE_TAGS } from '@src/constants/common.const'
+import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
