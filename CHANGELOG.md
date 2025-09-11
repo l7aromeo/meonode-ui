@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2025-09-11
+
+### Enhanced
+- **core.node**: Significantly improved JSDoc documentation for the `BaseNode` class, providing better clarity on prop processing, child handling, and rendering logic.
+- **core.node**: Overhauled the child processing and caching mechanism to improve server-side performance and resolve a memory leak. This includes a move from object stringification to a more performant hashing strategy for cache keys and the introduction of a cache management policy.
+
+### Fixed
+- **helper**: Corrected an issue in flexbox style processing where an unnecessary string check was performed.
+- **core.node**: Updated a function placeholder to adhere to the unused parameter naming convention.
+
 ## [0.2.10] - 2025-09-10
 
 ### Added
@@ -58,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       Div<{ field: string }>({ field: 'Hello' })
   
       // Override existing React props
-      Input<{ onChange: (e: { target: { value: string } }) => void }>({
+      Input<{ onChange: (e: { target: { value: string } }) => void }>({ 
         onChange: ({ target }) => console.log(target.value),
       })
       ```
