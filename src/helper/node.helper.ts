@@ -66,9 +66,6 @@ function parseFlexShorthand(flex: CSSProperties['flex']): FlexComponents | null 
     return { grow: flex, shrink: 1, basis: '0%' }
   }
 
-  // Only process string values
-  if (typeof flex !== 'string') return null
-
   const normalized = flex.trim().toLowerCase()
   if (!normalized) return null
 
