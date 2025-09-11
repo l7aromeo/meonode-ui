@@ -239,13 +239,13 @@ export function createStableHash(children: NodeElement | NodeElement[], theme?: 
     for (let i = 0; i < sampleSize; i++) {
       const child = children[i]
       if (child && typeof child === 'object' && 'type' in child) {
-        hash += `c${i}:${getElementTypeName(child.type)};`
+        hash += `c${i}:${getElementTypeName(child)};`
       } else {
         hash += `c${i}:${typeof child};`
       }
     }
   } else if (children && typeof children === 'object' && 'type' in children) {
-    hash += `s:${getElementTypeName((children as any).type)};`
+    hash += `s:${getElementTypeName(children)};`
   } else {
     hash += `s:${typeof children};`
   }
