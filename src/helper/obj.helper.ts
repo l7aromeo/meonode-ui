@@ -70,7 +70,7 @@ export class ObjHelper {
       if (value && typeof value === 'object' && '$type' in value) {
         switch (value.$type) {
           case 'Function':
-            return function FunctionPlaceholder(...args: any[]) {
+            return function FunctionPlaceholder(..._args: any[]) {
               throw new Error(`Function placeholder called: ${value.name || 'anonymous'}#${value.id}`)
             }
           case 'Symbol':
