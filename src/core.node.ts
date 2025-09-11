@@ -43,30 +43,39 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _portalDOMElement: HTMLDivElement | null = null
   /** React root instance for portal rendering */
   private _portalReactRoot: ReactDOMRoot | null = null
-  /** Cache for processed children on the server (uses stringified keys for effective caching) */
-  private static _childProcessingCache = new Map<string, NodeElement | NodeElement[]>()
-  /** Cache for processed children on the client (uses WeakMap for array identity) */
-  private static _childProcessingClientCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
   /** Hash of the current children and theme to detect changes */
   private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
+  /** Cache for processed children on the server (uses stringified keys for effective caching) */
+  private static _childProcessingCache = new Map<string, NodeElement | NodeElement[]>()
+  /** Cache for processed children on the client (uses WeakMap for array identity) */
+  private static _childProcessingClientCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
 
   /**
-   * Creates a new BaseNode instance that wraps a React element.
-   * Processes raw props by:
-   * - Extracting and resolving theme-aware styles
-   * - Processing DOM-related props
-   * - Normalizing children with theme inheritance
-   * @param element The React element/component to wrap
-   * @param rawProps Initial props including theme, styles, and children
+   * Constructs a new BaseNode instance.
+   *
+   * This constructor initializes a node with a given React element or component type
+   * and the raw props passed to it. The props are not processed until they are
+   * accessed via the `props` getter, allowing for lazy evaluation.
+   *
+   * @param element The React element or component type this node will represent.
+   * @param rawProps The initial, unprocessed props for the element.
    */
   constructor(element: E, rawProps: RawNodeProps<E> = {}) {
     this.element = element
     this.rawProps = rawProps
   }
 
-  // Lazy getter for processed props
+  /**
+   * Lazily processes and retrieves the final, normalized props for the node.
+   *
+   * The first time this getter is accessed, it triggers `_processProps` to resolve
+   * themes, styles, and children. Subsequent accesses return the cached result
+   * until the node is cloned or recreated.
+   *
+   * @returns The fully processed and normalized `FinalNodeProps`.
+   */
   public get props(): FinalNodeProps {
     if (!this._props) {
       this._props = this._processProps()
@@ -74,6 +83,19 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     return this._props
   }
 
+  /**
+   * Performs the core logic of processing raw props into their final, normalized form.
+   *
+   * This method is called by the `props` getter on its first access. It handles:
+   * 1.  **Theme Resolution**: Selects the active theme from `theme` or `nodetheme` props.
+   * 2.  **Prop Resolution**: Resolves theme-aware values (functions) in `rawProps` and `nativeProps.style`.
+   * 3.  **Style Extraction**: Separates style-related props (`css`, `style`) from other DOM/component props.
+   * 4.  **Default Style Merging**: Combines default styles with resolved style props.
+   * 5.  **Child Processing**: Normalizes the `children` prop, propagating the theme.
+   *
+   * @returns The processed `FinalNodeProps` object.
+   * @private
+   */
   private _processProps(): FinalNodeProps {
     // Destructure raw props into relevant parts
     const { ref, key, children, nodetheme, theme, props: nativeProps = {}, ...restRawProps } = this.rawProps
@@ -111,6 +133,20 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     }
   }
 
+  /**
+   * Processes raw children, wrapping them in `BaseNode` instances where necessary
+   * and propagating the theme.
+   *
+   * This method recursively processes each child to ensure consistent theme handling
+   * and to convert valid elements into `BaseNode` instances. It uses caching to
+   * optimize performance, with different strategies for server-side (string-based key)
+   * and client-side (WeakMap-based key) environments.
+   *
+   * @param children The raw child or array of children to process.
+   * @param theme The theme to propagate to the children.
+   * @returns The processed children, ready to be normalized for rendering.
+   * @private
+   */
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
@@ -148,19 +184,23 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Renders a processed NodeElement into a ReactNode, applying theme and key if needed.
+   * Renders a processed `NodeElement` into a `ReactNode`, applying a theme and key if necessary.
    *
-   * Handles the following cases:
-   * 1. If the element is a BaseNode instance, it re-wraps it to apply the key and theme if needed.
-   * 2. If the element is a React class component type, it wraps it in a BaseNode.
-   * 3. If the element is a NodeInstance object, it calls its render method.
-   * 4. If the element is a React.Component instance, it calls its render method.
-   * 5. If the element is a functional component, it creates a React element with the provided key.
-   * 6. For all other valid ReactNode types, it returns the element as-is.
-   * @param processedElement The processed node element to render.
-   * @param passedTheme The theme to apply, if any.
-   * @param passedKey The key to assign, if any.
-   * @returns The rendered ReactNode.
+   * This static method centralizes the logic for converting various types of processed elements
+   * into renderable React nodes. It handles:
+   * - `BaseNode` instances: Re-wraps them to apply a new key or theme.
+   * - React class components: Wraps them in a new `BaseNode`.
+   * - `NodeInstance` objects: Invokes their `render()` method.
+   * - React component instances: Invokes their `render()` method.
+   * - Functional components: Creates a React element from them.
+   * - Other valid `ReactNode` types (strings, numbers, etc.): Returns them as-is.
+   *
+   * @param processedElement The node element to render.
+   * @param passedTheme The theme to propagate.
+   * @param passedKey The React key to assign.
+   * @returns A renderable `ReactNode`.
+   * @private
+   * @static
    */
   static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined): ReactNode {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
@@ -211,17 +251,19 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Renders the result of a function child, supporting theme propagation.
+   * Renders the output of a function-as-a-child, ensuring theme propagation.
    *
-   * Used for children that are functions (`() => Children`). If the returned value is a `BaseNode`
-   * without an explicit theme, the parent theme is injected. Otherwise, the result is rendered as-is.
-   * @template E - The type of ReactNode or NodeInstance.
-   * @param props Renderer props.
-   * @param props.render Function to invoke for rendering the child.
-   * @param props.passedTheme Theme to provide to the child, if applicable.
-   * @param props.passedKey Key to assign to the rendered node.
-   * @param props.processRawNode Function to process raw nodes.
-   * @returns The rendered ReactNode, with theme applied if necessary.
+   * This method is designed to handle "render prop" style children (`() => ReactNode`).
+   * It invokes the function, processes its result, and ensures the parent's theme is
+   * correctly passed down to any `BaseNode` instances returned by the function.
+   *
+   * @param props The properties for the function renderer.
+   * @param props.render The function to execute to get the child content.
+   * @param props.passedTheme The theme to propagate to the rendered child.
+   * @param props.passedKey The React key to assign to the rendered node.
+   * @param props.processRawNode A reference to the `_processRawNode` method for recursive processing.
+   * @returns The rendered `ReactNode`.
+   * @private
    */
   private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): ReactNode {
     // Invoke the render function to get the child node.
@@ -255,7 +297,21 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     return result
   }
 
-  // Helper to generate an indexed key if no explicit key is present and an index is available.
+  /**
+   * Generates a stable key for a node, especially for elements within an array.
+   *
+   * If an `existingKey` is provided, it is returned. Otherwise, a key is generated
+   * based on the element's type name and its index within a list of siblings.
+   * This helps prevent re-rendering issues in React when dealing with dynamic lists.
+   *
+   * @param options The options for key generation.
+   * @param options.nodeIndex The index of the node in an array of children.
+   * @param options.element The element for which to generate a key.
+   * @param options.existingKey An existing key, if one was already provided.
+   * @param options.children The children of the node, used to add complexity to the key.
+   * @returns A React key, or `undefined` if no key could be generated.
+   * @private
+   */
   private _generateKey = ({
     nodeIndex,
     element,
@@ -283,13 +339,23 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Processes a single raw child element, converting it into a ProcessedChild.
-   * If the child is part of an array and lacks an explicit key, a stable indexed key
-   * (`elementName_child_index`) is generated for new BaseNode instances.
-   * @param rawNode The raw child element to process.
-   * @param parentTheme The theme inherited from the parent node.
-   * @param nodeIndex Optional index of the child if it's part of an array.
-   * @returns The processed child.
+   * Processes a single raw node, recursively converting it into a `BaseNode` or other renderable type.
+   *
+   * This is a central method for normalizing children. It handles various types of input:
+   * - **`BaseNode` instances**: Re-creates them to ensure the correct theme and key are applied.
+   * - **Primitives**: Returns strings, numbers, booleans, null, and undefined as-is.
+   * - **Functions (Render Props)**: Wraps them in a `BaseNode` that uses `_functionRenderer` to delay execution.
+   * - **Valid React Elements**: Converts them into `BaseNode` instances, extracting props and propagating the theme.
+   * - **React Component Types**: Wraps them in a `BaseNode` with the parent theme.
+   * - **React Component Instances**: Renders them and processes the output recursively.
+   *
+   * It also generates a stable key for elements within an array if one is not provided.
+   *
+   * @param rawNode The raw child node to process.
+   * @param parentTheme The theme inherited from the parent.
+   * @param nodeIndex The index of the child if it is in an array, used for key generation.
+   * @returns A processed `NodeElement` (typically a `BaseNode` instance or a primitive).
+   * @private
    */
   private _processRawNode(
     rawNode: NodeElement,
@@ -382,18 +448,19 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Normalizes a child node into a renderable ReactNode.
-   * Processes different types of child nodes to ensure they can be properly rendered
-   * while maintaining theme inheritance.
+   * Normalizes a processed child node into a final, renderable `ReactNode`.
    *
-   * Handles:
-   * - BaseNode instances (applies theme if needed)
-   * - React.Component instances (applies theme if needed)
-   * - Other valid React element types (returned as-is)
-   * - null/undefined values (returned as-is)
-   * @param child The child node to normalize into a renderable form
-   * @returns The normalized ReactNode that can be rendered by React
-   * @throws Error if child is an invalid element type
+   * This method is called during the `render` phase. It takes a child that has already
+   * been processed by `_processChildren` and prepares it for `React.createElement`.
+   *
+   * - For `BaseNode` instances, it calls their `render()` method, ensuring the theme is consistent.
+   * - It validates that other children are valid React element types.
+   * - Primitives and other valid nodes are returned as-is.
+   *
+   * @param child The processed child node to normalize.
+   * @returns A renderable `ReactNode`.
+   * @throws {Error} If the child is not a valid React element type.
+   * @private
    */
   private _normalizeChild = (child: NodeElement): ReactNode => {
     if (!child) return child
@@ -422,9 +489,20 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Converts this BaseNode instance into a renderable React node.
-   * Recursively processes child nodes and uses `React.createElement` to construct the final React element.
-   * @returns A ReactNode representing the rendered element.
+   * Renders the `BaseNode` into a `ReactElement`.
+   *
+   * This method is the final step in the rendering pipeline. It constructs a React element
+   * by:
+   * 1.  Validating that the node's `element` type is renderable.
+   * 2.  Normalizing processed children into `ReactNode`s using `_normalizeChild`.
+   * 3.  Caching normalized children to avoid re-processing on subsequent renders.
+   * 4.  Assembling the final props, including `key`, `style`, and other attributes.
+   * 5.  If the element has a `css` prop, it may be wrapped in a `StyledRenderer` to handle
+   *     CSS-in-JS styling.
+   * 6.  Finally, calling `React.createElement` with the element, props, and children.
+   *
+   * @returns The rendered `ReactElement`.
+   * @throws {Error} If the node's `element` is not a valid React element type.
    */
   public render(): ReactElement {
     if (!isValidElementType(this.element)) {
@@ -488,6 +566,17 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
   }
 
+  /**
+   * Ensures the necessary DOM elements for portal rendering are created and attached.
+   *
+   * On the client-side, this method checks for or creates a `div` element appended
+   * to the `document.body` and initializes a React root on it. This setup is
+   * required for the `toPortal` method to function. It is idempotent and safe
+   * to call multiple times.
+   *
+   * @returns `true` if the portal infrastructure is ready, `false` if on the server.
+   * @private
+   */
   private _ensurePortalInfrastructure() {
     if (typeof window === 'undefined') return false
 
@@ -510,6 +599,19 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     return true
   }
 
+  /**
+   * Renders the node into a React Portal.
+   *
+   * This method mounts the node's rendered content into a separate DOM tree
+   * attached to the `document.body`. It's useful for rendering components like
+   * modals, tooltips, or notifications that need to appear above other UI elements.
+   *
+   * The returned object includes an `unmount` function to clean up the portal.
+   *
+   * @returns A `ReactDOMRoot` instance for managing the portal, or `null` if
+   *          called in a server-side environment. The returned instance is enhanced
+   *          with a custom `unmount` method that also cleans up the associated DOM element.
+   */
   public toPortal(): ReactDOMRoot | null {
     if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) return null
 
