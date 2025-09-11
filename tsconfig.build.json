@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@src/*": ["./src/*"]
+    },
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}
