@@ -46,8 +46,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
-  /** Cache for processed children on the server (uses stringified keys for effective caching) */
-  private static _childProcessingCache = new Map<string, NodeElement | NodeElement[]>()
 
   /**
    * Constructs a new BaseNode instance.
@@ -143,27 +141,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
-    // On server, use a Map with a stable hash for more effective and performant caching.
-    if (typeof window === 'undefined') {
-      // Simple cache size limit to prevent memory leaks on the server.
-      if (BaseNode._childProcessingCache.size > 1000) {
-        BaseNode._childProcessingCache.clear()
-      }
-
-      const cacheKey = createStableHash(children, theme)
-
-      if (BaseNode._childProcessingCache.has(cacheKey)) {
-        return BaseNode._childProcessingCache.get(cacheKey)
-      }
-
-      const result = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
-
-      BaseNode._childProcessingCache.set(cacheKey, result)
-      return result
-    }
-
-    // Client-side caching was ineffective and has been removed.
-    // Processing children on the client is fast enough and avoids complex, buggy cache logic.
+    // No caching on the client, as it was ineffective and complex.
     return Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
   }
 
