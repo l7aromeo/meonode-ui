@@ -58,7 +58,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * This constructor initializes a node with a given React element or component type
    * and the raw props passed to it. The props are not processed until they are
    * accessed via the `props` getter, allowing for lazy evaluation.
-   *
    * @param element The React element or component type this node will represent.
    * @param rawProps The initial, unprocessed props for the element.
    */
@@ -73,7 +72,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * The first time this getter is accessed, it triggers `_processProps` to resolve
    * themes, styles, and children. Subsequent accesses return the cached result
    * until the node is cloned or recreated.
-   *
    * @returns The fully processed and normalized `FinalNodeProps`.
    */
   public get props(): FinalNodeProps {
@@ -92,7 +90,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * 3.  **Style Extraction**: Separates style-related props (`css`, `style`) from other DOM/component props.
    * 4.  **Default Style Merging**: Combines default styles with resolved style props.
    * 5.  **Child Processing**: Normalizes the `children` prop, propagating the theme.
-   *
    * @returns The processed `FinalNodeProps` object.
    * @private
    */
@@ -141,7 +138,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * and to convert valid elements into `BaseNode` instances. It uses caching to
    * optimize performance, with different strategies for server-side (string-based key)
    * and client-side (WeakMap-based key) environments.
-   *
    * @param children The raw child or array of children to process.
    * @param theme The theme to propagate to the children.
    * @returns The processed children, ready to be normalized for rendering.
@@ -194,7 +190,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * - React component instances: Invokes their `render()` method.
    * - Functional components: Creates a React element from them.
    * - Other valid `ReactNode` types (strings, numbers, etc.): Returns them as-is.
-   *
    * @param processedElement The node element to render.
    * @param passedTheme The theme to propagate.
    * @param passedKey The React key to assign.
@@ -256,7 +251,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * This method is designed to handle "render prop" style children (`() => ReactNode`).
    * It invokes the function, processes its result, and ensures the parent's theme is
    * correctly passed down to any `BaseNode` instances returned by the function.
-   *
    * @param props The properties for the function renderer.
    * @param props.render The function to execute to get the child content.
    * @param props.passedTheme The theme to propagate to the rendered child.
@@ -303,7 +297,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * If an `existingKey` is provided, it is returned. Otherwise, a key is generated
    * based on the element's type name and its index within a list of siblings.
    * This helps prevent re-rendering issues in React when dealing with dynamic lists.
-   *
    * @param options The options for key generation.
    * @param options.nodeIndex The index of the node in an array of children.
    * @param options.element The element for which to generate a key.
@@ -350,7 +343,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * - **React Component Instances**: Renders them and processes the output recursively.
    *
    * It also generates a stable key for elements within an array if one is not provided.
-   *
    * @param rawNode The raw child node to process.
    * @param parentTheme The theme inherited from the parent.
    * @param nodeIndex The index of the child if it is in an array, used for key generation.
@@ -456,7 +448,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * - For `BaseNode` instances, it calls their `render()` method, ensuring the theme is consistent.
    * - It validates that other children are valid React element types.
    * - Primitives and other valid nodes are returned as-is.
-   *
    * @param child The processed child node to normalize.
    * @returns A renderable `ReactNode`.
    * @throws {Error} If the child is not a valid React element type.
@@ -498,9 +489,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * 3.  Caching normalized children to avoid re-processing on subsequent renders.
    * 4.  Assembling the final props, including `key`, `style`, and other attributes.
    * 5.  If the element has a `css` prop, it may be wrapped in a `StyledRenderer` to handle
-   *     CSS-in-JS styling.
+   * CSS-in-JS styling.
    * 6.  Finally, calling `React.createElement` with the element, props, and children.
-   *
    * @returns The rendered `ReactElement`.
    * @throws {Error} If the node's `element` is not a valid React element type.
    */
@@ -573,7 +563,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * to the `document.body` and initializes a React root on it. This setup is
    * required for the `toPortal` method to function. It is idempotent and safe
    * to call multiple times.
-   *
    * @returns `true` if the portal infrastructure is ready, `false` if on the server.
    * @private
    */
@@ -607,10 +596,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * modals, tooltips, or notifications that need to appear above other UI elements.
    *
    * The returned object includes an `unmount` function to clean up the portal.
-   *
    * @returns A `ReactDOMRoot` instance for managing the portal, or `null` if
-   *          called in a server-side environment. The returned instance is enhanced
-   *          with a custom `unmount` method that also cleans up the associated DOM element.
+   * called in a server-side environment. The returned instance is enhanced
+   * with a custom `unmount` method that also cleans up the associated DOM element.
    */
   public toPortal(): ReactDOMRoot | null {
     if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) return null
