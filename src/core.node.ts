@@ -17,7 +17,6 @@ import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElement
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, shallowEqual } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-import { ObjHelper } from '@src/helper/obj.helper.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 
 /**
@@ -49,8 +48,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _normalizedChildren?: ReactNode
   /** Cache for processed children on the server (uses stringified keys for effective caching) */
   private static _childProcessingCache = new Map<string, NodeElement | NodeElement[]>()
-  /** Cache for processed children on the client (uses WeakMap for array identity) */
-  private static _childProcessingClientCache = new WeakMap<NodeElement[], NodeElement | NodeElement[]>()
 
   /**
    * Constructs a new BaseNode instance.
@@ -146,37 +143,28 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
-    // On server, use a Map with a stringified key for more effective caching.
+    // On server, use a Map with a stable hash for more effective and performant caching.
     if (typeof window === 'undefined') {
-      try {
-        const cacheKey = ObjHelper.stringify({ children, theme })
-
-        if (BaseNode._childProcessingCache.has(cacheKey)) {
-          return BaseNode._childProcessingCache.get(cacheKey)
-        }
-
-        const result = Array.isArray(children)
-          ? children.map((child, index) => this._processRawNode(child, theme, index))
-          : this._processRawNode(children, theme)
-
-        BaseNode._childProcessingCache.set(cacheKey, result)
-        return result
-      } catch {
-        // If stringify fails for any reason, fall back to no-cache behavior.
-        return Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+      // Simple cache size limit to prevent memory leaks on the server.
+      if (BaseNode._childProcessingCache.size > 1000) {
+        BaseNode._childProcessingCache.clear()
       }
+
+      const cacheKey = createStableHash(children, theme)
+
+      if (BaseNode._childProcessingCache.has(cacheKey)) {
+        return BaseNode._childProcessingCache.get(cacheKey)
+      }
+
+      const result = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+
+      BaseNode._childProcessingCache.set(cacheKey, result)
+      return result
     }
 
-    // Fallback to original logic on the client (or if server-side caching fails)
-    // The original logic is kept for the client, though it's not very effective.
-    const cacheKey = Array.isArray(children) ? children : [children]
-    const clientCache = BaseNode._childProcessingClientCache // Use a different cache for client
-    if (clientCache.has(cacheKey)) {
-      return clientCache.get(cacheKey)
-    }
-    const result = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
-    clientCache.set(cacheKey, result)
-    return result
+    // Client-side caching was ineffective and has been removed.
+    // Processing children on the client is fast enough and avoids complex, buggy cache logic.
+    return Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
   }
 
   /**
