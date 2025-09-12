@@ -3,6 +3,7 @@
 import { BaseNode, Node } from '@src/core.node.js'
 import type { ComponentNode, HasCSSCompatibleStyleProp, NodeElement, Theme } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
+import { getElementTypeName } from '@src/helper/common.helper.js'
 
 /**
  * Props definition for components wrapped using the `Component` higher-order function.
@@ -82,6 +83,8 @@ export function Component<TProps extends Record<string, any>>(
 export function Component<TProps extends Record<string, any> | undefined>(component: (props: ComponentNodeProps<TProps>) => ComponentNode) {
   type RendererProps = ComponentNodeProps<TProps> & { nodetheme?: Theme }
 
+  const displayName = getElementTypeName(component)
+
   const Renderer = (props: RendererProps) => {
     const result = component(props)
 
@@ -95,8 +98,12 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
 
     return result as ReactNode
   }
+  Renderer.displayName = `Renderer(${displayName})`
 
-  return function Func(props: Partial<ComponentNodeProps<TProps>> = {}) {
+  function Func(props: Partial<ComponentNodeProps<TProps>> = {}) {
     return Node(Renderer, props as never).render()
   }
+  Func.displayName = `Component(${displayName})`
+
+  return Func
 }

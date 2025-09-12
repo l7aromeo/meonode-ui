@@ -1,10 +1,10 @@
 'use strict'
-import React, { Fragment, type ComponentProps, createElement, type ElementType, isValidElement, type Key, type ReactNode, type ReactElement } from 'react'
+import React, { type ComponentProps, createElement, type ElementType, Fragment, isValidElement, type Key, type ReactElement, type ReactNode } from 'react'
 import type {
-  MergedProps,
   FinalNodeProps,
   FunctionRendererProps,
   HasRequiredProps,
+  MergedProps,
   NodeElement,
   NodeInstance,
   NodeProps,
@@ -585,14 +585,16 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // If the element has a `css` prop and has style tag, render using the `StyledRenderer` component
     // This enables emotion-based style handling for the element
     if (this.element && !hasNoStyleTag(this.element) && propsForCreateElement.css) {
-      return createElement(
-        StyledRenderer,
-        {
-          element: this.element,
-          ...propsForCreateElement,
-        },
-        finalChildren as ReactNode,
-      )
+      const props = {
+        element: this.element,
+        ...propsForCreateElement,
+      }
+      if (typeof props.element === 'function') {
+        const displayName = getElementTypeName(props.element)
+        StyledRenderer.displayName = `Styled(${displayName})`
+      }
+
+      return createElement(StyledRenderer, props, finalChildren as ReactNode)
     }
 
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)

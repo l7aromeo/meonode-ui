@@ -19,3 +19,5 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 }: StyledRendererProps<E> & TProps) {
   return jsx(element as keyof JSX.IntrinsicElements, { ...props, css }, children)
 }
+
+StyledRenderer.displayName = 'Styled'
