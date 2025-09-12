@@ -1,12 +1,17 @@
-import { Div, P, H1, Span, Text, Root } from '@src/components/html.node.js'
-import { render, act } from '@testing-library/react'
-import { Node, Portal } from '@src/main.js'
+import { Root, Div, H1, P, Span, Text } from '@src/components/html.node.js'
+import { render, act, cleanup } from '@testing-library/react'
+import { Component, Node, Portal } from '@src/main.js'
 import { createRef } from 'react'
 import { createSerializer } from '@emotion/jest'
 import { matchers } from '@emotion/jest'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
+
+// Clean up DOM between tests to avoid open handles
+afterEach(() => {
+  cleanup()
+})
 
 describe('BaseNode - Core Functionality', () => {
   // Test Case 1: Basic Div rendering
@@ -231,5 +236,45 @@ describe('BaseNode - Core Functionality', () => {
       portalInstance?.unmount()
     })
     expect(document.body).not.toHaveTextContent('Portal Content')
+  })
+
+  // Test Case 17: Display Name as expected (for debugging and React DevTools)
+  it('should have correct display names for components', async () => {
+    function hasDisplayName(type: any): type is { displayName: string } {
+      return type && typeof type === 'object' && 'displayName' in type
+    }
+
+    // Test 1: Basic Div component display name
+    const divInstance = Div({ children: 'Display Name Test' }).render()
+    expect(divInstance.type).toBeDefined()
+    if (hasDisplayName(divInstance.type)) {
+      expect(divInstance.type.displayName).toMatch('Styled(Div)')
+    }
+
+    // Test 2: Custom component wrapped in Node
+    const CustomComponent = () => Div({ children: 'Custom Component' }).render()
+    const customNode = Node(CustomComponent).render()
+    expect(customNode.type).toBeDefined()
+    if (hasDisplayName(customNode.type)) {
+      expect(customNode.type.displayName).toMatch('Styled(CustomComponent)')
+    }
+
+    // Test 3: Named function component wrapped in HOC
+    const NamedComponent = Component(function MyComponent() {
+      return Div({ children: 'HOC Component' })
+    })
+    const namedInstance = await NamedComponent()
+    expect(namedInstance.type).toBeDefined()
+    if (hasDisplayName(namedInstance.type)) {
+      expect(namedInstance.type.displayName).toMatch('Component(MyComponent)')
+    }
+
+    // Test 4: Anonymous function component wrapped in HOC
+    const AnonymousComponent = Component(() => Div({ children: 'HOC Component' }))
+    const anonymousInstance = await AnonymousComponent()
+    expect(anonymousInstance.type).toBeDefined()
+    if (hasDisplayName(anonymousInstance.type)) {
+      expect(anonymousInstance.type.displayName).toMatch('Component(AnonymousFunctionComponent)')
+    }
   })
 })
