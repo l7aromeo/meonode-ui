@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2025-09-12
+
+### Added
+- **feat**: Add `Container` alias for `Div` to simplify general-purpose container usage.
+- **feat**: Add caching for processed children to optimize performance in `BaseNode` class.
+
+### Removed
+- **feat**: Remove `shallowEqual` utility function from `common.helper.ts`.
+
+### Fixed
+- **feat**: Improve performance by optimizing existing key checks and handling null values in rendering functions.
+
 ## [0.2.13] - 2025-09-11
 
 ### Added
@@ -233,17 +245,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The project focuses on building React UIs with type-safe fluency without JSX syntax
 - Recent development has emphasized Emotion integration, type safety improvements, and enhanced flexbox support
 - For a complete history, view all commits on GitHub: [View all commits](https://github.com/l7aromeo/meonode-ui/commits)
-
-## Development Highlights
-
-### Major Features Added
-- **Emotion Support**: Complete integration with @emotion/react for CSS-in-JS styling
-- **Next.js Integration**: Style registry support for server-side rendering
-- **Enhanced Type Safety**: Improved TypeScript definitions and prop handling
-- **Flexbox Enhancements**: Advanced flex shorthand parsing and default style resolution
-
-### Core Improvements
-- Better component flexibility with native props extraction
-- Simplified style resolution and prop handling
-- Enhanced documentation and examples
-- Improved dependency management and version constraints
