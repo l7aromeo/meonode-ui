@@ -11,15 +11,31 @@ import { createNode, createChildrenFirstNode } from '@src/core.node.js'
 export const Div = createNode('div')
 
 /**
+ * Alias for \`Div(...)\`. Recommended for general-purpose container elements.
+ *
+ * **Example:**
+ * ```typescript
+ * Container({
+ *   padding: 'theme.spacing.md',
+ *   backgroundColor: 'lightgray',
+ *   children: [H2('Welcome'), P('This is a container example.')]
+ * })
+ * ```
+ */
+export const Container = Div
+
+/**
  * Represents a root div element with full viewport dimensions and column flex layout.
  * By default, applies flex column layout and 100% viewport dimensions.
  * @param props Optional properties for the root div element that merge with defaults.
  * @returns A div element node configured as root container.
  * @example
+ * ```typescript
  * Root({
- * backgroundColor: 'white',
- * children: [Header(), Main(), Footer()]
+ *   backgroundColor: 'white',
+ *   children: [Header(), Main(), Footer()]
  * })
+ * ```
  */
 export const Root = createNode('div', {
   display: 'flex',
@@ -205,7 +221,9 @@ export const P = createChildrenFirstNode('p')
  * Renders a semantic block of text using a `<p>` element.
  * Alias for `P(...)`, recommended for general-purpose text content.
  * @example
- * Text('Hello world', { fontSize: 'theme.text.md' })
+ * ```typescript
+ * Text('This is a sample text paragraph.', { fontSize: 'theme.text.base', color: 'theme.text.primary' })
+ * ```
  */
 export const Text = P
 
