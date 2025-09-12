@@ -15,7 +15,7 @@ import type {
 import { createStableHash, isNodeInstance, resolveDefaultStyle } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, shallowEqual } from '@src/helper/common.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 
@@ -172,11 +172,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // 1. BaseNode instance: re-wrap to apply key/theme if needed
     if (processedElement instanceof BaseNode) {
       const nodetheme = processedElement.rawProps?.theme || processedElement.rawProps?.nodetheme || passedTheme
-      // Avoid creating new BaseNode if props are identical
-      if (
-        shallowEqual(commonBaseNodeProps, { key: processedElement.rawProps?.key }) &&
-        nodetheme === (processedElement.rawProps?.nodetheme || processedElement.rawProps?.theme)
-      ) {
+      const existingKey = processedElement.rawProps?.key
+      if (existingKey === passedKey && nodetheme === (processedElement.rawProps?.nodetheme || processedElement.rawProps?.theme)) {
         return processedElement.render()
       }
 
@@ -227,7 +224,12 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    */
   private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): ReactNode {
     // Invoke the render function to get the child node.
-    const result = render()
+    let result: NodeElement
+    try {
+      result = render()
+    } catch {
+      result = null
+    }
 
     // Handle React.Component instance
     if (result instanceof React.Component) {
@@ -420,7 +422,12 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    */
   private _normalizeChild = (child: NodeElement): ReactNode => {
-    if (!child) return child
+    // Handle null/undefined quickly
+    if (child === null || child === undefined) return child
+
+    // Primitives should be returned as-is (text nodes, numbers, booleans)
+    const t = typeof child
+    if (t === 'string' || t === 'number' || t === 'boolean') return child as ReactNode
 
     const currentTheme = this.rawProps?.nodetheme || this.rawProps?.theme || this.props.nodetheme || this.props.theme
 
@@ -535,22 +542,35 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _ensurePortalInfrastructure() {
     if (typeof window === 'undefined') return false
 
-    if (this._portalDOMElement && this._portalReactRoot) return true
+    // If both exist and DOM is connected, we're ready
+    if (this._portalDOMElement && this._portalReactRoot && this._portalDOMElement.isConnected) return true
 
+    // If DOM element exists but isn't connected, clear both DOM element and root
     if (this._portalDOMElement && !this._portalDOMElement.isConnected) {
-      this._portalDOMElement = null
+      // attempt to unmount root if present
+      if (this._portalReactRoot) {
+        try {
+          this._portalReactRoot.unmount()
+        } catch {
+          // swallow: unmount might fail if already removed; avoid breaking the app
+        }
+        this._portalReactRoot = null
+      }
       this._portalDOMElement = null
     }
 
+    // Create DOM element if needed
     if (!this._portalDOMElement) {
       this._portalDOMElement = document.createElement('div')
       document.body.appendChild(this._portalDOMElement)
     }
 
+    // Create react root if needed
     if (!this._portalReactRoot) {
       if (!this._portalDOMElement) return false
       this._portalReactRoot = createRoot(this._portalDOMElement)
     }
+
     return true
   }
 
