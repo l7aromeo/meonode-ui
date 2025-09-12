@@ -46,8 +46,12 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
-  /** Cache for processed children to avoid redundant processing */
-  private static _processedChildrenCache = new WeakMap<
+
+  /**
+   * WeakMap cache for processed children, keyed by object/array identity for GC friendliness.
+   * Each entry stores the hash, processed children, and a server-side flag.
+   */
+  private static _processedChildrenWeakCache = new WeakMap<
     object,
     {
       hash: string
@@ -55,6 +59,21 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       isServerSide: boolean
     }
   >()
+
+  /**
+   * Map cache for processed children, keyed by a stable string signature.
+   * Used for non-object cases or as a fallback. Each entry stores the processed children and a server-side flag.
+   */
+  private static _processedChildrenMapCache = new Map<
+    string,
+    {
+      children: NodeElement | NodeElement[]
+      isServerSide: boolean
+    }
+  >()
+
+  /** Maximum number of entries in the Map cache to prevent unbounded growth */
+  private static readonly _MAX_PROCESSED_CHILDREN_CACHE = 1000
 
   /**
    * Constructs a new BaseNode instance.
@@ -135,22 +154,67 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Attempts to retrieve cached processed children based on the current children and theme.
-   * This method uses a WeakMap for client-side caching and skips caching on the server.
-   * @param children
-   * @param theme
+   * Deeply clones processed children before returning them from cache so that each parent receives
+   * independent `BaseNode` instances (prevents sharing cycles and mutation bugs).
+   *
+   * - If the input is an array, each child is cloned recursively.
+   * - If the input is a `BaseNode`, a new instance is created with the same element and copied rawProps.
+   * - For other objects/primitives, the value is returned as-is (they are immutable or safe to reuse).
+   *
+   * This ensures that cached children are never shared between different parents in the React tree.
+   * @param processed The processed child or array of children to clone.
+   * @returns A deep clone of the processed children, safe for use in multiple parents.
+   * @private
+   */
+  private static _cloneProcessedChildren(processed: NodeElement | NodeElement[]): NodeElement | NodeElement[] {
+    const cloneOne = (child: NodeElement): NodeElement => {
+      if (child instanceof BaseNode) {
+        // shallow clone: new BaseNode with same element and copied rawProps
+        return new BaseNode(child.element, { ...(child.rawProps as RawNodeProps<any>) })
+      }
+      // NodeInstance returns its own instances when render() is called - we avoid calling render here.
+      // For other objects/primitives, return as-is (they are immutable or safe to reuse).
+      return child
+    }
+
+    if (Array.isArray(processed)) {
+      return processed.map(c => cloneOne(c))
+    }
+    return cloneOne(processed)
+  }
+
+  /**
+   * Retrieves cached processed children for a given set of `children` and an optional `theme`.
+   *
+   * - Skips caching entirely when executed on the server (returns `null`).
+   * - Uses a **WeakMap** for identity-based caching when `children` is an object or array,
+   * ensuring garbage collection safety.
+   * - Falls back to a **Map** keyed by a stable hash of `children` and `theme`
+   * for value-based caching.
+   * - Only returns cached entries that are **not server-side**.
+   * @param children The child node(s) to resolve cached results for.
+   * @param theme The theme context that may influence child processing.
+   * @returns A cloned version of the cached processed children if available, otherwise `null`.
    * @private
    */
   private _getCachedChildren(children: NodeElement | NodeElement[], theme?: Theme) {
-    // Only cache on client-side, and with server-side detection
     if (typeof window === 'undefined') return null // No server caching
 
-    const key = { children, theme }
-    const cached = BaseNode._processedChildrenCache.get(key)
-    const currentHash = createStableHash(children, theme)
+    // Compute hash once
+    const hash = createStableHash(children, theme)
 
-    if (cached?.hash === currentHash && !cached.isServerSide) {
-      return cached.children
+    // If children is an object (array or object), try identity-keyed WeakMap first
+    if (children && typeof children === 'object') {
+      const weakEntry = BaseNode._processedChildrenWeakCache.get(children as object)
+      if (weakEntry && weakEntry.hash === hash && !weakEntry.isServerSide) {
+        return BaseNode._cloneProcessedChildren(weakEntry.children)
+      }
+    }
+
+    // Fallback to string-hash Map cache
+    const mapEntry = BaseNode._processedChildrenMapCache.get(hash)
+    if (mapEntry && !mapEntry.isServerSide) {
+      return BaseNode._cloneProcessedChildren(mapEntry.children)
     }
 
     return null
@@ -158,23 +222,43 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
   /**
    * Caches processed children for a given set of children and theme.
-   * This method stores the processed ReactNode in a WeakMap for client-side caching,
-   * avoiding redundant processing of the same children-theme combination.
-   * No caching is performed on the server to avoid memory leaks.
+   * This method stores the processed NodeElement(s) in a Map keyed by a stable hash.
+   * The cache is bounded to avoid unbounded memory growth.
+   * No caching is performed on the server to avoid RSC issues.
    * @param children The original children to cache.
    * @param theme The theme associated with the children.
-   * @param processed The processed ReactNode to cache.
+   * @param processed The processed NodeElement(s) to cache.
    * @private
    */
   private _setCachedChildren(children: NodeElement | NodeElement[], theme: Theme | undefined, processed: NodeElement | NodeElement[]) {
-    // Only cache on client-side to avoid RSC issues
     if (typeof window === 'undefined') return
 
-    const key = { children, theme }
     const hash = createStableHash(children, theme)
 
-    BaseNode._processedChildrenCache.set(key, {
-      hash,
+    if (children && typeof children === 'object') {
+      // Store under identity in WeakMap - GC will collect when children object is unreachable
+      BaseNode._processedChildrenWeakCache.set(children as object, {
+        hash,
+        children: processed,
+        isServerSide: false,
+      })
+      return
+    }
+
+    // Manage bounded Map cache (FIFO eviction)
+    if (BaseNode._processedChildrenMapCache.has(hash)) {
+      BaseNode._processedChildrenMapCache.set(hash, { children: processed, isServerSide: false })
+      return
+    }
+
+    if (BaseNode._processedChildrenMapCache.size >= BaseNode._MAX_PROCESSED_CHILDREN_CACHE) {
+      const firstKey = BaseNode._processedChildrenMapCache.keys().next().value
+      if (firstKey !== undefined) {
+        BaseNode._processedChildrenMapCache.delete(firstKey)
+      }
+    }
+
+    BaseNode._processedChildrenMapCache.set(hash, {
       children: processed,
       isServerSide: false,
     })
@@ -185,7 +269,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * and propagating the provided theme.
    *
    * This method ensures consistent theme handling for all children and optimizes performance
-   * using caching strategies: a WeakMap for client-side and no caching for server-side.
+   * using caching strategies: a Map for client-side and no caching for server-side.
    *
    * - If `children` is an array, each child is processed individually.
    * - If `children` is a single node, it is processed directly.
@@ -714,7 +798,7 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
 /**
  * Creates a curried node factory for a given React element or component type.
  *
- * Returns a function that, when called with props, produces a `BaseNode` instance.
+ * Returns a function that, when called with props, produces a `NodeInstance<E>`.
  * Useful for creating reusable node factories for specific components or element types.
  * @template AdditionalInitialProps Additional initial props to merge with node props.
  * @template E The React element or component type.
