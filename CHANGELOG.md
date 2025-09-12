@@ -5,71 +5,107 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2025-09-12
+
+### Added
+
+- **feat(cache)**: implement hybrid caching strategy for processed children using WeakMap and Map to improve performance
+  and memory management
+- **feat(helper)**: implement nodeSignature for stable signatures and improve createStableHash with bounded traversal
+- **feat(helper)**: enhance ObjHelper.stringify method for deterministic serialization with sorted keys and special type
+  handling
+
+### Refactor
+
+- **refactor**: improve type definitions and error handling in rendering methods
+
+### Test
+
+- **test(tests)**: add performance tests for rendering a single-page layout in React
+- **test**: add cleanup after each test and verify component display names for debugging
+
 ## [0.2.14] - 2025-09-12
 
 ### Added
+
 - **feat**: Add `Container` alias for `Div` to simplify general-purpose container usage.
 - **feat**: Add caching for processed children to optimize performance in `BaseNode` class.
 
 ### Removed
+
 - **feat**: Remove `shallowEqual` utility function from `common.helper.ts`.
 
 ### Fixed
+
 - **feat**: Improve performance by optimizing existing key checks and handling null values in rendering functions.
 
 ## [0.2.13] - 2025-09-11
 
 ### Added
+
 - **feat**: Add pre-commit hook for linting and testing, update package.json scripts.
 - **feat**: Add Jest configuration and setup for testing with TypeScript.
 - **test**: Add comprehensive tests for BaseNode core functionality.
 
 ### Fixed
-- **core**: Remove stylable elements from NO_STYLE_TAGS to ensure only non-visual/metadata tags are excluded from CSS styling.
+
+- **core**: Remove stylable elements from NO_STYLE_TAGS to ensure only non-visual/metadata tags are excluded from CSS
+  styling.
 
 ## [0.2.12] - 2025-09-11
 
 ### Fixed
-- **core.node**: Removed the child processing cache to fix a critical bug that caused infinite page loads in server-side rendering environments.
+
+- **core.node**: Removed the child processing cache to fix a critical bug that caused infinite page loads in server-side
+  rendering environments.
 - **helper**: Corrected the element type retrieval logic within the hashing function used for child node processing.
 
 ## [0.2.11] - 2025-09-11
 
 ### Enhanced
-- **core.node**: Significantly improved JSDoc documentation for the `BaseNode` class, providing better clarity on prop processing, child handling, and rendering logic.
-- **core.node**: Overhauled the child processing and caching mechanism to improve server-side performance and resolve a memory leak. This includes a move from object stringification to a more performant hashing strategy for cache keys and the introduction of a cache management policy.
+
+- **core.node**: Significantly improved JSDoc documentation for the `BaseNode` class, providing better clarity on prop
+  processing, child handling, and rendering logic.
+- **core.node**: Overhauled the child processing and caching mechanism to improve server-side performance and resolve a
+  memory leak. This includes a move from object stringification to a more performant hashing strategy for cache keys and
+  the introduction of a cache management policy.
 
 ### Fixed
+
 - **helper**: Corrected an issue in flexbox style processing where an unnecessary string check was performed.
 - **core.node**: Updated a function placeholder to adhere to the unused parameter naming convention.
 
 ## [0.2.10] - 2025-09-10
 
 ### Added
-- **core**: add top-level `render` function for a cleaner and simpler API when mounting a Meonode instance to the DOM. This abstracts away the need to manually use `react-dom/client`.
-  - **Before**:
-    ```typescript
-    import { createRoot } from 'react-dom/client';
-    import { Div } from '@meonode/ui';
 
-    const container = document.getElementById('root');
-    const root = createRoot(container);
-    root.render(Div({ children: 'Hello' }).render());
-    ```
-  - **After**:
-    ```typescript
-    import { Div } from '@meonode/ui';
-    import { render } from '@meonode/ui/client';
-
-    const container = document.getElementById('root');
-    render(Div({ children: 'Hello' }), container);
-    ```
+- **core**: add top-level `render` function for a cleaner and simpler API when mounting a Meonode instance to the DOM.
+  This abstracts away the need to manually use `react-dom/client`.
+    - **Before**:
+      ```typescript
+      import { createRoot } from 'react-dom/client';
+      import { Div } from '@meonode/ui';
+  
+      const container = document.getElementById('root');
+      const root = createRoot(container);
+      root.render(Div({ children: 'Hello' }).render());
+      ```
+    - **After**:
+      ```typescript
+      import { Div } from '@meonode/ui';
+      import { render } from '@meonode/ui/client';
+  
+      const container = document.getElementById('root');
+      render(Div({ children: 'Hello' }), container);
+      ```
 - **constants**: add `NO_STYLE_TAGS` array and `noStyleTagsSet` for quick lookup of tags that should not receive styles
 
 ### Enhanced
+
 - **core**: enhance `StyledRenderer` integration to check for no-style tags
 
 ### Changed
+
 - **helper**: update CSS property set to use constants and add no-style tag check
 - **package**: update dependencies to latest versions
 - **directory**: rename `data` directory to `constants` for clarity
@@ -78,14 +114,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.9] - 2025-09-05
 
 ### Fixed
+
 - **core.types**: corrected `MergedProps` definition to restore proper TypeScript inference and props autocomplete
-    - Fixes regression from v0.2.8 where `createNode` and `createChildrenFirstNode` lost autocomplete for props due to incorrect `MergedProps` typing
+    - Fixes regression from v0.2.8 where `createNode` and `createChildrenFirstNode` lost autocomplete for props due to
+      incorrect `MergedProps` typing
 
 ## [0.2.8] - 2025-09-05
 
 ### Changed
+
 - **core.node**: refactor props handling to use a single utility type:
-    - `MergedProps<E, AdditionalProps>` — merges `NodeProps<E>` with custom props, giving precedence to overlapping keys from `AdditionalProps`.
+    - `MergedProps<E, AdditionalProps>` — merges `NodeProps<E>` with custom props, giving precedence to overlapping keys
+      from `AdditionalProps`.
 - Simplifies and unifies the typing system for node factories (`createNode`, `createChildrenFirstNode`).
 - Improves developer experience when working with prebuilt components:
     - Example:
@@ -100,11 +140,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         onChange: ({ target }) => console.log(target.value),
       })
       ```
-  Extending prebuilt components is now safer and more predictable, with generic props always taking precedence when keys overlap.
+  Extending prebuilt components is now safer and more predictable, with generic props always taking precedence when keys
+  overlap.
 
 - **helpers**: reorganize helper files and update import paths
 
 ### Fixed
+
 - **styled-renderer**: make `children` prop optional in `StyledRendererProps`
 
 ## [0.2.7] - 2025-09-04
@@ -116,7 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.6] - 2025-09-04
 
 - **deps**: update TypeScript ESLint, native-preview, and jsdoc to latest versions
-- **core.node**: improve generateIndexedKeyIfNeeded to accept object parameters and enhance key uniqueness with children count
+- **core.node**: improve generateIndexedKeyIfNeeded to accept object parameters and enhance key uniqueness with children
+  count
 - **imports**: update import paths to include file extensions for compatibility
 
 ## [0.2.5] - 2025-09-03
@@ -126,6 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.4] - 2025-09-02
 
 ### Added
+
 - **core**: Exposed the original element via the created Node for easier access and debugging.
     ```typescript
     import { createNode } from "@meonode/ui";
@@ -140,49 +184,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.3] - 2025-09-01
 
 ### Fixed
+
 - **types**: Remove forbidden css import to resolve RSC error
 
 ### Changed
+
 - **package**: Bump version to 0.2.3
 
 ## [0.2.2] - 2025-09-01
 
 ### Added
+
 - **core**: Include nativeProps in props extraction for improved component flexibility
 
 ### Enhanced
+
 - **types**: Enhance StyledRendererProps and FinalNodeProps for improved type safety
 
 ### Changed
+
 - **package**: Bump version to 0.2.2
 
 ## [0.2.1] - 2025-09-01
 
 ### Changed
+
 - **types**: Update CSS type from CSSObject to CSSInterpolation for better compatibility
 - **package**: Bump version to 0.2.1
 
 ## [0.2.0] - 2025-08-31
 
 ### Added
+
 - **docs**: Add badges for NPM version, license, and bundle size to README
 
 ### Enhanced
+
 - **docs**: Update installation instructions and enhance clarity in core concepts
 - **docs**: Enhance documentation with new examples and improved clarity
 
 ### Removed
+
 - **package**: Remove deprecated hook entry from package.json
 
 ### Fixed
+
 - **core.node**: Add suppressHydrationWarning to propsForCreateElement
 
 ### Changed
+
 - **package**: Bump version to 0.2.0
 
 ## [0.1.121] - 2025-08-30
 
 ### Changed
+
 - **core.node**: Simplify style resolution and improve prop handling
 - **StyledRenderer**: Remove unused style prop and simplify component
 - **package**: Bump version to 0.1.121
@@ -190,6 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.120] - 2025-08-30
 
 ### Added
+
 - **styles**: Add Emotion support and Next.js style registry integration
     - Add @emotion/react and @emotion/cache dependencies
     - Add StyledRenderer and StyleRegistry components for Emotion
@@ -197,37 +254,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add nextjs-registry export for Next.js style registry
 
 ### Enhanced
+
 - **core**: Enhance style handling with StyledRenderer for Emotion support
 
 ### Fixed
+
 - **deps**: Update peerDependencies for Emotion and React to use version constraints
 - **deps**: Update @types/react and @types/react-dom to latest versions
 
 ### Changed
+
 - **package**: Update peerDependencies for @emotion/cache
 - **package**: Bump version to 0.1.120
 
 ## [0.1.118] - 2025-08-30
 
 ### Fixed
+
 - **deps**: Update peerDependencies for Emotion and React to use version constraints
 
 ### Changed
+
 - **package**: Bump version to 0.1.118
 
 ## [0.1.117] - 2025-08-30
 
 ### Added
+
 - **flexbox**: Improve default style resolution and add flex shorthand parser
     - Add parseFlexShorthand to extract flex-grow, shrink, and basis
     - Enhance resolveDefaultStyle to respect explicit flex/flexShrink values
     - Improve handling of minHeight, minWidth, and flexShrink for flex items
 
 ### Enhanced
+
 - **core**: Refine type of finalChildren for improved type safety
 - **docs**: Update documentation for clarity on flexbox scrolling fixes
 
 ### Changed
+
 - **core**: Move comments position for better readability
 - **imports**: Remove .js extensions from internal imports
 - **package**: Bump version to 0.1.117
@@ -235,6 +300,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.116] - 2025-08-27
 
 ### Changed
+
 - **package**: Bump version to 0.1.116
 
 ---
