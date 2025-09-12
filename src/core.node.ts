@@ -232,7 +232,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    * @static
    */
-  static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined): ReactNode {
+  static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined) {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
     if (passedKey !== undefined) {
       commonBaseNodeProps.key = passedKey
@@ -291,7 +291,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @returns The rendered `ReactNode`.
    * @private
    */
-  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): ReactNode {
+  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): NodeElement {
     // Invoke the render function to get the child node.
     let result: NodeElement
     try {
@@ -422,9 +422,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = this._generateKey({ nodeIndex, element: this._functionRenderer }) // Generate key for function renderer
+      const keyForFunctionRenderer = this._generateKey({ nodeIndex, element: this._functionRenderer as NodeElement }) // Generate key for function renderer
 
-      return new BaseNode(this._functionRenderer, {
+      return new BaseNode(this._functionRenderer as NodeElement, {
         processRawNode: this._processRawNode.bind(this),
         render: rawNode as never,
         passedTheme: parentTheme,
@@ -536,7 +536,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @returns The rendered `ReactElement`.
    * @throws {Error} If the node's `element` is not a valid React element type.
    */
-  public render(): ReactElement {
+  public render(): ReactElement<FinalNodeProps> {
     if (!isValidElementType(this.element)) {
       const elementType = getComponentType(this.element)
       throw new Error(`Invalid element type: ${elementType} provided!`)
@@ -589,14 +589,22 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
         element: this.element,
         ...propsForCreateElement,
       }
-      if (typeof props.element === 'function') {
+
+      try {
         const displayName = getElementTypeName(props.element)
         StyledRenderer.displayName = `Styled(${displayName})`
+      } catch {
+        // swallow: displayName is not critical
       }
 
       return createElement(StyledRenderer, props, finalChildren as ReactNode)
     }
 
+    try {
+      ;(this.element as NodeElement & { displayName: string }).displayName = getElementTypeName(this.element)
+    } catch {
+      // swallow: displayName is not critical
+    }
     return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
   }
 

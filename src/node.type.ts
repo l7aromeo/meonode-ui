@@ -8,9 +8,7 @@ import React, {
   type ComponentType,
   type JSXElementConstructor,
   type Component,
-  type Ref,
   type ExoticComponent,
-  type FragmentProps,
   type ReactElement,
 } from 'react'
 import type { Root as ReactDOMRoot } from 'react-dom/client'
@@ -36,7 +34,7 @@ export type NonArrayReactNode = Exclude<ReactNode, ReactNode[]>
  * This includes React elements, components, promises resolving to React nodes, and NodeInstance objects.
  */
 export type NodeElement =
-  | ExoticComponent<FragmentProps>
+  | ExoticComponent<any>
   | NonArrayReactNode
   | Promise<Awaited<NonArrayReactNode>>
   | Component<any, any, any>
@@ -103,15 +101,17 @@ export type Theme = Partial<{
  * - Handles theme context propagation
  * @template E - The element type these props apply to
  */
-export type FinalNodeProps = ReactAttributes & {
-  ref?: Ref<unknown>
-  style?: CSSProperties
-  css?: CSSInterpolation
-  children?: NodeElement | NodeElement[]
-  theme?: Theme
-  nodetheme?: Theme
-  nativeProps?: Record<string, unknown>
-}
+export type FinalNodeProps = ReactAttributes &
+  Partial<{
+    nativeProps: Omit<Omit<PropsOf<NodeElement>, 'children'>, 'style'>
+    key: React.Key | any | null | undefined
+    ref: any | React.Ref<unknown> | undefined
+    style: any
+    css: any
+    children: NodeElement | NodeElement[]
+    theme: Partial<{ [p: string]: any }> | any | undefined
+    nodetheme: Theme
+  }>
 
 /**
  * Helper type to determine if the props P have a 'style' property
