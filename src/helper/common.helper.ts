@@ -247,22 +247,3 @@ export function hasNoStyleTag(tag?: NodeElement): boolean {
   if (!tag || typeof tag !== 'string') return false
   return noStyleTagsSet.has(tag.toLowerCase() as (typeof NO_STYLE_TAGS)[number])
 }
-
-// Shallow comparison utility
-export function shallowEqual(obj1: any, obj2: any): boolean {
-  if (obj1 === obj2) return true
-  if (!obj1 || !obj2) return false
-  if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return obj1 === obj2
-
-  const keys1 = Object.keys(obj1)
-  const keys2 = Object.keys(obj2)
-
-  if (keys1.length !== keys2.length) return false
-
-  for (const key of keys1) {
-    if (!(key in obj2) || obj1[key] !== obj2[key]) {
-      return false
-    }
-  }
-  return true
-}
