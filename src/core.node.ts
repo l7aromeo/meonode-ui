@@ -46,6 +46,15 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
+  /** Cache for processed children to avoid redundant processing */
+  private static _processedChildrenCache = new WeakMap<
+    object,
+    {
+      hash: string
+      children: NodeElement | NodeElement[]
+      isServerSide: boolean
+    }
+  >()
 
   /**
    * Constructs a new BaseNode instance.
@@ -126,23 +135,83 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }
 
   /**
-   * Processes raw children, wrapping them in `BaseNode` instances where necessary
-   * and propagating the theme.
+   * Attempts to retrieve cached processed children based on the current children and theme.
+   * This method uses a WeakMap for client-side caching and skips caching on the server.
+   * @param children
+   * @param theme
+   * @private
+   */
+  private _getCachedChildren(children: NodeElement | NodeElement[], theme?: Theme) {
+    // Only cache on client-side, and with server-side detection
+    if (typeof window === 'undefined') return null // No server caching
+
+    const key = { children, theme }
+    const cached = BaseNode._processedChildrenCache.get(key)
+    const currentHash = createStableHash(children, theme)
+
+    if (cached?.hash === currentHash && !cached.isServerSide) {
+      return cached.children
+    }
+
+    return null
+  }
+
+  /**
+   * Caches processed children for a given set of children and theme.
+   * This method stores the processed ReactNode in a WeakMap for client-side caching,
+   * avoiding redundant processing of the same children-theme combination.
+   * No caching is performed on the server to avoid memory leaks.
+   * @param children The original children to cache.
+   * @param theme The theme associated with the children.
+   * @param processed The processed ReactNode to cache.
+   * @private
+   */
+  private _setCachedChildren(children: NodeElement | NodeElement[], theme: Theme | undefined, processed: NodeElement | NodeElement[]) {
+    // Only cache on client-side to avoid RSC issues
+    if (typeof window === 'undefined') return
+
+    const key = { children, theme }
+    const hash = createStableHash(children, theme)
+
+    BaseNode._processedChildrenCache.set(key, {
+      hash,
+      children: processed,
+      isServerSide: false,
+    })
+  }
+
+  /**
+   * Recursively processes raw children, converting them into `BaseNode` instances as needed
+   * and propagating the provided theme.
    *
-   * This method recursively processes each child to ensure consistent theme handling
-   * and to convert valid elements into `BaseNode` instances. It uses caching to
-   * optimize performance, with different strategies for server-side (string-based key)
-   * and client-side (WeakMap-based key) environments.
+   * This method ensures consistent theme handling for all children and optimizes performance
+   * using caching strategies: a WeakMap for client-side and no caching for server-side.
+   *
+   * - If `children` is an array, each child is processed individually.
+   * - If `children` is a single node, it is processed directly.
+   * - The processed result is cached on the client to avoid redundant work.
    * @param children The raw child or array of children to process.
    * @param theme The theme to propagate to the children.
-   * @returns The processed children, ready to be normalized for rendering.
+   * @returns The processed children, ready for normalization and rendering.
    * @private
    */
   private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
     if (!children) return undefined
 
-    // No caching on the client, as it was ineffective and complex.
-    return Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+    // Use RSC-safe caching strategy
+    const cached = this._getCachedChildren(children, theme)
+    if (cached) return cached
+
+    const processed = Array.isArray(children)
+      ? children.map((child, index) => this._processRawNode(child, theme, index))
+      : this._processRawNode(children, theme)
+
+    // Only cache on client-side
+    if (typeof window !== 'undefined') {
+      this._setCachedChildren(children, theme, processed)
+    }
+
+    return processed
   }
 
   /**
