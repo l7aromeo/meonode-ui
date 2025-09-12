@@ -206,49 +206,111 @@ export const resolveDefaultStyle = (style: CSSProperties) => {
 }
 
 /**
- * Creates a stable hash string based on the provided children and optional theme.
- *
- * This function generates a hash that represents the structure and types of the given
- * children nodes, along with an optional theme. The hash is designed to be stable across
- * renders, meaning that the same input will always produce the same hash output.
- *
- * The hashing strategy includes:
- * - For arrays of children, it includes the length and samples the types of the first few children.
- * - For single child nodes, it includes the type of the node.
- * - For primitive values (strings, numbers, etc.), it includes their type.
- * - If a theme is provided, it includes a stringified version of the theme.
- *
- * This approach avoids deep traversal of potentially large or complex node trees,
- * focusing instead on key characteristics that are likely to change when the structure
- * or content changes.
- * @param children The child nodes to hash, which can be a single node or an array of nodes.
- * @param theme An optional theme object or string to include in the hash.
- * @returns A stable hash string representing the structure and types of the children and theme.
+ * Create a stable signature for a React node (children) with bounded traversal.
+ * This focuses on the structural identity important for rendering decisions:
+ * - element type (string or component name)
+ * - key (if present)
+ * - basic children shape (recursing within limits)
  */
-export function createStableHash(children: NodeElement | NodeElement[], theme?: Theme): string {
-  let hash = ''
+function nodeSignature(node: string | number | bigint | boolean | object | null | undefined, depth = 5, breadth = 6, seen = new WeakSet<object>()): string {
+  if (node === null) return 'null'
+  if (node === undefined) return 'undefined'
 
-  if (theme) {
-    hash += `t:${typeof theme === 'object' ? ObjHelper.stringify(theme) : String(theme)};`
+  const t = typeof node
+  if (t === 'string') return `s:${node}`
+  if (t === 'number') return `n:${String(node)}`
+  if (t === 'boolean') return `b:${String(node)}`
+  if (t === 'function') return 'ƒ()'
+  if (t === 'symbol') return `sym:${String(node)}`
+
+  // Arrays
+  if (Array.isArray(node)) {
+    if (depth <= 0) return `ary[...]`
+    const parts: string[] = []
+    const sampleCount = Math.min(node.length, breadth)
+    for (let i = 0; i < sampleCount; i++) {
+      parts.push(nodeSignature(node[i], depth - 1, breadth, seen))
+    }
+    if (node.length > breadth) parts.push(`...len:${node.length}`)
+    return `ary[${parts.join(',')}]`
   }
 
-  if (Array.isArray(children)) {
-    hash += `a:${children.length};`
-    // Sample first few children for hash to avoid deep traversal
-    const sampleSize = Math.min(3, children.length)
-    for (let i = 0; i < sampleSize; i++) {
-      const child = children[i]
-      if (child && typeof child === 'object' && 'type' in child) {
-        hash += `c${i}:${getElementTypeName(child)};`
-      } else {
-        hash += `c${i}:${typeof child};`
+  // React element-ish: detect common shapes (type + props)
+  if (t === 'object' && (Object.prototype.hasOwnProperty.call(node, 'type') || Object.prototype.hasOwnProperty.call(node, 'props'))) {
+    // Type can be string (div) or function/class. Use helper to get name.
+    const type = (node as { type?: unknown }).type ?? node
+    let typeName = ''
+    try {
+      typeName = getElementTypeName(type)
+    } catch {
+      try {
+        typeName = String(type)
+      } catch {
+        typeName = 'unknown'
       }
     }
-  } else if (children && typeof children === 'object' && 'type' in children) {
-    hash += `s:${getElementTypeName(children)};`
-  } else {
-    hash += `s:${typeof children};`
+
+    const key =
+      'key' in (node as object) && (node as { key?: unknown }).key !== undefined && (node as { key?: unknown }).key !== null
+        ? `#${String((node as { key: unknown }).key)}`
+        : ''
+    const props =
+      'props' in (node as object) && typeof (node as { props?: unknown }).props === 'object' ? ((node as { props?: Record<string, unknown> }).props ?? {}) : {}
+
+    let childrenSig = ''
+    try {
+      childrenSig = nodeSignature((props as { children?: NodeElement | NodeElement[] }).children, depth - 1, breadth, seen)
+    } catch {
+      childrenSig = '<err>'
+    }
+
+    const id = props && typeof props === 'object' && 'id' in props && (props as { id?: unknown }).id ? `@id:${String((props as { id: unknown }).id)}` : ''
+    const cls =
+      props && typeof props === 'object' && 'className' in props && (props as { className?: unknown }).className
+        ? `@class:${String((props as { className: unknown }).className)}`
+        : ''
+    return `el:${typeName}${key}${id}${cls}{${childrenSig}}`
   }
 
-  return hash
+  // Plain object
+  if (t === 'object' && node && typeof node === 'object' && !('type' in node) && !('props' in node)) {
+    if (seen.has(node as object)) return '[Circular]'
+    seen.add(node as object)
+    if (depth <= 0) return 'obj[...]'
+    const keys = Object.keys(node as object).sort()
+    const parts: string[] = []
+    const sampleCount = Math.min(keys.length, breadth)
+    for (let i = 0; i < sampleCount; i++) {
+      const k = keys[i] as keyof typeof node
+      try {
+        parts.push(`${k}:${nodeSignature(node[k], depth - 1, breadth, seen)}`)
+      } catch {
+        parts.push(`${k}:<err>`)
+      }
+    }
+    if (keys.length > breadth) parts.push(`...keys:${keys.length}`)
+    return `obj{${parts.join(',')}}`
+  }
+
+  // Fallback
+  try {
+    return `o:${String(node)}`
+  } catch {
+    return 'o:<unserializable>'
+  }
+}
+
+/**
+ * Public: createStableHash
+ * Produces a deterministic string signature for children + theme.
+ * Keep traversal limited so it is cheap in large trees.
+ *
+ * If you prefer a shorter hashed output, wrap the returned string in a lightweight
+ * hash function (fnv1a, xxhash, etc.). Returning the full signature is useful
+ * for debugging and deterministic comparisons.
+ */
+export function createStableHash(children: NodeElement | NodeElement[], theme?: Theme) {
+  const themePart = theme ? ObjHelper.stringify(theme, 6) : 'theme:undefined'
+  const childrenPart = nodeSignature(children, 6, 8)
+  return `${themePart}|${childrenPart}`
 }
