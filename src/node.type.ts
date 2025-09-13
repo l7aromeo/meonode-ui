@@ -1,6 +1,5 @@
 'use strict'
 import React, {
-  type Attributes as ReactAttributes,
   type CSSProperties,
   type ReactNode,
   type JSX,
@@ -23,6 +22,11 @@ type RequiredKeys<T> = {
 
 // Utility to check if a type T has any required properties.
 export type HasRequiredProps<T> = RequiredKeys<T> extends never ? false : true
+
+/** Basic React attributes, currently only includes 'key' */
+export interface ReactAttributes {
+  key?: string
+}
 
 /**
  * Excludes array types from ReactNode, ensuring a single, non-array React element or primitive.
@@ -174,9 +178,6 @@ export interface FunctionRendererProps<E extends NodeElement> {
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme
-
-  /** Optional key prop to help React identify unique instances in lists */
-  passedKey?: string
 
   processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => NodeElement
 }

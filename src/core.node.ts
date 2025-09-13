@@ -1,5 +1,5 @@
 'use strict'
-import React, { type ComponentProps, createElement, type ElementType, Fragment, isValidElement, type Key, type ReactElement, type ReactNode } from 'react'
+import React, { type ComponentProps, createElement, type ElementType, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import type {
   FinalNodeProps,
   FunctionRendererProps,
@@ -316,7 +316,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    * @static
    */
-  static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey: string | undefined) {
+  static _renderProcessedNode(processedElement: NodeElement, passedTheme: Theme | undefined, passedKey?: string) {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
     if (passedKey !== undefined) {
       commonBaseNodeProps.key = passedKey
@@ -370,12 +370,11 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @param props The properties for the function renderer.
    * @param props.render The function to execute to get the child content.
    * @param props.passedTheme The theme to propagate to the rendered child.
-   * @param props.passedKey The React key to assign to the rendered node.
    * @param props.processRawNode A reference to the `_processRawNode` method for recursive processing.
    * @returns The rendered `ReactNode`.
    * @private
    */
-  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, passedKey, processRawNode }: FunctionRendererProps<E>): NodeElement {
+  private _functionRenderer<E extends ReactNode | NodeInstance<E>>({ render, passedTheme, processRawNode }: FunctionRendererProps<E>) {
     // Invoke the render function to get the child node.
     let result: NodeElement
     try {
@@ -388,7 +387,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     if (result instanceof React.Component) {
       const element = result.render()
       const processed = processRawNode(element, passedTheme)
-      return BaseNode._renderProcessedNode(processed, passedTheme, passedKey)
+      return BaseNode._renderProcessedNode(processed, passedTheme)
     }
 
     // Handle BaseNode instance
@@ -396,7 +395,6 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       const bnResult = result
       if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
         return new BaseNode(bnResult.element, {
-          key: passedKey,
           ...bnResult.rawProps,
           nodetheme: passedTheme,
         }).render()
@@ -407,7 +405,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Process other result types
     const processedResult = processRawNode(result, passedTheme)
 
-    if (processedResult) return BaseNode._renderProcessedNode(processedResult, passedTheme, passedKey)
+    if (processedResult) return BaseNode._renderProcessedNode(processedResult, passedTheme)
 
     return result
   }
@@ -434,9 +432,9 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   }: {
     nodeIndex?: number
     element: NodeElement
-    existingKey?: Key | null
+    existingKey?: string | null
     children?: NodeElement | NodeElement[]
-  }): Key | null | undefined => {
+  }): string => {
     if (existingKey) return existingKey
     const elementName = getElementTypeName(element)
 
@@ -508,7 +506,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       // Functions themselves don't have a .key prop that we can access here.
       const keyForFunctionRenderer = this._generateKey({ nodeIndex, element: this._functionRenderer as NodeElement }) // Generate key for function renderer
 
-      return new BaseNode(this._functionRenderer as NodeElement, {
+      return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
         render: rawNode as never,
         passedTheme: parentTheme,
@@ -755,21 +753,29 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const content = this.render()
     this._portalReactRoot.render(content)
 
-    return {
-      ...this._portalReactRoot,
-      unmount: () => {
-        if (this._portalReactRoot) {
-          this._portalReactRoot.unmount()
-          this._portalReactRoot = null
+    // Augment the actual root's unmount to also clean up the DOM element and internal refs.
+    try {
+      const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
+      ;(this._portalReactRoot as any).unmount = () => {
+        try {
+          originalUnmount()
+        } catch {
+          // swallow: original unmount might throw in edge cases
         }
+        // Clear references and remove DOM element
         if (this._portalDOMElement) {
           if (this._portalDOMElement.parentNode) {
             this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
           }
           this._portalDOMElement = null
         }
-      },
+        this._portalReactRoot = null
+      }
+    } catch {
+      // swallow: if anything goes wrong while patching, still return the root
     }
+
+    return this._portalReactRoot
   }
 }
 
