@@ -3,35 +3,12 @@ import { matchers } from '@emotion/jest'
 import { jest } from '@jest/globals'
 import { cleanup, render } from '@testing-library/react'
 import React from 'react'
-import {
-  Node,
-  Div,
-  Header,
-  Nav,
-  A,
-  H1,
-  H2,
-  H3,
-  P,
-  Button,
-  Img,
-  Section,
-  Article,
-  Aside,
-  Footer,
-  Ul,
-  Li,
-  Strong,
-  Small,
-  Container,
-  Row,
-  Column,
-} from '@src/main.js'
+import { Node, Container, Header, Nav, A, H1, H2, H3, P, Button, Img, Section, Article, Aside, Footer, Ul, Li, Strong, Small, Row, Column } from '@src/main.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
-// Ensure we use real timers if your test environment changed timers earlier
+// Ensure use real timers
 jest.useRealTimers()
 
 // Clean up DOM between tests to avoid open handles
@@ -95,7 +72,7 @@ describe('Performance Testing', () => {
         margin: '0',
         children: [
           Header({
-            children: Div({
+            children: Container({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -104,7 +81,7 @@ describe('Performance Testing', () => {
               color: 'theme.base.content',
               boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
               children: [
-                Div({
+                Container({
                   display: 'flex',
                   alignItems: 'center',
                   children: [
@@ -150,7 +127,7 @@ describe('Performance Testing', () => {
             id: 'hero',
             padding: '48px 24px',
             backgroundColor: 'theme.base.muted',
-            children: Div({
+            children: Container({
               maxWidth: '1200px',
               margin: '0 auto',
               display: 'flex',
@@ -184,7 +161,7 @@ describe('Performance Testing', () => {
                         }),
                       ],
                     }),
-                    Div({
+                    Container({
                       marginTop: '20px',
                       display: 'flex',
                       gap: '12px',
@@ -200,7 +177,7 @@ describe('Performance Testing', () => {
                   ],
                 }),
                 // Illustration side
-                Div({
+                Container({
                   width: '420px',
                   height: '260px',
                   backgroundColor: 'theme.base',
@@ -224,32 +201,32 @@ describe('Performance Testing', () => {
           Section({
             id: 'features',
             padding: '40px 24px',
-            children: Div({
+            children: Container({
               maxWidth: '1200px',
               margin: '0 auto',
               children: [
                 H2('Highlights', { marginBottom: '12px' }),
                 P('Everything you need to compose UI quickly and safely.', { color: '#666', marginBottom: '20px' }),
-                Div({
+                Container({
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '16px',
                   children: [
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
                       boxShadow: '0 6px 18px rgba(2,6,23,0.04)',
                       children: [H3('Type-safe props'), P('Strongly typed prop factories make components ergonomic and safe.', { color: '#444' })],
                     }),
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
                       boxShadow: '0 6px 18px rgba(2,6,23,0.04)',
                       children: [H3('Theming'), P('Resolve theme-aware values and maintain consistent design tokens.', { color: '#444' })],
                     }),
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
@@ -265,7 +242,7 @@ describe('Performance Testing', () => {
           // Article + Sidebar
           Section({
             padding: '32px 24px',
-            children: Div({
+            children: Container({
               maxWidth: '1200px',
               margin: '0 auto',
               display: 'flex',
@@ -291,7 +268,7 @@ describe('Performance Testing', () => {
                 }),
                 Aside({
                   flex: 1,
-                  children: Div({
+                  children: Container({
                     padding: '12px',
                     borderRadius: '8px',
                     backgroundColor: 'theme.base',
@@ -307,7 +284,7 @@ describe('Performance Testing', () => {
                           Li({ children: A({ href: '#examples', children: 'Examples' }) }),
                         ],
                       }),
-                      Div({
+                      Container({
                         marginTop: '12px',
                         children: [
                           Small('v1.0.0'),
@@ -333,30 +310,30 @@ describe('Performance Testing', () => {
           Section({
             padding: '28px 24px',
             backgroundColor: 'theme.base.muted',
-            children: Div({
+            children: Container({
               maxWidth: '1200px',
               margin: '0 auto',
               children: [
                 H2('What people are saying', { marginBottom: '12px' }),
-                Div({
+                Container({
                   display: 'flex',
                   gap: '12px',
                   children: [
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
                       flex: 1,
                       children: [P('"MeoNode made our design system consistent and easy to maintain."', { fontStyle: 'italic' }), Strong('- Product Team')],
                     }),
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
                       flex: 1,
                       children: [P('"The prop factories remove so much boilerplate."', { fontStyle: 'italic' }), Strong('- Developer Advocate')],
                     }),
-                    Div({
+                    Container({
                       padding: '16px',
                       borderRadius: '8px',
                       backgroundColor: 'theme.base',
@@ -373,13 +350,13 @@ describe('Performance Testing', () => {
             padding: '24px',
             backgroundColor: '#0b1724',
             color: 'theme.base',
-            children: Div({
+            children: Container({
               maxWidth: '1200px',
               margin: '0 auto',
               display: 'flex',
               justifyContent: 'space-between',
               children: [
-                Div({ children: [Strong('MeoNode'), P('Copyright © 2025', { color: 'theme.secondary' })] }),
+                Container({ children: [Strong('MeoNode'), P('Copyright © 2025', { color: 'theme.secondary' })] }),
                 Nav({
                   children: Ul({
                     display: 'flex',
@@ -420,7 +397,8 @@ describe('Performance Testing', () => {
     expect(finalRender.getByText('What people are saying')).toBeInTheDocument()
     finalRender.unmount()
 
-    // This is heavier than the simple page; increase threshold if your CI is slower.
+    // Assert median render time is under threshold
+    // (Set threshold based on performance goals and test environment)
     const MAX_ALLOWED_MS = 200
     expect(median).toBeLessThan(MAX_ALLOWED_MS)
   })
