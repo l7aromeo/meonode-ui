@@ -208,7 +208,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     // If children is an object (array or object), try identity-keyed WeakMap first
     if (children && typeof children === 'object') {
-      const weakEntry = BaseNode._processedChildrenWeakCache.get(children as object)
+      const weakEntry = BaseNode._processedChildrenWeakCache.get(children)
       if (weakEntry && weakEntry.hash === hash && !weakEntry.isServerSide) {
         return BaseNode._cloneProcessedChildren(weakEntry.children)
       }
@@ -240,7 +240,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
 
     if (children && typeof children === 'object') {
       // Store under identity in WeakMap - GC will collect when children object is unreachable
-      BaseNode._processedChildrenWeakCache.set(children as object, {
+      BaseNode._processedChildrenWeakCache.set(children, {
         hash,
         children: processed,
         isServerSide: false,
@@ -636,7 +636,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       if (!this._normalizedChildren || this._childrenHash !== createStableHash(childrenInProps, this.props.nodetheme || this.props.theme)) {
         if (Array.isArray(childrenInProps)) {
           if (childrenInProps.length > 0) {
-            const mappedArray = childrenInProps.map(child => this._normalizeChild(child as NodeElement))
+            const mappedArray = childrenInProps.map(child => this._normalizeChild(child))
 
             if (mappedArray.every(child => child === null || child === undefined)) {
               this._normalizedChildren = undefined
@@ -647,7 +647,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
             this._normalizedChildren = undefined
           }
         } else {
-          this._normalizedChildren = this._normalizeChild(childrenInProps as NodeElement)
+          this._normalizedChildren = this._normalizeChild(childrenInProps)
         }
       }
 
@@ -759,7 +759,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Augment the actual root's unmount to also clean up the DOM element and internal refs.
     try {
       const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
-      ;(this._portalReactRoot as any).unmount = () => {
+      this._portalReactRoot.unmount = () => {
         try {
           originalUnmount()
         } catch {
