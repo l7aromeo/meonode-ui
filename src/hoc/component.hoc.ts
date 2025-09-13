@@ -1,7 +1,7 @@
 'use strict'
 
 import { BaseNode, Node } from '@src/core.node.js'
-import type { ComponentNode, HasCSSCompatibleStyleProp, NodeElement, Theme } from '@src/node.type.js'
+import type { Children, ComponentNode, HasCSSCompatibleStyleProp, Theme } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { getElementTypeName } from '@src/helper/common.helper.js'
 
@@ -21,14 +21,14 @@ import { getElementTypeName } from '@src/helper/common.helper.js'
  */
 export type ComponentNodeProps<TProps> = TProps extends undefined
   ? Partial<{
-      children: NodeElement | NodeElement[]
+      children: Children
       theme: Theme
     }>
   : TProps &
       (HasCSSCompatibleStyleProp<TProps> extends true ? CSSProperties : object) &
       Partial<{
         props: Partial<Omit<TProps, 'children'>>
-        children: NodeElement | NodeElement[]
+        children: Children
         theme: Theme
       }>
 

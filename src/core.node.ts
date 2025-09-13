@@ -1,6 +1,7 @@
 'use strict'
 import React, { type ComponentProps, createElement, type ElementType, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import type {
+  Children,
   FinalNodeProps,
   FunctionRendererProps,
   HasRequiredProps,
@@ -57,7 +58,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     object,
     {
       hash: string
-      children: NodeElement | NodeElement[]
+      children: Children
       isServerSide: boolean
     }
   >()
@@ -69,7 +70,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private static _processedChildrenMapCache = new Map<
     string,
     {
-      children: NodeElement | NodeElement[]
+      children: Children
       isServerSide: boolean
     }
   >()
@@ -168,7 +169,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @returns A deep clone of the processed children, safe for use in multiple parents.
    * @private
    */
-  private static _cloneProcessedChildren(processed: NodeElement | NodeElement[]): NodeElement | NodeElement[] {
+  private static _cloneProcessedChildren(processed: Children): Children {
     const cloneOne = (child: NodeElement): NodeElement => {
       if (child instanceof BaseNode) {
         // shallow clone: new BaseNode with same element and copied rawProps
@@ -199,7 +200,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @returns A cloned version of the cached processed children if available, otherwise `null`.
    * @private
    */
-  private _getCachedChildren(children: NodeElement | NodeElement[], theme?: Theme) {
+  private _getCachedChildren(children: Children, theme?: Theme) {
     if (BaseNode._isServer) return null // No server caching
 
     // Compute hash once
@@ -232,7 +233,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @param processed The processed NodeElement(s) to cache.
    * @private
    */
-  private _setCachedChildren(children: NodeElement | NodeElement[], theme: Theme | undefined, processed: NodeElement | NodeElement[]) {
+  private _setCachedChildren(children: Children, theme: Theme | undefined, processed: Children) {
     if (BaseNode._isServer) return
 
     const hash = createStableHash(children, theme)
@@ -281,7 +282,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @returns The processed children, ready for normalization and rendering.
    * @private
    */
-  private _processChildren(children: NodeElement | NodeElement[], theme?: Theme) {
+  private _processChildren(children: Children, theme?: Theme) {
     if (!children) return undefined
 
     // Use RSC-safe caching strategy
@@ -435,7 +436,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     nodeIndex?: number
     element: NodeElement
     existingKey?: string | null
-    children?: NodeElement | NodeElement[]
+    children?: Children
   }): string => {
     if (existingKey) return existingKey
     const elementName = getElementTypeName(element)
@@ -854,15 +855,15 @@ export function createChildrenFirstNode<AdditionalInitialProps extends Record<st
   initialProps?: Omit<NodeProps<E>, keyof AdditionalInitialProps | 'children'> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
   ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(
-      children: NodeElement | NodeElement[],
+      children: Children,
       props: Omit<MergedProps<E, AdditionalProps>, 'children'>,
     ) => NodeInstance<E>) & { element: E }
   : (<AdditionalProps extends Record<string, any> = Record<string, any>>(
-      children?: NodeElement | NodeElement[],
+      children?: Children,
       props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
     ) => NodeInstance<E>) & { element: E } {
   const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(
-    children?: NodeElement | NodeElement[],
+    children?: Children,
     props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
   ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
 

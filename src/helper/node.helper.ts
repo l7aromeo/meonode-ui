@@ -1,6 +1,6 @@
 'use strict'
 import type { CSSProperties } from 'react'
-import type { NodeElement, NodeInstance, Theme } from '@src/node.type.js'
+import type { Children, NodeInstance, Theme } from '@src/node.type.js'
 import { getElementTypeName } from '@src/helper/common.helper.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 
@@ -259,7 +259,7 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
 
     let childrenSig = ''
     try {
-      childrenSig = nodeSignature((props as { children?: NodeElement | NodeElement[] }).children, depth - 1, breadth, seen)
+      childrenSig = nodeSignature((props as { children?: Children }).children, depth - 1, breadth, seen)
     } catch {
       childrenSig = '<err>'
     }
@@ -309,7 +309,7 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
  * hash function (fnv1a, xxhash, etc.). Returning the full signature is useful
  * for debugging and deterministic comparisons.
  */
-export function createStableHash(children: NodeElement | NodeElement[], theme?: Theme) {
+export function createStableHash(children: Children, theme?: Theme) {
   const themePart = theme ? ObjHelper.stringify(theme, 6) : 'theme:undefined'
   const childrenPart = nodeSignature(children, 6, 8)
   return `${themePart}|${childrenPart}`

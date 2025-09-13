@@ -47,6 +47,9 @@ export type NodeElement =
   | NodeInstance<any>
   | ((props?: any) => NonArrayReactNode | Promise<Awaited<NonArrayReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
 
+/** A single NodeElement or an array of NodeElements */
+export type Children = NodeElement | NodeElement[]
+
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
  * Defines the core structure and capabilities of a BaseNode instance.
@@ -112,7 +115,7 @@ export type FinalNodeProps = ReactAttributes &
     ref: any | React.Ref<unknown> | undefined
     style: any
     css: any
-    children: NodeElement | NodeElement[]
+    children: Children
     theme: Partial<{ [p: string]: any }> | any | undefined
     nodetheme: Theme
   }>
@@ -152,7 +155,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
   (HasNoStyleProp<E> extends true ? Partial<{ css: CSSInterpolation }> : object) &
   Partial<{
     props: Partial<Omit<PropsOf<E>, 'children'>>
-    children: NodeElement | NodeElement[]
+    children: Children
     theme: Theme
   }>
 
@@ -192,7 +195,7 @@ export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstanc
  */
 export interface BasePortalProps {
   /** Content to render within the portal */
-  children?: NodeElement | NodeElement[]
+  children?: Children
 
   /** Portal control object containing lifecycle methods */
   portal: {
