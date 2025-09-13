@@ -21,6 +21,13 @@ describe('BaseNode - Core Functionality', () => {
     expect(getByText('Hello, World!')).toBeInTheDocument()
   })
 
+  it('should render a simple Div node using Component HOC', () => {
+    const App = Div({ children: 'Hello, World!' })
+    const ComponentApp = Component(() => App)
+    const { getByText } = render(ComponentApp())
+    expect(getByText('Hello, World!')).toBeInTheDocument()
+  })
+
   // Test Case 2: Rendering different HTML elements
   it('should render a paragraph (P) element', () => {
     const App = P('This is a paragraph.')
