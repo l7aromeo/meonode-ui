@@ -111,7 +111,6 @@ export type Theme = Partial<{
 export type FinalNodeProps = ReactAttributes &
   Partial<{
     nativeProps: Omit<Omit<PropsOf<NodeElement>, 'children'>, 'style'>
-    key: React.Key | any | null | undefined
     ref: any | React.Ref<unknown> | undefined
     style: any
     css: any
@@ -149,7 +148,7 @@ export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'theme' | 'props'> &
+export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'theme' | 'props' | 'key'> &
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   (HasNoStyleProp<E> extends true ? Partial<{ css: CSSInterpolation }> : object) &
