@@ -46,6 +46,8 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
+  /** Indicates whether the code is running on the server (true) or client (false) */
+  private static _isServer = typeof window === 'undefined'
 
   /**
    * WeakMap cache for processed children, keyed by object/array identity for GC friendliness.
@@ -198,7 +200,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    */
   private _getCachedChildren(children: NodeElement | NodeElement[], theme?: Theme) {
-    if (typeof window === 'undefined') return null // No server caching
+    if (BaseNode._isServer) return null // No server caching
 
     // Compute hash once
     const hash = createStableHash(children, theme)
@@ -231,7 +233,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    */
   private _setCachedChildren(children: NodeElement | NodeElement[], theme: Theme | undefined, processed: NodeElement | NodeElement[]) {
-    if (typeof window === 'undefined') return
+    if (BaseNode._isServer) return
 
     const hash = createStableHash(children, theme)
 
@@ -291,7 +293,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       : this._processRawNode(children, theme)
 
     // Only cache on client-side
-    if (typeof window !== 'undefined') {
+    if (!BaseNode._isServer) {
       this._setCachedChildren(children, theme, processed)
     }
 
@@ -701,7 +703,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
    * @private
    */
   private _ensurePortalInfrastructure() {
-    if (typeof window === 'undefined') return false
+    if (BaseNode._isServer) return false
 
     // If both exist and DOM is connected, we're ready
     if (this._portalDOMElement && this._portalReactRoot && this._portalDOMElement.isConnected) return true
