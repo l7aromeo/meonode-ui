@@ -1,5 +1,15 @@
 'use strict'
-import React, { type ComponentProps, createElement, type ElementType, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
+import React, {
+  type ComponentProps,
+  createElement,
+  type ElementType,
+  type ExoticComponent,
+  Fragment,
+  type FragmentProps,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import type {
   Children,
   FinalNodeProps,
@@ -667,43 +677,52 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       finalChildren = this._normalizedChildren
     }
 
-    // Prepare props for React.createElement
-    let propsForCreateElement: Omit<FinalNodeProps, 'children'>
+    // If the element is a Fragment, use React.createElement directly
     if (this.element === Fragment || isFragment(this.element)) {
-      propsForCreateElement = { key }
-    } else {
-      propsForCreateElement = {
-        ...(otherProps as ComponentProps<ElementType>),
-        key,
-        ...nativeProps,
-        suppressHydrationWarning: true,
-      }
+      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, finalChildren)
     }
 
     // If the element has a `css` prop and has style tag, render using the `StyledRenderer` component
     // This enables emotion-based style handling for the element
-    if (this.element && !hasNoStyleTag(this.element) && propsForCreateElement.css) {
-      const props = {
-        element: this.element,
-        ...propsForCreateElement,
-      }
-
+    if (this.element && !hasNoStyleTag(this.element) && otherProps.css) {
+      // Set displayName for easier debugging in React DevTools
       try {
-        const displayName = getElementTypeName(props.element)
+        const displayName = getElementTypeName(this.element)
         StyledRenderer.displayName = `Styled(${displayName})`
       } catch {
         // swallow: displayName is not critical
       }
 
-      return createElement(StyledRenderer, props, finalChildren as ReactNode)
+      return createElement(
+        StyledRenderer,
+        {
+          element: this.element,
+          ...(otherProps as ComponentProps<ElementType>),
+          key,
+          suppressHydrationWarning: true,
+          ...nativeProps,
+        },
+        finalChildren as ReactNode,
+      )
     }
 
+    // For other elements, create the React element directly
+    // Set displayName for easier debugging in React DevTools
     try {
       ;(this.element as NodeElement & { displayName: string }).displayName = getElementTypeName(this.element)
     } catch {
       // swallow: displayName is not critical
     }
-    return createElement(this.element as ElementType, propsForCreateElement, finalChildren)
+
+    return createElement(
+      this.element as ElementType,
+      {
+        ...(otherProps as ComponentProps<ElementType>),
+        key,
+        ...nativeProps,
+      },
+      finalChildren,
+    )
   }
 
   /**
