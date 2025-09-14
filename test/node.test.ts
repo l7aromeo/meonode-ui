@@ -15,6 +15,13 @@ afterEach(() => {
 
 describe('BaseNode - Core Functionality', () => {
   // Test Case 1: Basic Div rendering
+  it('should render an empty prop Div node', () => {
+    const App = Div()
+    const { container } = render(App.render())
+    expect(container.firstChild).toBeInTheDocument()
+    expect((container.firstChild as HTMLElement)?.tagName).toBe('DIV')
+  })
+
   it('should render a simple Div node', () => {
     const App = Div({ children: 'Hello, World!' })
     const { getByText } = render(App.render())
