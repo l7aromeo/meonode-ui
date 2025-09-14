@@ -16,7 +16,7 @@ import type {
 import { createStableHash, isNodeInstance, resolveDefaultStyle } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
+import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omit, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 
@@ -143,7 +143,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     const normalizedChildren = this._processChildren(children, currentTheme)
 
     // Combine processed props into final normalized form
-    return {
+    let finalProps: FinalNodeProps = omitUndefined({
       ref,
       key,
       nodetheme: currentTheme,
@@ -153,7 +153,20 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
       ...domProps,
       nativeProps: restNativeProps,
       children: normalizedChildren,
+    })
+
+    // Special handling for standard HTML tags vs custom components
+    if (typeof this.element === 'string') {
+      if (!hasNoStyleTag(this.element)) {
+        // Remove theme and nodetheme props for standard HTML tags
+        finalProps = omit(finalProps, 'theme', 'nodetheme')
+      } else {
+        // Remove all style-related props for tags that should not have styles
+        finalProps = omit(finalProps, 'css', 'style', 'theme', 'nodetheme')
+      }
     }
+
+    return finalProps
   }
 
   /**
