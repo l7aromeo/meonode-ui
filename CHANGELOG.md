@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] - 2025-09-14
+
+### Added
+
+- **feat(common.helper)**: add omit and omitUndefined utility functions to create object copies without specified keys or undefined values
+- **feat**: integrate omit and omitUndefined functions to manage finalProps for standard HTML tags and custom components
+
+### Refactor
+
+- **refactor**: remove unnecessary type assertions for children in core.node.ts
+- **refactor(core.node.ts)**: streamline element creation logic
+
+### Test
+
+- **test**: add test case for rendering Div node using Component HOC
+- **feat(test)**: replace Div components with Container for consistency in performance tests
+- **test(node.test.ts)**: add test for rendering an empty prop Div node
+
+### Removed
+
+- **types**: removed redundant `key` prop from `FinalNodeProps` and default `key` from `NodeProps` types for cleaner type definitions
+
 ## [0.2.16] - 2025-09-13
 
 ### Added
