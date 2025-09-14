@@ -247,3 +247,34 @@ export function hasNoStyleTag(tag?: NodeElement): boolean {
   if (!tag || typeof tag !== 'string') return false
   return noStyleTagsSet.has(tag.toLowerCase() as (typeof NO_STYLE_TAGS)[number])
 }
+
+/**
+ * Returns a shallow copy of the object with the specified keys omitted.
+ * @param obj The source object.
+ * @param keys The property keys to omit.
+ * @returns A new object without the omitted keys.
+ */
+export function omit<T extends object, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> {
+  const result = {} as Omit<T, K>
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key) && !keys.includes(key as unknown as K)) {
+      ;(result as any)[key] = obj[key]
+    }
+  }
+  return result
+}
+
+/**
+ * Removes keys from an object whose values are `undefined`.
+ * @param obj The source object.
+ * @returns A new object without keys that have `undefined` values.
+ */
+export function omitUndefined<T extends object>(obj: T): Partial<T> {
+  const result: Partial<T> = {}
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] !== undefined) {
+      result[key] = obj[key]
+    }
+  }
+  return result
+}
