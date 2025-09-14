@@ -32,10 +32,10 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --ci",
     "prebuild": "yarn lint && yarn test",
     "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo --project tsconfig.build.json --diagnostics && tsc-alias",
-    "publish:pre": "./prepublish.sh && yarn version -i prerelease && yarn npm publish --tag next",
-    "publish:patch": "./prepublish.sh && yarn version -i patch && yarn npm publish --tag latest",
-    "publish:minor": "./prepublish.sh && yarn version -i minor && yarn npm publish --tag latest",
-    "publish:major": "./prepublish.sh && yarn version -i major && yarn npm publish --tag latest",
+    "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
+    "publish:patch": "./prepublish.sh && yarn build && yarn version -i patch && yarn npm publish --tag latest",
+    "publish:minor": "./prepublish.sh && yarn build && yarn version -i minor && yarn npm publish --tag latest",
+    "publish:major": "./prepublish.sh && yarn build && yarn version -i major && yarn npm publish --tag latest",
     "prepare": "husky"
   },
   "dependencies": {
