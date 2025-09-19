@@ -314,9 +314,13 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     const cached = this._getCachedChildren(children, theme)
     if (cached) return cached
 
-    const processed = Array.isArray(children)
-      ? children.map((child, index) => this._processRawNode(child, theme, index))
-      : this._processRawNode(children, theme)
+    let processed: Children
+    if (typeof children === 'function') {
+      processed = children
+    } else {
+      // Process each child node
+      processed = Array.isArray(children) ? children.map((child, index) => this._processRawNode(child, theme, index)) : this._processRawNode(children, theme)
+    }
 
     // Only cache on client-side
     if (!BaseNode._isServer) {
@@ -390,6 +394,29 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
+   * Determines if a raw node is a function that should be treated as a render prop.
+   * @param rawNode
+   * @private
+   */
+  private _isFunctionChild(rawNode: NodeElement): boolean {
+    // Basic function check
+    if (typeof rawNode !== 'function') return false
+
+    // Exclude React component types
+    if (isReactClassComponent(rawNode)) return false
+    if (isMemo(rawNode)) return false
+    if (isForwardRef(rawNode)) return false
+
+    // Check if it's a component function vs render function
+    // Component functions typically have displayName, name starting with capital, or prototype
+    if ('displayName' in rawNode && rawNode.displayName && /^[A-Z]/.test(rawNode.displayName as string)) return false
+    if (rawNode.name && /^[A-Z]/.test(rawNode.name)) return false
+
+    // If function has prototype properties (likely a constructor), it's probably a component
+    return !(rawNode.prototype && typeof rawNode.prototype.render === 'function')
+  }
+
+  /**
    * Renders the output of a function-as-a-child, ensuring theme propagation.
    *
    * This method is designed to handle "render prop" style children (`() => ReactNode`).
@@ -411,6 +438,19 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       result = null
     }
 
+    // Handle null/undefined
+    if (result === null || result === undefined) {
+      return result
+    }
+
+    // Handle arrays of elements (common in render props)
+    if (Array.isArray(result)) {
+      return result.map((item, index) => {
+        const processed = processRawNode(item, passedTheme, index)
+        return BaseNode._renderProcessedNode(processed, passedTheme, `${getElementTypeName(item)}-${index}`)
+      })
+    }
+
     // Handle React.Component instance
     if (result instanceof React.Component) {
       const element = result.render()
@@ -418,8 +458,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       return BaseNode._renderProcessedNode(processed, passedTheme)
     }
 
-    // Handle BaseNode instance
+    // Handle BaseNode instance or NodeInstance
     if (result instanceof BaseNode || isNodeInstance(result)) {
+      // If nodetheme is missing and passedTheme exists, inject it
       const bnResult = result
       if (bnResult.rawProps?.nodetheme === undefined && passedTheme !== undefined) {
         return new BaseNode(bnResult.element, {
@@ -430,8 +471,18 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       return bnResult.render()
     }
 
-    // Process other result types
-    const processedResult = processRawNode(result, passedTheme)
+    // Handle primitives and valid React nodes (JSX, string, number, boolean)
+    if (
+      typeof result === 'string' ||
+      typeof result === 'number' ||
+      typeof result === 'boolean' ||
+      (result && typeof result === 'object' && '$$typeof' in result) // React JSX element
+    ) {
+      return result
+    }
+
+    // Process any other result types
+    const processedResult = processRawNode ? processRawNode(result, passedTheme) : result
 
     if (processedResult) return BaseNode._renderProcessedNode(processedResult, passedTheme)
 
@@ -529,10 +580,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Case 3: Child is a function that needs to be called during render (FunctionRenderer).
-    if (componentType === 'function' && !isReactClassComponent(rawNode) && !isMemo(rawNode) && !isForwardRef(rawNode)) {
-      // The key is for the BaseNode that wraps the _functionRenderer component.
-      // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = this._generateKey({ nodeIndex, element: this._functionRenderer as NodeElement }) // Generate key for function renderer
+    if (this._isFunctionChild(rawNode)) {
+      const keyForFunctionRenderer = this._generateKey({
+        nodeIndex,
+        element: this._functionRenderer as NodeElement,
+      })
 
       return new BaseNode(this._functionRenderer, {
         processRawNode: this._processRawNode.bind(this),
@@ -545,15 +597,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     // Case 4: Child is a React Element (JSX element like <div> or <MyComponent>)
     if (isValidElement(rawNode)) {
       const { style: childStyleObject, ...otherChildProps } = rawNode.props as ComponentProps<any>
-
-      // Combine top-level props from the element with its flattened style object properties
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
-
       const themeForChild = combinedProps.theme || combinedProps.nodetheme || parentTheme
       const keyForChildNode = this._generateKey({ nodeIndex, element: rawNode.type as ElementType, existingKey: rawNode.key, children: combinedProps.children })
 
       return new BaseNode(rawNode.type as ElementType, {
-        ...combinedProps, // Pass the combined props
+        ...combinedProps,
         nodetheme: themeForChild,
         key: keyForChildNode,
       })
@@ -611,7 +660,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     const currentTheme = this.rawProps?.nodetheme || this.rawProps?.theme || this.props.nodetheme || this.props.theme
 
     // For BaseNode instances, apply current theme if child has no theme
-    if (child instanceof BaseNode) {
+    if (child instanceof BaseNode || isNodeInstance(child)) {
       if (!child.rawProps?.nodetheme && currentTheme !== undefined) {
         return new BaseNode(child.element, {
           ...child.rawProps,
@@ -619,6 +668,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         }).render()
       }
       return child.render()
+    }
+
+    // Handle React.Component instances
+    if (typeof (child as any).render === 'function') {
+      // React.Component instance
+      return (child as React.Component).render()
     }
 
     // Validate element type before returning

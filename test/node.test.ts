@@ -107,12 +107,26 @@ describe('BaseNode - Core Functionality', () => {
   })
 
   // Test Case 6: Handling function as children (render props)
-  it('should render content from a function as child', () => {
-    const App = Div({
-      children: () => P('Content from function'),
-    })
-    const { getByText } = render(App.render())
-    expect(getByText('Content from function')).toBeInTheDocument()
+  it('should render content from a function as child with props and context from a Provider', () => {
+    function DataProvider({ children }: { children: (props: { data: string[]; loading: boolean }) => any }) {
+      const [data] = useState(['User 1', 'User 2'])
+      const [loading] = useState(false)
+
+      return children({ data, loading })
+    }
+
+    // MeoNode UI usage - simple!
+    const App = () =>
+      Node(DataProvider, {
+        children: ({ data, loading }: { data: string[]; loading: boolean }) =>
+          Node('div', {
+            children: loading ? 'Loading...' : data.map(user => Node('p', { children: user })),
+          }).render(),
+      }).render()
+
+    const { getByText } = render(Node(App).render())
+    expect(getByText('User 1')).toBeInTheDocument()
+    expect(getByText('User 2')).toBeInTheDocument()
   })
 
   // Test Case 7: Theme propagation and inheritance

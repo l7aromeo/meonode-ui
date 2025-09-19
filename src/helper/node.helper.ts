@@ -220,7 +220,7 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
   if (t === 'string') return `s:${node}`
   if (t === 'number') return `n:${String(node)}`
   if (t === 'boolean') return `b:${String(node)}`
-  if (t === 'function') return 'ƒ()'
+  if (t === 'function') return `ƒ:(${String(node)})`
   if (t === 'symbol') return `sym:${String(node)}`
 
   // Arrays
@@ -239,7 +239,7 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
   if (t === 'object' && (Object.prototype.hasOwnProperty.call(node, 'type') || Object.prototype.hasOwnProperty.call(node, 'props'))) {
     // Type can be string (div) or function/class. Use helper to get name.
     const type = (node as { type?: unknown }).type ?? node
-    let typeName = ''
+    let typeName: string
     try {
       typeName = getElementTypeName(type)
     } catch {
@@ -257,7 +257,7 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
     const props =
       'props' in (node as object) && typeof (node as { props?: unknown }).props === 'object' ? ((node as { props?: Record<string, unknown> }).props ?? {}) : {}
 
-    let childrenSig = ''
+    let childrenSig: string
     try {
       childrenSig = nodeSignature((props as { children?: Children }).children, depth - 1, breadth, seen)
     } catch {
