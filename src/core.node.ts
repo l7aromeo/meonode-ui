@@ -879,13 +879,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         try {
           if (!this._portalReactRoot) return
 
-          if (next === undefined) {
-            // Re-render current BaseNode (useful when external state changed, and you want to rerender)
-            const content = this.render()
-            this._portalReactRoot.render(content)
-            return
-          }
-
           // If next is a BaseNode or NodeInstance, render its output
           if (next instanceof BaseNode || (next && typeof (next as any).render === 'function')) {
             const content = (next as any).render ? (next as any).render() : (next as ReactNode)
