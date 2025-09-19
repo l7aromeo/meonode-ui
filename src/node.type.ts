@@ -10,7 +10,6 @@ import React, {
   type ExoticComponent,
   type ReactElement,
 } from 'react'
-import type { Root as ReactDOMRoot } from 'react-dom/client'
 import type { CSSInterpolation } from '@emotion/serialize'
 import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
 
@@ -47,6 +46,8 @@ export type NodeElement =
   | NodeInstance<any>
   | ((props?: any) => NonArrayReactNode | Promise<Awaited<NonArrayReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
 
+export type NodeElementType = ElementType | ExoticComponent<any>
+
 /** A single NodeElement or an array of NodeElements */
 export type Children = NodeElement | NodeElement[]
 
@@ -67,8 +68,8 @@ export interface NodeInstance<T extends NodeElement = NodeElement> {
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactElement
 
-  /** Creates Portal-compatible React elements for rendering outside of the DOM tree */
-  toPortal(): ReactDOMRoot | null
+  /** Creates Portal-compatible React elements for rendering outside the DOM tree */
+  toPortal(): NodePortal
 }
 
 /**
@@ -211,6 +212,15 @@ export interface BasePortalProps {
 export type PortalProps<T extends BasePortalProps | Record<string, any>> = T & BasePortalProps
 
 /**
+ * Interface representing a portal instance with lifecycle methods.
+ * Provides methods to unmount the portal and update its content dynamically.
+ */
+export interface NodePortal {
+  unmount: () => void
+  update: (node: NodeElement) => void
+}
+
+/**
  * Function type for creating portal instances.
  * Allows passing providers through props at portal creation time.
  * @template P The portal content component's prop types
@@ -219,13 +229,13 @@ export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P 
   ? (props?: {
       /** Optional provider components to wrap the portal content */
       provider?: NodeInstance<any>
-    }) => ReactDOMRoot | null
+    }) => NodePortal
   : (
       props: P & {
         /** Optional provider components to wrap the portal content */
         provider?: NodeInstance<any>
       } & Omit<PortalProps<P>, 'portal'>,
-    ) => ReactDOMRoot | null
+    ) => NodePortal
 
 /**
  * Merges `NodeProps<E>` with additional custom props, giving precedence to `AdditionalProps`.

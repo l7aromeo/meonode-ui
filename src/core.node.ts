@@ -17,7 +17,9 @@ import type {
   HasRequiredProps,
   MergedProps,
   NodeElement,
+  NodeElementType,
   NodeInstance,
+  NodePortal,
   NodeProps,
   PropsOf,
   RawNodeProps,
@@ -39,7 +41,7 @@ import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
  * - Style processing with theme variables
  * @template E The type of React element or component this node represents
  */
-export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
+export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /** The underlying React element or component type that this node represents */
   public element: E
   /** Original props passed during construction, preserved for cloning/recreation */
@@ -52,7 +54,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   /** DOM element used for portal rendering */
   private _portalDOMElement: HTMLDivElement | null = null
   /** React root instance for portal rendering */
-  private _portalReactRoot: ReactDOMRoot | null = null
+  private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
   /** Hash of the current children and theme to detect changes */
   private _childrenHash?: string
   /** Cache for normalized children */
@@ -764,7 +766,14 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
     // Create react root if needed
     if (!this._portalReactRoot) {
       if (!this._portalDOMElement) return false
-      this._portalReactRoot = createRoot(this._portalDOMElement)
+      const root = createRoot(this._portalDOMElement)
+      this._portalReactRoot = {
+        render: root.render.bind(root),
+        unmount: root.unmount.bind(root),
+        update: () => {
+          /* will be patched later */
+        },
+      }
     }
 
     return true
@@ -773,44 +782,94 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
   /**
    * Renders the node into a React Portal.
    *
-   * This method mounts the node's rendered content into a separate DOM tree
-   * attached to the `document.body`. It's useful for rendering components like
-   * modals, tooltips, or notifications that need to appear above other UI elements.
+   * Mounts the node's rendered output into a detached DOM tree (a `div` appended to `document.body`),
+   * enabling UI elements like modals, tooltips, or notifications to appear above the main app content.
    *
-   * The returned object includes an `unmount` function to clean up the portal.
-   * @returns A `ReactDOMRoot` instance for managing the portal, or `null` if
-   * called in a server-side environment. The returned instance is enhanced
-   * with a custom `unmount` method that also cleans up the associated DOM element.
+   * Returns a `NodePortal` object with:
+   * - `render(content)`: Renders new content into the portal.
+   * - `update(next?)`: Rerenders the current node or new content.
+   * - `unmount()`: Unmounts the portal and removes the DOM element.
+   *
+   * Throws if called on the server (where `document.body` is unavailable).
+   * @returns A `NodePortal` instance for managing the portal.
    */
-  public toPortal(): ReactDOMRoot | null {
-    if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) return null
+  public toPortal(): NodePortal {
+    if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) {
+      throw new Error('toPortal() can only be called in a client-side environment where document.body is available.')
+    }
 
-    const content = this.render()
-    this._portalReactRoot.render(content)
+    const renderCurrent = () => {
+      try {
+        const content = this.render()
+        this._portalReactRoot!.render(content)
+      } catch {
+        // swallow render errors to avoid breaking caller
+      }
+    }
 
-    // Augment the actual root's unmount to also clean up the DOM element and internal refs.
+    // Initial render
+    renderCurrent()
+
+    // Patch the root with an update() method and a safe unmount that also removes DOM element.
     try {
       const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
-      this._portalReactRoot.unmount = () => {
+
+      // Create typed handle
+      const handle = this._portalReactRoot as ReactDOMRoot & {
+        update: (next: NodeElement) => void
+        unmount: () => void
+      }
+
+      handle.update = (next: NodeElement) => {
+        try {
+          if (!this._portalReactRoot) return
+
+          if (next === undefined) {
+            // Re-render current BaseNode (useful when external state changed, and you want to rerender)
+            const content = this.render()
+            this._portalReactRoot.render(content)
+            return
+          }
+
+          // If next is a BaseNode or NodeInstance, render its output
+          if (next instanceof BaseNode || (next && typeof (next as any).render === 'function')) {
+            const content = (next as any).render ? (next as any).render() : (next as ReactNode)
+            this._portalReactRoot.render(content)
+            return
+          }
+
+          // Otherwise assume a ReactNode and render directly
+          this._portalReactRoot.render(next as ReactNode)
+        } catch {
+          // swallow
+        }
+      }
+
+      handle.unmount = () => {
         try {
           originalUnmount()
         } catch {
-          // swallow: original unmount might throw in edge cases
+          // swallow
         }
         // Clear references and remove DOM element
         if (this._portalDOMElement) {
-          if (this._portalDOMElement.parentNode) {
-            this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
+          try {
+            if (this._portalDOMElement.parentNode) {
+              this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
+            }
+          } catch {
+            // swallow
           }
           this._portalDOMElement = null
         }
         this._portalReactRoot = null
       }
-    } catch {
-      // swallow: if anything goes wrong while patching, still return the root
-    }
 
-    return this._portalReactRoot
+      return handle
+    } catch {
+      // fallback: return the raw root as-is (without update/unmount patch)
+      return this._portalReactRoot
+    }
   }
 }
 
@@ -823,7 +882,7 @@ export class BaseNode<E extends NodeElement> implements NodeInstance<E> {
  * @param additionalProps Additional props to merge into the node (optional).
  * @returns A new `BaseNode` instance as a `NodeInstance<E>`.
  */
-export function Node<AdditionalProps extends Record<string, any>, E extends NodeElement>(
+export function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
   props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
   additionalProps: AdditionalProps = {} as AdditionalProps,
@@ -850,7 +909,7 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
  * const ButtonNode = createNode('button', { type: 'button' });
  * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
  */
-export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElement>(
+export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
   initialProps?: MergedProps<E, AdditionalInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
@@ -882,7 +941,7 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
  * const Text = createChildrenFirstNode('p');
  * const myDiv = Text('Hello', { className: 'text-lg' });
  */
-export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends ElementType>(
+export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
   initialProps?: Omit<NodeProps<E>, keyof AdditionalInitialProps | 'children'> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true

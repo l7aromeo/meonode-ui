@@ -1,8 +1,7 @@
 'use strict'
 import { BaseNode, Node } from '@src/core.node.js'
-import type { BasePortalProps, ComponentNode, NodeInstance, NodeProps, PortalLauncher, PortalProps, Theme } from '@src/node.type.js'
+import type { BasePortalProps, ComponentNode, NodeElement, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps, Theme } from '@src/node.type.js'
 import type { ReactNode } from 'react'
-import { type Root as ReactDOMRoot } from 'react-dom/client'
 
 /**
  * Creates a portal component with a single fixed provider.
@@ -17,8 +16,8 @@ import { type Root as ReactDOMRoot } from 'react-dom/client'
  * ```ts
  * // Example of preferred usage with a single fixed provider:
  * const ThemedModal = Portal(
- * ThemeProvider({ theme: 'light' }),
- * (props) => Div({ children: props.children, style: { background: props.nodetheme?.background } })
+ *   ThemeProvider({ theme: 'light' }),
+ *   (props) => Div({ children: props.children, style: { background: props.nodetheme?.background } })
  * );
  *
  * const modalInstance = ThemedModal({ children: "Preferred content" });
@@ -40,7 +39,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
  * ```ts
  * // Example of basic usage without fixed providers:
  * const BasicModal = Portal(
- * (props) => Div({ children: props.children, style: { padding: '20px', border: '1px solid black' } })
+ *   (props) => Div({ children: props.children, style: { padding: '20px', border: '1px solid black' } })
  * );
  *
  * const basicModalInstance = BasicModal({ children: "Hello from a basic portal!" });
@@ -48,12 +47,12 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
  *
  * // Example with dynamic providers when launching:
  * const DynamicThemedModal = Portal(
- * (props) => Div({ children: props.children, style: { background: props.nodetheme?.background || 'white' } })
+ *   (props) => Div({ children: props.children, style: { background: props.nodetheme?.background || 'white' } })
  * );
  *
  * const dynamicModalInstance = DynamicThemedModal({
- * providers: ThemeProvider({ theme: 'blue' }), // Dynamic provider
- * children: "Content with dynamic theme"
+ *   providers: ThemeProvider({ theme: 'blue' }), // Dynamic provider
+ *   children: "Content with dynamic theme"
  * });
  * dynamicModalInstance.unmount();
  * ```
@@ -70,7 +69,14 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
   // --- Initialization ---
   let hocFixedProvider: NodeInstance<any>[] | undefined = undefined
   let componentFunction: (props: Partial<PortalProps<P>>) => ComponentNode
-  let portalInstance: ReactDOMRoot | null = null
+  let portalInstance: NodePortal = {
+    unmount: () => {
+      console.warn('Portal instance not yet created. Cannot unmount.')
+    },
+    update: (node?: NodeElement) => {
+      console.warn('Portal instance not yet created. Cannot update.', node)
+    },
+  }
 
   // --- Argument Parsing and Overload Handling ---
   // Determines which Portal overload was called (e.g., with fixed provider or just component).
@@ -113,7 +119,7 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
       /** Optional provider components to wrap the portal content */
       provider?: NodeInstance<any>
     } = {},
-  ): ReactDOMRoot | null {
+  ): NodePortal {
     let nodeToPortalize: NodeInstance<any>
 
     // Combine fixed and dynamic providers
