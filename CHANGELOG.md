@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18] - 2025-09-19
+
+### Added
+
+- **feat(core)**: support function children and enhance rendering logic
+- **feat(core)**: enhance portal with update method and NodePortal type
+- **feat(hook)**: introduce usePortal hook for reactive portals
+
+### Example
+
+- **feat(portal)**: use `usePortal` hook to make the portal reactive to state changes
+
+  ```typescript
+  import { Button, Div, Node, Portal, type PortalProps } from '@meonode/ui';
+  import { usePortal } from '@meonode/ui';
+  import { useState } from 'react';
+
+  const MyPortal = () => {
+    const [state, setState] = useState<number>(0);
+    const { setPortal, createComponent } = usePortal([state]);
+
+    const PortalContent = createComponent(({ portal, text }: { text: string } & PortalProps<any>) => {
+      return Div({
+        children: [
+          'This is portal content!',
+          state === 1 ? text : 'Initial text value',
+          Button(`Update Portal (${state + 1})`, {
+            onClick: () => {
+              setState((s: number) => s + 1);
+            },
+          }),
+          Button('Close Portal', {
+            onClick: () => {
+              portal?.unmount();
+            },
+          }),
+        ],
+      }).render();
+    });
+
+    return Div({
+      children: [
+        Button('Open Portal', {
+          onClick: () => {
+            const portal = Portal<{ text: string }>(PortalContent)({ text: `Text prop still passed after update` });
+            setPortal(portal);
+          },
+        }),
+      ],
+    }).render();
+  };
+  ```
+
 ## [0.2.17] - 2025-09-14
 
 ### Added
