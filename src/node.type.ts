@@ -225,17 +225,9 @@ export interface NodePortal {
  * Allows passing providers through props at portal creation time.
  * @template P The portal content component's prop types
  */
-export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = P extends BasePortalProps
-  ? (props?: {
-      /** Optional provider components to wrap the portal content */
-      provider?: NodeInstance<any>
-    }) => NodePortal
-  : (
-      props: P & {
-        /** Optional provider components to wrap the portal content */
-        provider?: NodeInstance<any>
-      } & Omit<PortalProps<P>, 'portal'>,
-    ) => NodePortal
+export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = (
+  props?: (P & { provider?: NodeInstance<any> }) & Omit<PortalProps<P>, 'portal'>,
+) => NodePortal
 
 /**
  * Merges `NodeProps<E>` with additional custom props, giving precedence to `AdditionalProps`.
