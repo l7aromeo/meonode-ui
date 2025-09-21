@@ -2,8 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.19] - 2025-09-21
+
+### Refactor
+
+- **refactor(core)**: simplify PortalLauncher type definition for improved readability
+- **refactor(core)**: enhance usePortal by improving component creation and cleanup logic
+- **refactor(core)**: remove redundant re-render logic in portal rendering
+
+### Test
+
+- **test**: add unit tests for dynamic portal creation and management
+- **test**: remove dynamic portal test case on node.test.ts
+
+### Changed
+
+- **chore**: update Yarn version to 4.10.2 and configure yarnPath in .yarnrc.yml
 
 ## [0.2.18] - 2025-09-19
 
