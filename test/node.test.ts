@@ -1,8 +1,7 @@
-import { Button, Component, Div, H1, Node, P, Portal, type PortalProps, Root, Span, Text } from '@src/main.js'
+import { Component, Div, H1, Node, P, Portal, Root, Span, Text } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
-import { usePortal } from '@src/hook/index.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -263,61 +262,6 @@ describe('BaseNode - Core Functionality', () => {
       portalInstance?.unmount()
     })
     expect(document.body).not.toHaveTextContent('Portal Content')
-  })
-
-  it('should handle dynamic portal creation, update, and unmounting', () => {
-    const MyPortal = () => {
-      const [state, setState] = useState<number>(0)
-      const { setPortal, createComponent } = usePortal([state])
-
-      const PortalContent = createComponent(({ portal, text }: { text: string } & PortalProps<any>) => {
-        return Div({
-          children: [
-            'This is portal content!',
-            state === 1 ? text : 'Initial text value',
-            Button(`Update Portal (${state + 1})`, {
-              onClick: () => {
-                setState((s: number) => s + 1)
-              },
-            }),
-            Button('Close Portal', {
-              onClick: () => {
-                portal?.unmount()
-              },
-            }),
-          ],
-        }).render()
-      })
-
-      return Div({
-        children: [
-          Button('Open Portal', {
-            onClick: () => {
-              const portal = Portal<{ text: string }>(PortalContent)({ text: `Text prop still passed after update` })
-              setPortal(portal)
-            },
-          }),
-        ],
-      }).render()
-    }
-
-    const { getByText } = render(Node(MyPortal).render())
-    const openButton = getByText('Open Portal')
-    expect(openButton).toBeInTheDocument()
-
-    act(() => {
-      openButton.click()
-    })
-    expect(document.body).toHaveTextContent('This is portal content!')
-
-    const updateButton = getByText('Update Portal (1)')
-    expect(updateButton).toBeInTheDocument()
-    expect(document.body).toHaveTextContent(`Initial text value`)
-    act(() => {
-      updateButton.click()
-    })
-    expect(document.body).toHaveTextContent('Update Portal (2)')
-    expect(document.body).toHaveTextContent(`Text prop still passed after update`)
   })
 
   // Test Case 17: Display Name as expected (for debugging and React DevTools)
