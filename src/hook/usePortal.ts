@@ -1,13 +1,13 @@
 'use client'
 
 import { type ReactElement, useCallback, useEffect, useRef } from 'react'
-import type { NodeElementType, NodePortal } from '@src/node.type.js'
+import type { NodeElementType, NodePortal, PortalProps } from '@src/node.type.js'
 import { Node } from '@src/main.js'
 
 export function usePortal<T extends any[]>(deps: T = [] as unknown as T) {
   const state = useRef<{ portal?: NodePortal; component?: NodeElementType; props?: any }>({})
 
-  const createComponent = useCallback(<P>(fn: (props: P) => ReactElement) => {
+  const createComponent = useCallback(<P extends Record<string, any>>(fn: (props: PortalProps<P>) => ReactElement) => {
     state.current.component = fn
     return new Proxy(fn, {
       apply: (target, thisArg, [props]) => {
@@ -24,7 +24,15 @@ export function usePortal<T extends any[]>(deps: T = [] as unknown as T) {
     }
   }, deps)
 
-  useEffect(() => () => state.current.portal?.unmount(), [])
+  useEffect(
+    () => () => {
+      state.current.portal?.unmount()
+      state.current.portal = undefined
+      state.current.component = undefined
+      state.current.props = undefined
+    },
+    [],
+  )
 
   return {
     portal: state.current.portal,
