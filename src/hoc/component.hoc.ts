@@ -4,6 +4,7 @@ import { BaseNode, Node } from '@src/core.node.js'
 import type { Children, ComponentNode, HasCSSCompatibleStyleProp, Theme } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { getElementTypeName } from '@src/helper/common.helper.js'
+import { isNodeInstance } from '@src/helper/node.helper.js'
 
 /**
  * Props definition for components wrapped using the `Component` higher-order function.
@@ -88,7 +89,7 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
   const Renderer = (props: RendererProps) => {
     const result = component(props)
 
-    if (result instanceof BaseNode) {
+    if (result instanceof BaseNode || isNodeInstance(result)) {
       const theme = result.rawProps?.nodetheme || result.rawProps?.theme || props.nodetheme || props.theme
       return Node(result.element, {
         ...result.rawProps,
