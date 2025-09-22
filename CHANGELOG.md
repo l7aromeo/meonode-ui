@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.21] - 2025-09-23
+
+### Refactor
+
+- **refactor(core):** make node processing logic static and robust
+
+### Added
+
+- **feat:** update NodeFunction type to improve dynamic node content generation and update FunctionRendererProps interface to use NodeFunction
+
+### Fixed
+
+- **fix(component.hoc.ts):** enhance node instance check in Renderer for improved stability
+- **fix(node.type.ts):** remove unused processRawNode property from Node type
+
+### Changed
+- **package:** update dependencies to latest versions
+
 ## [0.2.20] - 2025-09-22
 
 ### Refactor
