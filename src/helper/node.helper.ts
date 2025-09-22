@@ -212,7 +212,7 @@ export const resolveDefaultStyle = (style: CSSProperties) => {
  * - key (if present)
  * - basic children shape (recursing within limits)
  */
-function nodeSignature(node: string | number | bigint | boolean | object | null | undefined, depth = 5, breadth = 6, seen = new WeakSet<object>()): string {
+function nodeSignature(node: Children, depth = 5, breadth = 6, seen = new WeakSet<object>()): string {
   if (node === null) return 'null'
   if (node === undefined) return 'undefined'
 
@@ -222,6 +222,12 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
   if (t === 'boolean') return `b:${String(node)}`
   if (t === 'function') return `ƒ:(${String(node)})`
   if (t === 'symbol') return `sym:${String(node)}`
+
+  // Circular reference check for all objects
+  if (t === 'object') {
+    if (seen.has(node as Record<string, any>)) return '[Circular]'
+    seen.add(node as Record<string, any>)
+  }
 
   // Arrays
   if (Array.isArray(node)) {
@@ -235,10 +241,10 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
     return `ary[${parts.join(',')}]`
   }
 
-  // React element-ish: detect common shapes (type + props)
-  if (t === 'object' && (Object.prototype.hasOwnProperty.call(node, 'type') || Object.prototype.hasOwnProperty.call(node, 'props'))) {
+  // React element-ish: require a 'type' property
+  if (t === 'object' && node && 'type' in (node as Record<string, any>)) {
     // Type can be string (div) or function/class. Use helper to get name.
-    const type = (node as { type?: unknown }).type ?? node
+    const type = (node as any).type
     let typeName: string
     try {
       typeName = getElementTypeName(type)
@@ -250,40 +256,31 @@ function nodeSignature(node: string | number | bigint | boolean | object | null 
       }
     }
 
-    const key =
-      'key' in (node as object) && (node as { key?: unknown }).key !== undefined && (node as { key?: unknown }).key !== null
-        ? `#${String((node as { key: unknown }).key)}`
-        : ''
-    const props =
-      'props' in (node as object) && typeof (node as { props?: unknown }).props === 'object' ? ((node as { props?: Record<string, unknown> }).props ?? {}) : {}
+    const key = t === 'object' && 'key' in (node as Record<string, any>) && (node as any).key != null ? `#${String((node as any).key)}` : ''
+    const props = ('props' in (node as Record<string, any>) && typeof (node as any).props === 'object' && (node as any).props) || {}
 
     let childrenSig: string
     try {
-      childrenSig = nodeSignature((props as { children?: Children }).children, depth - 1, breadth, seen)
+      childrenSig = nodeSignature(props.children, depth - 1, breadth, seen)
     } catch {
       childrenSig = '<err>'
     }
 
-    const id = props && typeof props === 'object' && 'id' in props && (props as { id?: unknown }).id ? `@id:${String((props as { id: unknown }).id)}` : ''
-    const cls =
-      props && typeof props === 'object' && 'className' in props && (props as { className?: unknown }).className
-        ? `@class:${String((props as { className: unknown }).className)}`
-        : ''
+    const id = props.id ? `@id:${String(props.id)}` : ''
+    const cls = props.className ? `@class:${String(props.className)}` : ''
     return `el:${typeName}${key}${id}${cls}{${childrenSig}}`
   }
 
-  // Plain object
-  if (t === 'object' && node && typeof node === 'object' && !('type' in node) && !('props' in node)) {
-    if (seen.has(node as object)) return '[Circular]'
-    seen.add(node as object)
+  // Plain object: handles any other object
+  if (t === 'object' && node) {
     if (depth <= 0) return 'obj[...]'
-    const keys = Object.keys(node as object).sort()
+    const keys = Object.keys(node).sort()
     const parts: string[] = []
     const sampleCount = Math.min(keys.length, breadth)
     for (let i = 0; i < sampleCount; i++) {
-      const k = keys[i] as keyof typeof node
+      const k = keys[i]
       try {
-        parts.push(`${k}:${nodeSignature(node[k], depth - 1, breadth, seen)}`)
+        parts.push(`${k}:${nodeSignature((node as any)[k], depth - 1, breadth, seen)}`)
       } catch {
         parts.push(`${k}:<err>`)
       }
