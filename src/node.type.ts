@@ -177,7 +177,7 @@ export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { node
  * Enables advanced patterns like render props and dynamic theming.
  * @template E - The element type these props apply to
  */
-export type NodeFunction<E extends ReactNode | NodeInstance = ReactNode | NodeInstance> = (props?: NodeProps<E>) => ReactNode | NodeInstance
+export type NodeFunction<E extends ReactNode | NodeInstance = ReactNode | NodeInstance> = (props?: NodeProps<E>) => ReactNode | NodeInstance | React.Component
 
 /**
  * Props interface for the internal FunctionRenderer component.
