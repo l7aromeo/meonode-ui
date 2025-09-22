@@ -44,7 +44,10 @@ export type NodeElement =
   | ElementType
   | ComponentType<any>
   | NodeInstance<any>
-  | ((props?: any) => NonArrayReactNode | Promise<Awaited<NonArrayReactNode>> | Component<any, any, any> | NodeInstance<any> | ComponentNode)
+  | NodeFunction<any>
+  | ((
+      props?: Record<string, any>,
+    ) => ExoticComponent<any> | NonArrayReactNode | Component<any, any, any> | ElementType | ComponentType<any> | NodeInstance<any>)
 
 export type NodeElementType = ElementType | ExoticComponent<any>
 
@@ -169,15 +172,23 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
 export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodetheme?: Theme }
 
 /**
+ * Function type for dynamic node content generation.
+ * Accepts optional NodeProps and returns a ReactNode or NodeInstance.
+ * Enables advanced patterns like render props and dynamic theming.
+ * @template E - The element type these props apply to
+ */
+export type NodeFunction<E extends ReactNode | NodeInstance = ReactNode | NodeInstance> = (props?: NodeProps<E>) => ReactNode | NodeInstance
+
+/**
  * Props interface for the internal FunctionRenderer component.
  * Handles dynamic function children within React's component lifecycle:
  * - Ensures proper timing of function evaluation
  * - Maintains theme context for rendered content
  * - Enables hook usage in function children
  */
-export interface FunctionRendererProps<E extends NodeElement> {
+export interface FunctionRendererProps<E extends ReactNode | NodeInstance> {
   /** Function that returns the child content to render */
-  render: (props?: NodeProps<E>) => ReactNode | Promise<Awaited<ReactNode>> | React.Component | NodeInstance<E>
+  render: NodeFunction<E>
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme
