@@ -26,7 +26,7 @@ const eslintConfig = [
     rules: {
       'prettier/prettier': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unsafe-function-type': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'error',
       '@typescript-eslint/consistent-type-definitions': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
