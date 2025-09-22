@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.20] - 2025-09-22
+
+### Refactor
+
+- **refactor(obj.helper)**: streamline serialization logic and improve performance
+
+### Fixed
+
+- **fix(eslint)**: enforce no-unsafe-function-type rule for better type safety
+- **fix(node.helper.ts)**: update nodeSignature function to accept Children type and improve circular reference handling
+
 ## [0.2.19] - 2025-09-21
 
 ### Refactor
