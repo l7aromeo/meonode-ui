@@ -181,8 +181,6 @@ export interface FunctionRendererProps<E extends NodeElement> {
 
   /** Theme context to be applied to the rendered content */
   passedTheme?: Theme
-
-  processRawNode: (node: NodeElement, parentTheme?: Theme, childIndex?: number) => NodeElement
 }
 
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)
