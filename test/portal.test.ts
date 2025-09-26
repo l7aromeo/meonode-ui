@@ -3,6 +3,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { usePortal } from '@src/hook/index.js'
+import { createPortal } from 'react-dom'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -83,5 +84,16 @@ describe('Portal System', () => {
       closeButton.click()
     })
     expect(document.body).not.toHaveTextContent('This is portal content!')
+  })
+
+  it('allow portal to be children of node', () => {
+    const MyPortal = () => {
+      return Div({
+        children: [createPortal(Node('div', { children: 'Portal Content' }).render(), document.body)],
+      }).render()
+    }
+
+    const { getByText } = render(Node(MyPortal).render())
+    expect(getByText('Portal Content')).toBeInTheDocument()
   })
 })

@@ -25,7 +25,7 @@ import type {
   PropsOf,
 } from '@src/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
-import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
+import { isForwardRef, isFragment, isMemo, isPortal, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
@@ -461,7 +461,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Validate element type before returning
-    if (!isValidElementType(child)) {
+    if (!isValidElementType(child) && !isPortal(child)) {
       const elementType = getComponentType(child)
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }

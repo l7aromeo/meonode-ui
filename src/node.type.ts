@@ -140,7 +140,6 @@ export type Theme = {
  * Ensures consistent prop shape throughout the node's lifecycle:
  * - Normalizes style properties into a CSSProperties object
  * - Processes children into known concrete types
- * - Handles theme context propagation
  * @template E - The element type these props apply to
  */
 export type FinalNodeProps = ReactAttributes &
@@ -177,7 +176,6 @@ export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true
  * Public API for node creation props, providing a flexible and type-safe interface:
  * - Preserves original component props while allowing direct style properties (conditionally)
  * - Supports both single and array children
- * - Enables theme customization
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
