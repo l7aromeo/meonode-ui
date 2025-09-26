@@ -2,7 +2,7 @@
 
 import { type ReactElement, useCallback, useEffect, useRef } from 'react'
 import type { NodeElementType, NodePortal, PortalProps } from '@src/node.type.js'
-import { Node } from '@src/main.js'
+import { Node } from '@src/core.node.js'
 
 export function usePortal<T extends any[]>(deps: T = [] as unknown as T) {
   const state = useRef<{ portal?: NodePortal; component?: NodeElementType; props?: any }>({})
