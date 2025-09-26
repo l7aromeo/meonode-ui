@@ -28,7 +28,7 @@ export function _ThemeProvider({ children, theme }: { children?: Children; theme
   const contextValue: ThemeContextValue = {
     theme: currentTheme,
     setTheme: theme => {
-      document.cookie = `theme=${theme.mode}`
+      document.cookie = `theme=${theme.mode}; path=/;`
       setTheme(theme)
     },
   }
