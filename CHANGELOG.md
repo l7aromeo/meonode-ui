@@ -2,8 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.3.0] - 2025-09-26
+
+### Added
+
+- **feat(theme):** use React Context for theme propagation
+
+### Refactor
+
+- **refactor(core):** remove unused _childrenHash property from Node class
+
+### Example
+
+- **feat(theme):** use React Context for theme propagation
+
+  **Before**:
+  ```typescript
+  import { Div } from '@meonode/ui';
+
+  const App = () => {
+    return Div({
+      theme: {
+        // theme object
+      },
+      children: 'Hello world!',
+    });
+  };
+  ```
+
+  **After**:
+  ```typescript
+  import { Div, ThemeProvider } from '@meonode/ui';
+
+  const App = () => {
+    return ThemeProvider({
+      theme: {
+        mode: 'light', // or 'dark' or any custom mode
+        system: {
+          base: {
+            default: '#ffffff',
+            content: '#000000',
+          }
+        }
+      },
+      children: [
+        Div({
+          backgroundColor: 'theme.base',
+          color: 'theme.content',
+          children: 'Hello world!',
+        }),
+      ],
+    });
+  };
+  ```
 
 ## [0.2.21] - 2025-09-23
 
