@@ -15,38 +15,51 @@ npm install @meonode/ui react
 ```
 
 ```typescript
-import { Component, Root, Center, Column, H1, Button } from '@meonode/ui';
+import {
+  Component,
+  ThemeProvider,
+  Div,
+  Center,
+  Column,
+  H1,
+  Button,
+} from "@meonode/ui";
 
 const theme = {
-  primary: { default: '#FF6B6B', content: '#4A0000' },
-  base: { default: '#F8F8F8', content: '#333333' }
+  mode: "light",
+  system: {
+    primary: { default: '#FF6B6B', content: '#4A0000' },
+    base: { default: '#F8F8F8', content: '#333333' },
+  }
 };
 
 const App = Component(() =>
-  Root({
+  ThemeProvider({
     theme,
-    backgroundColor: 'theme.base.default',
-    children: Center({
-      padding: 40,
-      children: Column({
-        gap: 24,
-        textAlign: 'center',
-        children: [
-          H1('Welcome to MeoNode', {
-            fontSize: '3rem',
-            color: 'theme.primary.default'
-          }),
-          Button('Get Started', {
-            backgroundColor: 'theme.primary.default',
-            color: 'theme.primary.content',
-            padding: '12px 24px',
-            borderRadius: 8,
-            cursor: 'pointer',
-            onClick: () => alert('Hello MeoNode!')
-          })
-        ]
-      })
-    })
+    children: Div({
+      backgroundColor: "theme.base.default",
+      children: Center({
+        padding: 40,
+        children: Column({
+          gap: 24,
+          textAlign: "center",
+          children: [
+            H1("Welcome to MeoNode", {
+              fontSize: "3rem",
+              color: "theme.primary.default",
+            }),
+            Button("Get Started", {
+              backgroundColor: "theme.primary.default",
+              color: "theme.primary.content",
+              padding: "12px 24px",
+              borderRadius: 8,
+              cursor: "pointer",
+              onClick: () => alert("Hello MeoNode!"),
+            }),
+          ],
+        }),
+      }),
+    }),
   })
 );
 ```
@@ -54,6 +67,7 @@ const App = Component(() =>
 ## Key Features
 
 - **Function-based components** - No JSX required, pure TypeScript functions
+- **Built-in Theming System** - Use `ThemeProvider` to propagate theme through your app.
 - **Theme-aware styling** - Direct CSS props with automatic theme resolution
 - **Advanced CSS support** - Pseudo-classes, media queries, animations via `css` prop
 - **Portal system** - Context-aware modals and overlays
