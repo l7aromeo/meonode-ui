@@ -52,8 +52,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   private _portalDOMElement: HTMLDivElement | null = null
   /** React root instance for portal rendering */
   private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
-  /** Hash of the current children to detect changes */
-  private _childrenHash?: string
   /** Cache for normalized children */
   private _normalizedChildren?: ReactNode
   /** Indicates whether the code is running on the server (true) or client (false) */
