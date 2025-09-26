@@ -19,7 +19,8 @@ export interface StyledRendererProps<E extends NodeElement> {
  * It resolves theme values and applies default styles.
  * @template E The type of the HTML element to render.
  * @template TProps The type of the props for the component.
- * @param {StyledRendererProps<E> & TProps} props The props for the component.
+ * @param element The HTML element to render (e.g., 'div', 'span').
+ * @param children Optional children to be rendered inside the element.
  * @returns {JSX.Element} The rendered JSX element.
  */
 export default function StyledRenderer<E extends NodeElement, TProps extends Record<string, any>>({
