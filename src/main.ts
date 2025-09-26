@@ -1,6 +1,12 @@
 export { Node, createNode, createChildrenFirstNode } from '@src/core.node.js'
+
 export * from '@src/hoc/index.js'
+
 export * from '@src/helper/node.helper.js'
+
 export * from '@src/node.type.js'
+
 export * from '@src/components/html.node.js'
+export * from '@src/components/theme-provider.client.js'
+
 export * from '@src/hook/index.js'

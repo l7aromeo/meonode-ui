@@ -1,62 +1,63 @@
 'use strict'
 import { BaseNode, Node } from '@src/core.node.js'
-import type { BasePortalProps, ComponentNode, NodeElement, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps, Theme } from '@src/node.type.js'
+import type { BasePortalProps, ComponentNode, NodeElement, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps } from '@src/node.type.js'
 import type { ReactNode } from 'react'
 
+// --- Function Overloads ---
+
 /**
- * Creates a portal component with a single fixed provider.
- * The content component will be rendered within this provider. This is the preferred method
- * for providing fixed context to your portal content.
- * @param provider A single `NodeInstance` that will wrap the portal content. This should typically
- * be a React context provider (e.g., `ThemeProvider({ theme })`).
- * @param component The React component function that defines the portal's content. It receives
- * props of type `PortalProps<P>` and should return a `ComponentNode`.
- * @returns A launcher function that, when called, creates and controls the portal instance.
+ * Higher-Order Component (HOC) to create and manage React portals with optional provider wrapping.
+ * This function supports two overloads:
+ * 1. `Portal(providerNodeInstance, component)` - Creates a portal with a fixed provider node instance.
+ * 2. `Portal(component)` - Creates a portal without a fixed provider, allowing dynamic providers at launch time.
+ * @template P The prop types for the component rendered inside the portal, extending BasePortalProps.
+ * @param provider Optional NodeInstance to wrap the portal content (fixed provider).
+ * @param component The component function that returns the content to render inside the portal.
+ * @returns A function that launches the portal instance, accepting props and optional dynamic providers.
  * @example
- * ```ts
- * // Example of preferred usage with a single fixed provider:
- * const ThemedModal = Portal(
- *   ThemeProvider({ theme: 'light' }),
- *   (props) => Div({ children: props.children, style: { background: props.nodetheme?.background } })
- * );
+ * // Using Portal with a fixed provider
+ * const MyPortal = Portal(MyProviderNodeInstance, (props) => (
+ *   Div({
+ *     backgroundColor: 'white',
+ *     padding: '20px',
+ *     borderRadius: '8px',
+ *     children: [
+ *       H1({ children: 'Fixed Provider Portal' }),
+ *       Button({
+ *         onClick: () => props.portal.unmount(),
+ *         children: 'Close',
+ *       }),
+ *     ],
+ *   })
+ * ));
  *
- * const modalInstance = ThemedModal({ children: "Preferred content" });
- * modalInstance.unmount();
- * ```
+ * // Launching the portal
+ * const portalInstance = MyPortal({ someProp: 'value' });
+ * @example
+ * // Using Portal without a fixed provider
+ * const MyPortal = Portal((props) => (
+ *   Div({
+ *     backgroundColor: 'white',
+ *     padding: '20px',
+ *     borderRadius: '8px',
+ *     children: [
+ *       H1({ children: 'Dynamic Provider Portal' }),
+ *       Button({
+ *         onClick: () => props.portal.unmount(),
+ *         children: 'Close',
+ *       }),
+ *     ],
+ *   })
+ * ));
+ *
+ * // Launching the portal with a dynamic provider
+ * const portalInstance = MyPortal({ provider: AnotherProviderNodeInstance, someProp: 'value' });
  */
 export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
   provider: NodeInstance<any>,
   component: (props: PortalProps<P>) => ComponentNode,
 ): PortalLauncher<P>
 
-/**
- * Creates a basic portal component without any fixed providers.
- * Dynamic providers can still be passed as props when launching the portal instance.
- * @param component The React component function that defines the portal's content. It receives
- * props of type `PortalProps<P>` and should return a `ComponentNode`.
- * @returns A launcher function that, when called, creates and controls the portal instance.
- * @example
- * ```ts
- * // Example of basic usage without fixed providers:
- * const BasicModal = Portal(
- *   (props) => Div({ children: props.children, style: { padding: '20px', border: '1px solid black' } })
- * );
- *
- * const basicModalInstance = BasicModal({ children: "Hello from a basic portal!" });
- * basicModalInstance.unmount();
- *
- * // Example with dynamic providers when launching:
- * const DynamicThemedModal = Portal(
- *   (props) => Div({ children: props.children, style: { background: props.nodetheme?.background || 'white' } })
- * );
- *
- * const dynamicModalInstance = DynamicThemedModal({
- *   providers: ThemeProvider({ theme: 'blue' }), // Dynamic provider
- *   children: "Content with dynamic theme"
- * });
- * dynamicModalInstance.unmount();
- * ```
- */
 export function Portal<P extends BasePortalProps | Record<string, any> = BasePortalProps>(
   component: (props: PortalProps<P>) => ComponentNode,
 ): PortalLauncher<P>
@@ -93,21 +94,15 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
 
   // --- Core Content Renderer Function ---
   // This function is the actual React component that will be rendered inside the portal.
-  // It receives props and handles theme application and portal control.
   const Renderer = (propsFromNodeFactory: P & NodeProps<any> = {} as NodeProps<any>) => {
-    const { nodetheme: _nodetheme, ...contentOnlyProps } = propsFromNodeFactory
-
     const result = componentFunction({
-      ...contentOnlyProps,
+      ...propsFromNodeFactory,
       portal: portalInstance, // Passes the portal control object to the content component
     })
 
-    // Ensures that the theme is correctly applied if the result is a BaseNode.
+    // If the result is a BaseNode, render it.
     if (result instanceof BaseNode) {
-      return Node(result.element, {
-        ...result.rawProps,
-        nodetheme: result.rawProps?.nodetheme || result.rawProps?.theme || propsFromNodeFactory.nodetheme,
-      }).render()
+      return result.render()
     }
     return result as ReactNode
   }
@@ -131,16 +126,15 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
 
     const finalProviderArray: NodeInstance<any>[] = [...(hocFixedProvider ?? []), ...dynamicProviders]
 
-    // Separates props for the portal's content from internal props like 'provider' or 'nodetheme'.
-    const { provider: _launcherProvider, nodetheme, ...contentPropsForRenderer } = props
-    const propsForInnermostNode: NodeProps<any> = { ...contentPropsForRenderer, nodetheme }
+    // Separates props for the portal's content from internal props like 'provider'.
+    const { provider: _launcherProvider, ...contentPropsForRenderer } = props
 
     // Creates the base node for the portal's content.
-    const contentNode = Node(Renderer, propsForInnermostNode)
+    const contentNode = Node(Renderer, contentPropsForRenderer)
 
     // --- Helper for Deep Content Injection ---
     // Recursively injects content into the deepest child of a provider chain.
-    function injectContentDeeply(node: NodeInstance<any>, contentToInject: NodeInstance<any>, nodetheme?: Theme): NodeInstance<any> {
+    function injectContentDeeply(node: NodeInstance<any>, contentToInject: NodeInstance<any>): NodeInstance<any> {
       const children = node.rawProps?.children
 
       // If no children, or children is not a NodeInstance, inject directly
@@ -148,7 +142,6 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
         return Node(node.element, {
           ...node.rawProps,
           children: contentToInject,
-          nodetheme: node.rawProps?.nodetheme || node.rawProps?.theme || nodetheme,
         })
       }
 
@@ -157,7 +150,6 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
       return Node(node.element, {
         ...node.rawProps,
         children: newChild,
-        nodetheme: node.rawProps?.nodetheme || node.rawProps?.theme || nodetheme,
       })
     }
 
@@ -176,11 +168,10 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
         // If the provider already has nested children, inject content deeply.
         // Otherwise, simply set currentWrappedContent as its direct child.
         return hasNestedChildren
-          ? injectContentDeeply(providerNode, currentWrappedContent, nodetheme)
+          ? injectContentDeeply(providerNode, currentWrappedContent)
           : Node(providerNode.element, {
               ...providerNode.rawProps,
               children: currentWrappedContent,
-              nodetheme: providerNode.rawProps?.nodetheme || providerNode.rawProps?.theme || nodetheme,
             })
       }, contentNode)
     } else {

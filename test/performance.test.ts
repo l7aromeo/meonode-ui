@@ -3,7 +3,31 @@ import { matchers } from '@emotion/jest'
 import { jest } from '@jest/globals'
 import { cleanup, render } from '@testing-library/react'
 import React from 'react'
-import { Node, Container, Header, Nav, A, H1, H2, H3, P, Button, Img, Section, Article, Aside, Footer, Ul, Li, Strong, Small, Row, Column } from '@src/main.js'
+import {
+  Node,
+  Container,
+  Header,
+  Nav,
+  A,
+  H1,
+  H2,
+  H3,
+  P,
+  Button,
+  Img,
+  Section,
+  Article,
+  Aside,
+  Footer,
+  Ul,
+  Li,
+  Strong,
+  Small,
+  Row,
+  Column,
+  ThemeProvider,
+  type Theme,
+} from '@src/main.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -16,24 +40,27 @@ afterEach(() => {
   cleanup()
 })
 
-const theme = {
-  base: {
-    default: '#ffffff',
-    muted: '#f7fafc',
-    subtle: '#f0f7ff',
-    content: '#000000',
-  },
-  primary: {
-    default: '#007ACC',
-    hover: '#005A9E',
-    active: '#004578',
-    content: '#ffffff',
-  },
-  secondary: {
-    default: '#6C757D',
-    hover: '#5A6268',
-    active: '#4E555B',
-    content: '#ffffff',
+const theme: Theme = {
+  mode: 'light',
+  system: {
+    base: {
+      default: '#ffffff',
+      muted: '#f7fafc',
+      subtle: '#f0f7ff',
+      content: '#000000',
+    },
+    primary: {
+      default: '#007ACC',
+      hover: '#005A9E',
+      active: '#004578',
+      content: '#ffffff',
+    },
+    secondary: {
+      default: '#6C757D',
+      hover: '#5A6268',
+      active: '#4E555B',
+      content: '#ffffff',
+    },
   },
 }
 
@@ -67,7 +94,6 @@ describe('Performance Testing', () => {
     // Realistic single-page layout built with your node factories
     const Page: React.FC = () => {
       return Container({
-        theme,
         padding: '0',
         margin: '0',
         children: [
@@ -378,7 +404,7 @@ describe('Performance Testing', () => {
       }).render()
     }
 
-    const element = Node(Page).render()
+    const element = ThemeProvider({ theme, children: Node(Page).render() }).render()
 
     console.time('measure-renders')
     const { times, median } = await measureRender(element, { iterations: 5, warmups: 1 })

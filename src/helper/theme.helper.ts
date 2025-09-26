@@ -1,5 +1,5 @@
 import { getValueByPath } from '@src/helper/common.helper.js'
-import type { Theme } from '@src/node.type.js'
+import type { ThemeSystem } from '@src/node.type.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**
@@ -38,7 +38,7 @@ class ThemeResolverCache {
   /**
    * Generate a stable cache key from object and theme
    */
-  private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
+  private _generateCacheKey(obj: Record<string, any>, theme: ThemeSystem): string {
     // Use a more efficient key generation for better performance
     return `${ObjHelper.stringify(obj)}_${ObjHelper.stringify(theme)}`
   }
@@ -46,7 +46,7 @@ class ThemeResolverCache {
   /**
    * Check if resolution result exists in cache
    */
-  getResolution(obj: Record<string, any>, theme: Theme): any | null {
+  getResolution(obj: Record<string, any>, theme: ThemeSystem): any | null {
     const key = this._generateCacheKey(obj, theme)
 
     if (this._resolutionCache.has(key)) {
@@ -61,7 +61,7 @@ class ThemeResolverCache {
   /**
    * Store resolution result in cache
    */
-  setResolution(obj: Record<string, any>, theme: Theme, result: any): void {
+  setResolution(obj: Record<string, any>, theme: ThemeSystem, result: any): void {
     const key = this._generateCacheKey(obj, theme)
     this._resolutionCache.set(key, result)
   }
@@ -69,7 +69,7 @@ class ThemeResolverCache {
   /**
    * Get cached theme path lookup
    */
-  getPathLookup(theme: Theme, path: string): any | null {
+  getPathLookup(theme: ThemeSystem, path: string): any | null {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
 
     if (this._pathLookupCache.has(pathKey)) {
@@ -84,7 +84,7 @@ class ThemeResolverCache {
   /**
    * Cache theme path lookup result
    */
-  setPathLookup(theme: Theme, path: string, value: any): void {
+  setPathLookup(theme: ThemeSystem, path: string, value: any): void {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     this._pathLookupCache.set(pathKey, value)
   }
@@ -96,22 +96,6 @@ class ThemeResolverCache {
     // Reset lastIndex to ensure consistent behavior
     this._themeRegex.lastIndex = 0
     return this._themeRegex
-  }
-
-  /**
-   * Clear all caches (useful for testing or memory management)
-   */
-  clearCaches(): void {
-    this._resolutionCache.clear()
-    this._pathLookupCache.clear()
-    this._stats = { hits: 0, misses: 0, pathHits: 0, pathMisses: 0 }
-  }
-
-  /**
-   * Get cache statistics for performance monitoring
-   */
-  getStats() {
-    return { ...this._stats }
   }
 
   /**
@@ -137,7 +121,7 @@ const themeCache = ThemeResolverCache.getInstance()
  * @returns A new object (or array) with all theme variables resolved to their corresponding values,
  * or the original object (or array) if no changes were necessary.
  */
-export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme) => {
+export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: ThemeSystem) => {
   if (!theme || (!!theme && typeof theme === 'object' && Object.keys(theme).length === 0) || Object.keys(obj).length === 0) {
     return obj
   }
@@ -274,6 +258,3 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
 
   return result
 }
-
-// Export cache instance for testing and monitoring
-export { themeCache as ThemeResolverCache }

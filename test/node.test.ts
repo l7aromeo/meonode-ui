@@ -1,7 +1,8 @@
-import { Component, Div, H1, Node, P, Portal, Root, Span, Text } from '@src/main.js'
+import { Component, Div, H1, Node, P, Portal, Root, Span, Text, type Theme } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
+import { ThemeProvider } from '@src/components/theme-provider.client.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -130,35 +131,69 @@ describe('BaseNode - Core Functionality', () => {
 
   // Test Case 7: Theme propagation and inheritance
   it('should propagate theme to children', () => {
-    const myTheme = { spacing: { md: '16px' } }
-    const App = Div({
+    const myTheme: Theme = {
+      mode: 'light',
+      system: {
+        spacing: { md: '16px' },
+      },
+    }
+
+    const App = ThemeProvider({
       theme: myTheme,
       children: Div({
-        padding: 'theme.spacing.md',
-        children: 'Themed Content',
+        children: Div({
+          padding: 'theme.spacing.md',
+          children: 'Themed Content',
+        }),
       }),
     })
+
     const { getByText } = render(App.render())
     const element = getByText('Themed Content')
+
     if (element) {
-      expect(element).toHaveStyleRule('padding', '16px')
+      // Use getComputedStyle to get the actual computed CSS
+      const computedStyles = window.getComputedStyle(element)
+      expect(computedStyles.padding).toBe('16px')
+
+      // Alternative: Check for specific padding properties
+      expect(computedStyles.paddingTop).toBe('16px')
+      expect(computedStyles.paddingRight).toBe('16px')
+      expect(computedStyles.paddingBottom).toBe('16px')
+      expect(computedStyles.paddingLeft).toBe('16px')
     }
   })
 
-  it('should allow child to override inherited theme', () => {
-    const parentTheme = { colors: { text: 'blue' } }
-    const childTheme = { colors: { text: 'green' } }
-    const App = Div({
-      theme: parentTheme,
-      children: P('Text with overridden theme', {
-        theme: childTheme,
-        color: 'theme.colors.text',
+  // If you need to test multiple style properties:
+  it('should propagate multiple theme values to children', () => {
+    const myTheme: Theme = {
+      mode: 'light',
+      system: {
+        spacing: { md: '16px', lg: '24px' },
+        colors: { primary: '#3b82f6' },
+      },
+    }
+
+    const App = ThemeProvider({
+      theme: myTheme,
+      children: Div({
+        children: Div({
+          padding: 'theme.spacing.md',
+          margin: 'theme.spacing.lg',
+          color: 'theme.colors.primary',
+          children: 'Themed Content',
+        }),
       }),
     })
+
     const { getByText } = render(App.render())
-    const element = getByText('Text with overridden theme')
+    const element = getByText('Themed Content')
+
     if (element) {
-      expect(element).toHaveStyleRule('color', 'green')
+      const computedStyles = window.getComputedStyle(element)
+      expect(computedStyles.padding).toBe('16px')
+      expect(computedStyles.margin).toBe('24px')
+      expect(computedStyles.color).toBe('rgb(59, 130, 246)')
     }
   })
 

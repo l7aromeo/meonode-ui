@@ -12,6 +12,7 @@ import React, {
 } from 'react'
 import type { CSSInterpolation } from '@emotion/serialize'
 import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
+import type { ComponentNodeProps } from '@src/hoc'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -45,11 +46,15 @@ export type NodeElement =
   | ComponentType<any>
   | NodeInstance<any>
   | NodeFunction<any>
+  | NodeElementType
   | ((
       props?: Record<string, any>,
     ) => ExoticComponent<any> | NonArrayReactNode | Component<any, any, any> | ElementType | ComponentType<any> | NodeInstance<any>)
 
-export type NodeElementType = ElementType | ExoticComponent<any>
+export type NodeElementType =
+  | ElementType
+  | (ExoticComponent & { $$typeof?: symbol })
+  | (<TProps extends Record<string, any> | undefined>(props: ComponentNodeProps<TProps>) => ComponentNode)
 
 /** A single NodeElement or an array of NodeElements */
 export type Children = NodeElement | NodeElement[]
@@ -57,14 +62,14 @@ export type Children = NodeElement | NodeElement[]
 /**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
  * Defines the core structure and capabilities of a BaseNode instance.
- * @template T - The type of React element/component that this node represents
+ * @template E - The type of React element/component that this node represents
  */
-export interface NodeInstance<T extends NodeElement = NodeElement> {
+export interface NodeInstance<E extends NodeElement = NodeElement> {
   /** The underlying React element or component type that this node will render */
-  readonly element: T
+  readonly element: E
 
   /** Original props passed during node construction, preserved for cloning/recreation */
-  readonly rawProps: RawNodeProps<T>
+  readonly rawProps: Partial<NodeProps<E>>
 
   readonly isBaseNode: true
 
@@ -92,15 +97,41 @@ export type PropsOf<E extends NodeElement> = E extends keyof JSX.IntrinsicElemen
       : never
 
 /**
- * Theme configuration object that can be passed through the node tree.
- * Supports nested theme properties for complex styling systems:
- * - Simple values (strings, numbers)
+ * Theme mode - light or dark theme variant
+ */
+export type ThemeMode = 'light' | 'dark' | string
+
+/**
+ * System theme configuration with base colors and semantic tokens
+ */
+export interface ThemeSystem {
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | any
+    | ThemeSystem
+    | Record<string, ThemeSystem | string | number | boolean | null | undefined | any>
+}
+
+/**
+ * Theme configuration object.
+ * Requires `mode` and `system` as core theme properties, with support for
+ * unlimited nested theme properties for complex styling systems:
+ * - Simple values (strings, numbers, booleans)
  * - Nested theme objects with unlimited depth
  * - Common CSS values and units
  * - Custom theme variables and tokens
  * Used for consistent styling and dynamic theme application.
  */
-export type Theme = Partial<{
+export type Theme = {
+  /** Current theme mode (light/dark) */
+  mode: ThemeMode
+  /** System theme configuration with colors and tokens */
+  system: ThemeSystem
+} & Partial<{
   [key: string]: string | number | boolean | null | undefined | any | Theme | Record<string, Theme | string | number | boolean | null | undefined | any>
 }>
 
@@ -119,8 +150,6 @@ export type FinalNodeProps = ReactAttributes &
     style: any
     css: any
     children: Children
-    theme: Partial<{ [p: string]: any }> | any | undefined
-    nodetheme: Theme
   }>
 
 /**
@@ -152,24 +181,14 @@ export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'theme' | 'props' | 'key'> &
+export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'props' | 'key'> &
   ReactAttributes &
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
   (HasNoStyleProp<E> extends true ? Partial<{ css: CSSInterpolation }> : object) &
   Partial<{
     props: Partial<Omit<PropsOf<E>, 'children'>>
     children: Children
-    theme: Theme
   }>
-
-/**
- * BaseNode's internal props type, extending NodeProps:
- * - Makes all properties optional for flexible node creation
- * - Adds nodetheme for theme context handling
- * - Used for both initial construction and internal state
- * @template E - The element type these props apply to
- */
-export type RawNodeProps<E extends NodeElement> = Partial<NodeProps<E>> & { nodetheme?: Theme }
 
 /**
  * Function type for dynamic node content generation.
@@ -189,9 +208,6 @@ export type NodeFunction<E extends ReactNode | NodeInstance = ReactNode | NodeIn
 export interface FunctionRendererProps<E extends ReactNode | NodeInstance> {
   /** Function that returns the child content to render */
   render: NodeFunction<E>
-
-  /** Theme context to be applied to the rendered content */
-  passedTheme?: Theme
 }
 
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)
