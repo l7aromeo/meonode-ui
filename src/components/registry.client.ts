@@ -4,6 +4,7 @@ import { createElement, type ReactElement, useState } from 'react'
 import { useServerInsertedHTML } from 'next/navigation'
 import { CacheProvider } from '@emotion/react'
 import createCache from '@emotion/cache'
+import { Node } from '@src/core.node.js'
 
 function createEmotionCache() {
   return createCache({ key: 'meonode-css' })
@@ -31,5 +32,5 @@ export default function StyleRegistry({ children }: { children: ReactElement }) 
     })
   })
 
-  return createElement(CacheProvider, { value: cache }, children)
+  return Node(CacheProvider, { value: cache, children }).render()
 }

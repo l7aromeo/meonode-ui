@@ -1,8 +1,7 @@
-import { Button, Div, Node, Portal, type PortalProps } from '@src/main.js'
+import { Button, Div, Node, Portal, type PortalProps, usePortal } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
-import { usePortal } from '@src/hook/index.js'
 import { createPortal } from 'react-dom'
 
 expect.extend(matchers)

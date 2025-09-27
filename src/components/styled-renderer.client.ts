@@ -21,13 +21,14 @@ export interface StyledRendererProps<E extends NodeElement> {
  * @template TProps The type of the props for the component.
  * @param element The HTML element to render (e.g., 'div', 'span').
  * @param children Optional children to be rendered inside the element.
+ * @param props
  * @returns {JSX.Element} The rendered JSX element.
  */
 export default function StyledRenderer<E extends NodeElement, TProps extends Record<string, any>>({
   element,
   children,
   ...props
-}: StyledRendererProps<E> & TProps) {
+}: StyledRendererProps<E> & TProps): JSX.Element {
   const context = useContext(ThemeContext)
   const theme = context?.theme
   let finalProps = props

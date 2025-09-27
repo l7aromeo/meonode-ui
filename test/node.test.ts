@@ -1,8 +1,7 @@
-import { Component, Div, H1, Node, P, Portal, Root, Span, Text, type Theme } from '@src/main.js'
+import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, type Theme } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
-import { ThemeProvider } from '@src/components/theme-provider.client.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())

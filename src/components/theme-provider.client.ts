@@ -1,7 +1,7 @@
 'use client'
 import { createContext, type ReactNode, useState } from 'react'
 import type { Children, Theme } from '@src/node.type.js'
-import { createNode, Node } from '@src/core.node.js'
+import { Node } from '@src/core.node.js'
 
 export interface ThemeContextValue {
   theme: Theme
@@ -18,7 +18,7 @@ export const ThemeContext = createContext<ThemeContextValue | null>(null)
  * @returns {ReactNode} The rendered component.
  * @private
  */
-export function _ThemeProvider({ children, theme }: { children?: Children; theme: Theme }): ReactNode {
+export default function ThemeProvider({ children, theme }: { children?: Children; theme: Theme }): ReactNode {
   const [currentTheme, setTheme] = useState<Theme>(theme)
 
   if (!theme) {
@@ -35,8 +35,3 @@ export function _ThemeProvider({ children, theme }: { children?: Children; theme
 
   return Node(ThemeContext.Provider, { value: contextValue, children }).render()
 }
-
-/**
- * A component that provides a theme to its children.
- */
-export const ThemeProvider = createNode(_ThemeProvider)
