@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2025-09-27
+
+### Changed
+
+- **changelog:** update missing changelog entries
+
+## [0.3.5] - 2025-09-27
+
+### Refactor
+
+- **refactor:** remove automatic key generation and use spread children in createElement
+    - Remove _generateKey method and all automatic key generation logic
+    - Simplify _processRawNode by removing nodeIndex parameter and complex case handling
+    - Update render() to spread array children as individual arguments to createElement
+    - Only preserve explicit non-null keys from original React elements
+    - Fix component remounting issues when children content changes (e.g., during typing)
+
 ## [0.3.4] - 2025-09-26
 
 ### Fixed
