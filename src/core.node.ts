@@ -292,7 +292,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
 
-    const { children: childrenInProps, key, nativeProps, ...otherProps } = this.props
+    const { children: childrenInProps, key, css, nativeProps, ...otherProps } = this.props
 
     let finalChildren: ReactNode | ReactNode[] = undefined
 
@@ -327,13 +327,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     // Fragment handling
     if (this.element === Fragment || isFragment(this.element)) {
-      return Array.isArray(finalChildren)
-        ? createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
-        : createElement(this.element as ExoticComponent<FragmentProps>, { key }, finalChildren)
+      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
     }
 
     // Styled component handling
-    if (this.element && !hasNoStyleTag(this.element) && otherProps.css) {
+    if (this.element && !hasNoStyleTag(this.element) && css) {
       try {
         const displayName = getElementTypeName(this.element)
         StyledRenderer.displayName = `Styled(${displayName})`
@@ -346,6 +344,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         {
           element: this.element,
           ...elementProps,
+          css,
           suppressHydrationWarning: true,
         },
         ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
