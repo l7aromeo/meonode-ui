@@ -1,5 +1,5 @@
 'use strict'
-import type { CSSProperties } from 'react'
+import type { CSSInterpolation, CSSProperties } from '@emotion/serialize'
 import type { NodeInstance } from '@src/node.type.js'
 
 /**
@@ -63,6 +63,8 @@ function parseFlexShorthand(flex: CSSProperties['flex']): FlexComponents | null 
   if (typeof flex === 'number') {
     return { grow: flex, shrink: 1, basis: '0%' }
   }
+
+  if (typeof flex !== 'string') return null
 
   const normalized = flex.trim().toLowerCase()
   if (!normalized) return null
@@ -136,10 +138,12 @@ function parseFlexShorthand(flex: CSSProperties['flex']): FlexComponents | null 
  * })
  * // → { display: 'flex', flexWrap: 'wrap', minHeight: 0, minWidth: 0 }
  */
-export const resolveDefaultStyle = (style: CSSProperties) => {
+export const resolveDefaultStyle = (style: CSSInterpolation) => {
+  if (style === null || style === undefined || typeof style === 'string' || typeof style === 'number' || typeof style === 'boolean') return {}
+
   // === STEP 1: EXTRACT FLEX PROPERTY ===
   // Extract flex shorthand to handle it separately from individual flex properties
-  const { flex, ...restStyle } = style
+  const { flex, ...restStyle } = style as CSSProperties
 
   // === STEP 2: ANALYZE LAYOUT CONTEXT ===
   // Determine what kind of element we're dealing with
