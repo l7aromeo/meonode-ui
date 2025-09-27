@@ -53,18 +53,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /** React root instance for portal rendering */
   private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
   /** Cache for normalized children */
-  private _normalizedChildren?: ReactNode
+  private _normalizedChildren?: ReactNode | ReactNode[]
   /** Indicates whether the code is running on the server (true) or client (false) */
   private static _isServer = typeof window === 'undefined'
 
   /**
    * Constructs a new BaseNode instance.
-   *
-   * This constructor initializes a node with a given React element or component type
-   * and the raw props passed to it. The props are not processed until they are
-   * accessed via the `props` getter, allowing for lazy evaluation.
-   * @param element The React element or component type this node will represent.
-   * @param rawProps The initial, unprocessed props for the element.
    */
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}) {
     this.element = element
@@ -73,11 +67,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
   /**
    * Lazily processes and retrieves the final, normalized props for the node.
-   *
-   * The first time this getter is accessed, it triggers `_processProps` to resolve
-   * styles, and children. Subsequent accesses return the cached result
-   * until the node is cloned or recreated.
-   * @returns The fully processed and normalized `FinalNodeProps`.
    */
   public get props(): FinalNodeProps {
     if (!this._props) {
@@ -88,27 +77,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
   /**
    * Processes raw props into a final, normalized form.
-   * This includes:
-   * - Extracting and separating style-related props
-   * - Merging CSS-in-JS styles with other style props
-   * - Processing and normalizing children
-   * - Combining all parts into a single props object
-   * @private
-   * @returns The processed `FinalNodeProps` ready for rendering.
    */
   private _processProps(): FinalNodeProps {
-    // Destructure raw props into relevant parts
     const { ref, key, children, css, props: nativeProps = {}, ...restRawProps } = this.rawProps
-
     const { style: nativeStyle, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
     const styleProps = getCSSProps(restRawProps)
     const domProps = getDOMProps(restRawProps)
-
-    // Process children
     const normalizedChildren = this._processChildren(children)
 
-    // Combine processed props into final normalized form
     return omitUndefined({
       ref,
       key,
@@ -122,14 +99,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
   /**
    * Recursively processes raw children, converting them into `BaseNode` instances as needed.
-   *
-   * This method ensures consistent handling for all children.
-   *
-   * - If `children` is an array, each child is processed individually.
-   * - If `children` is a single node, it is processed directly.
-   * @param children The raw child or array of children to process.
-   * @returns The processed children, ready for normalization and rendering.
-   * @private
    */
   private _processChildren(children: Children) {
     if (!children) return undefined
@@ -139,28 +108,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       processed = children
     } else {
       // Process each child node
-      processed = Array.isArray(children) ? children.map((child, index) => BaseNode._processRawNode(child, index)) : BaseNode._processRawNode(children)
+      processed = Array.isArray(children) ? children.map(child => BaseNode._processRawNode(child)) : BaseNode._processRawNode(children)
     }
 
     return processed
   }
 
   /**
-   * Renders a processed `NodeElement` into a `ReactNode`, applying a key if necessary.
-   *
-   * This static method centralizes the logic for converting various types of processed elements
-   * into renderable React nodes. It handles:
-   * - `BaseNode` instances: Re-wraps them to apply a new key.
-   * - React class components: Wraps them in a new `BaseNode`.
-   * - `NodeInstance` objects: Invokes their `render()` method.
-   * - React component instances: Invokes their `render()` method.
-   * - Functional components: Creates a React element from them.
-   * - Other valid `ReactNode` types (strings, numbers, etc.): Returns them as-is.
-   * @param processedElement The node element to render.
-   * @param passedKey The React key to assign.
-   * @returns A renderable `ReactNode`.
-   * @private
-   * @static
+   * Renders a processed `NodeElement` into a `ReactNode`.
    */
   private static _renderProcessedNode(processedElement: NodeElement, passedKey?: string) {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
@@ -168,7 +123,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       commonBaseNodeProps.key = passedKey
     }
 
-    // 1. BaseNode instance: re-wrap to apply key/theme if needed
     if (processedElement instanceof BaseNode || isNodeInstance(processedElement)) {
       const existingKey = processedElement.rawProps?.key
       if (existingKey === passedKey) {
@@ -181,70 +135,45 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       }).render()
     }
 
-    // 2. React class component type: wrap in BaseNode
     if (isReactClassComponent(processedElement)) {
       return new BaseNode(processedElement, commonBaseNodeProps).render()
     }
 
-    // 3. NodeInstance object: call its render
     if (isNodeInstance(processedElement)) {
       return processedElement.render()
     }
 
-    // 4. React.Component instance: call its render
     if (processedElement instanceof React.Component) {
       return processedElement.render()
     }
 
-    // 5. Functional component: create element with key
     if (typeof processedElement === 'function') {
       return createElement(processedElement as ElementType, { key: passedKey })
     }
 
-    // 6. Other valid ReactNode types
     return processedElement as ReactNode
   }
 
   /**
-   * Renders this node into a `ReactNode`, handling function node element.
-   * @param node The node to render.
-   * @private
-   * @static
-   * @example
-   * ```typescript
-   * const myNode = Node('div', { children: [ () => 'Hello' ] });
-   * ```
+   * Checks if a node is a function child (render prop style).
    */
   private static _isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
-    // Basic function check
     if (typeof node !== 'function') return false
-
-    // Exclude React component types
     if (isReactClassComponent(node)) return false
     if (isMemo(node)) return false
     if (isForwardRef(node)) return false
 
     try {
-      // Try to check if it's a React component instance using prototype
       return !(node.prototype && typeof node.prototype.render === 'function')
     } catch {
-      // If accessing prototype fails (due to cross-realm), assume it's a function child
       return true
     }
   }
 
   /**
    * Renders the output of a function-as-a-child.
-   *
-   * This method is designed to handle "render prop" style children (`() => ReactNode`).
-   * It invokes the function and processes its result.
-   * @param props The properties for the function renderer.
-   * @param props.render The function to execute to get the child content.
-   * @returns The rendered `ReactNode`.
-   * @private
    */
   private static _functionRenderer<E extends ReactNode | NodeInstance>({ render }: FunctionRendererProps<E>) {
-    // Invoke the render function to get the child node.
     let result: NodeElement
     try {
       result = render()
@@ -252,238 +181,110 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       result = null
     }
 
-    // Handle null/undefined
     if (result === null || result === undefined) {
       return result
     }
 
-    // Handle arrays of elements (common in render props)
     if (Array.isArray(result)) {
       return result.map((item, index) => {
-        const processed = BaseNode._processRawNode(item, index)
+        const processed = BaseNode._processRawNode(item)
         return BaseNode._renderProcessedNode(processed, `${getElementTypeName(item)}-${index}`)
       })
     }
 
-    // Handle React.Component instance
     if (result instanceof React.Component) {
       const element = result.render()
       const processed = BaseNode._processRawNode(element)
       return BaseNode._renderProcessedNode(processed)
     }
 
-    // Handle BaseNode instance or NodeInstance
     if (result instanceof BaseNode || isNodeInstance(result)) {
       return result.render()
     }
 
-    // Handle primitives and valid React nodes (string, number, boolean)
     if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
       return result
     }
 
-    // Process any other result types
     const processedResult = BaseNode._processRawNode(result as NodeElement)
-
     if (processedResult) return BaseNode._renderProcessedNode(processedResult)
 
     return result
   }
 
   /**
-   * Generates a stable key for a node, especially for elements within an array.
-   *
-   * If an `existingKey` is provided, it is returned. Otherwise, a key is generated
-   * based on the element's type name and its index within a list of siblings.
-   * This helps prevent re-rendering issues in React when dealing with dynamic lists.
-   * @param options The options for key generation.
-   * @param options.nodeIndex The index of the node in an array of children.
-   * @param options.element The element for which to generate a key.
-   * @param options.existingKey An existing key, if one was already provided.
-   * @param options.children The children of the node, used to add complexity to the key.
-   * @returns A React key, or `undefined` if no key could be generated.
-   * @private
-   * @static
-   */
-  private static _generateKey = ({
-    nodeIndex,
-    element,
-    existingKey,
-    children,
-  }: {
-    nodeIndex?: number
-    element: NodeElement
-    existingKey?: string | null
-    children?: Children
-  }): string => {
-    if (existingKey) return existingKey
-    const elementName = getElementTypeName(element)
-
-    let generatedKey: string
-    if (Array.isArray(children) && children.length > 0) {
-      generatedKey = nodeIndex !== undefined ? `${elementName}-${nodeIndex}-${children.length}` : `${elementName}-${children.length}`
-    } else if (nodeIndex !== undefined) {
-      generatedKey = `${elementName}-${nodeIndex}`
-    } else {
-      generatedKey = elementName
-    }
-
-    return generatedKey
-  }
-
-  /**
    * Processes a single raw node, recursively converting it into a `BaseNode` or other renderable type.
-   *
-   * This is a central method for normalizing children. It handles various types of input:
-   * - **`BaseNode` instances**: Re-creates them to ensure the correct key is applied.
-   * - **Primitives**: Returns strings, numbers, booleans, null, and undefined as-is.
-   * - **Functions (Render Props)**: Wraps them in a `BaseNode` that uses `_functionRenderer` to delay execution.
-   * - **Valid React Elements**: Converts them into `BaseNode` instances, extracting props.
-   * - **React Component Types**: Wraps them in a `BaseNode`.
-   * - **React Component Instances**: Renders them and processes the output recursively.
-   *
-   * It also generates a stable key for elements within an array if one is not provided.
-   * @param node The raw child node to process.
-   * @param nodeIndex The index of the child if it is in an array, used for key generation.
-   * @returns A processed `NodeElement` (typically a `BaseNode` instance or a primitive).
-   * @private
-   * @static
    */
-  private static _processRawNode(
-    node: NodeElement,
-    nodeIndex?: number, // Index for generating stable keys for array children
-  ): NodeElement {
-    const componentType = getComponentType(node) // Determine the type of the raw node
+  private static _processRawNode(node: NodeElement): NodeElement {
+    // Primitives and null/undefined - return as-is
+    if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') {
+      return node
+    }
 
-    // Case 1: Child is already a BaseNode instance
+    // Already processed nodes - return as-is
     if (node instanceof BaseNode || isNodeInstance(node)) {
-      const childRawProps = node.rawProps || {} // Get initial raw props of the child
-
-      // Check if we can reuse the existing node
-      if (childRawProps.key !== undefined) {
-        return node
-      }
-
-      const keyForChildNode = BaseNode._generateKey({ nodeIndex, element: node.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
-
-      return new BaseNode(node.element, {
-        ...childRawProps,
-        key: keyForChildNode,
-      }) // Create a new BaseNode with merged props and theme
+      return node
     }
 
-    // Case 2: Child is a primitive (string, number, boolean, null, undefined)
-    if (componentType === 'string' || componentType === 'number' || componentType === 'boolean' || node === null || node === undefined) {
-      return node as string | number | boolean | null | undefined
-    }
-
-    // Case 3: Child is a function that needs to be called during render (FunctionRenderer).
+    // Function children (render props) - wrap in function renderer
     if (BaseNode._isFunctionChild(node)) {
-      // The key is for the BaseNode that wraps the _functionRenderer component.
-      // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = BaseNode._generateKey({ nodeIndex, element: BaseNode._functionRenderer as NodeElement }) // Generate key for function renderer
-
-      return new BaseNode(BaseNode._functionRenderer, {
-        render: node,
-        key: keyForFunctionRenderer,
-      })
+      return new BaseNode(BaseNode._functionRenderer, { render: node })
     }
 
-    // Case 4: Child is a React Element (JSX element like <div> or <MyComponent>)
+    // React elements - extract props and wrap in BaseNode
     if (isValidElement(node)) {
       const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
-      const keyForChildNode = BaseNode._generateKey({ nodeIndex, element: node.type as ElementType, existingKey: node.key, children: combinedProps.children })
 
       return new BaseNode(node.type as ElementType, {
         ...combinedProps,
-        key: keyForChildNode,
+        // Only preserve non-null keys
+        ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
       })
     }
 
-    // Case 5: Child is an ElementType (string tag, class component, Memo/ForwardRef)
-    if (isReactClassComponent(node) || (componentType === 'object' && (isMemo(node) || isForwardRef(node)))) {
-      // ElementTypes don't have an intrinsic key from the node itself.
-      const keyForChildNode = BaseNode._generateKey({
-        nodeIndex,
-        element: node as ElementType,
-        children: typeof node === 'object' && 'props' in node ? node.props?.children : undefined,
-      })
-      return new BaseNode(node as ElementType, {
-        key: keyForChildNode,
-      })
+    // Component types - wrap in BaseNode
+    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) {
+      return new BaseNode(node as ElementType, {})
     }
 
-    // Case 6: Handle instances of React.Component
-    if ((node as unknown as React.Component) instanceof React.Component) {
-      const element = (node as unknown as React.Component).render()
-      // Recursively process the rendered element with a parent theme and index if available
-      return BaseNode._processRawNode(element, nodeIndex)
+    // React.Component instances - render and process recursively
+    if (node instanceof React.Component) {
+      const element = node.render()
+      return BaseNode._processRawNode(element)
     }
 
-    // Case 7: Fallback for other ReactNode types (e.g., Fragments, Portals if not caught by isValidElement)
-    // These are returned as-is. If they are elements within an array, React expects them to have keys.
-    // This logic primarily adds keys to BaseNode instances we create, other ReactNodes are returned as-is.
+    // Everything else - return as-is
     return node
   }
 
   /**
    * Normalizes a processed child node into a final, renderable `ReactNode`.
-   *
-   * This method is called during the `render` phase. It takes a child that has already
-   * been processed by `_processChildren` and prepares it for `React.createElement`.
-   *
-   * - For `BaseNode` instances, it calls their `render()` method.
-   * - It validates that other children are valid React element types.
-   * - Primitives and other valid nodes are returned as-is.
-   * @param child The processed child node to normalize.
-   * @returns A renderable `ReactNode`.
-   * @throws {Error} If the child is not a valid React element type.
-   * @private
    */
   private _normalizeChild = (child: NodeElement): ReactNode => {
-    // Handle null/undefined quickly
     if (child === null || child === undefined) return child
 
-    // Primitives should be returned as-is (text nodes, numbers, booleans)
     const t = typeof child
     if (t === 'string' || t === 'number' || t === 'boolean') return child as ReactNode
 
-    // For BaseNode instances, apply current theme if child has no theme
     if (child instanceof BaseNode || isNodeInstance(child)) {
       return child.render()
     }
 
-    // Handle React.Component instances
     if (typeof (child as any).render === 'function') {
-      // React.Component instance
       return (child as React.Component).render()
     }
 
-    // Validate element type before returning
     if (!isValidElementType(child) && !isPortal(child)) {
       const elementType = getComponentType(child)
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
 
-    // Return valid React elements as-is
     return child as ReactNode
   }
 
   /**
    * Renders the `BaseNode` into a `ReactElement`.
-   *
-   * This method is the final step in the rendering pipeline. It constructs a React element
-   * by:
-   * 1.  Validating that the node's `element` type is renderable.
-   * 2.  Normalizing processed children into `ReactNode`s using `_normalizeChild`.
-   * 3.  Caching normalized children to avoid re-processing on subsequent renders.
-   * 4.  Assembling the final props, including `key`, `style`, and other attributes.
-   * 5.  If the element has a `css` prop, it may be wrapped in a `StyledRenderer` to handle
-   * CSS-in-JS styling.
-   * 6.  Finally, calling `React.createElement` with the element, props, and children.
-   * @returns The rendered `ReactElement`.
-   * @throws {Error} If the node's `element` is not a valid React element type.
    */
   public render(): ReactElement<FinalNodeProps> {
     if (!isValidElementType(this.element)) {
@@ -491,10 +292,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
 
-    // Extract children and key
     const { children: childrenInProps, key, nativeProps, ...otherProps } = this.props
 
-    let finalChildren: ReactNode = undefined
+    let finalChildren: ReactNode | ReactNode[] = undefined
 
     if (childrenInProps !== undefined && childrenInProps !== null) {
       if (!this._normalizedChildren) {
@@ -518,15 +318,22 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       finalChildren = this._normalizedChildren
     }
 
-    // If the element is a Fragment, use React.createElement directly
-    if (this.element === Fragment || isFragment(this.element)) {
-      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, finalChildren)
+    // Common props for all createElement calls
+    const elementProps = {
+      ...(otherProps as ComponentProps<ElementType>),
+      key,
+      ...nativeProps,
     }
 
-    // If the element has a `css` prop and has style tag, render using the `StyledRenderer` component
-    // This enables emotion-based style handling for the element
+    // Fragment handling
+    if (this.element === Fragment || isFragment(this.element)) {
+      return Array.isArray(finalChildren)
+        ? createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
+        : createElement(this.element as ExoticComponent<FragmentProps>, { key }, finalChildren)
+    }
+
+    // Styled component handling
     if (this.element && !hasNoStyleTag(this.element) && otherProps.css) {
-      // Set displayName for easier debugging in React DevTools
       try {
         const displayName = getElementTypeName(this.element)
         StyledRenderer.displayName = `Styled(${displayName})`
@@ -538,80 +345,55 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         StyledRenderer,
         {
           element: this.element,
-          ...(otherProps as ComponentProps<ElementType>),
-          key,
+          ...elementProps,
           suppressHydrationWarning: true,
-          ...nativeProps,
         },
-        finalChildren as ReactNode,
+        ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
       )
     }
 
-    // For other elements, create the React element directly
-    // Set displayName for easier debugging in React DevTools
+    // Regular element handling with spread children
     try {
       ;(this.element as NodeElement & { displayName: string }).displayName = getElementTypeName(this.element)
     } catch {
       // swallow: displayName is not critical
     }
 
-    return createElement(
-      this.element as ElementType,
-      {
-        ...(otherProps as ComponentProps<ElementType>),
-        key,
-        ...nativeProps,
-      },
-      finalChildren,
-    )
+    return createElement(this.element as ElementType, elementProps, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
   }
 
   /**
-   * Ensures the necessary DOM elements for portal rendering are created and attached.
-   *
-   * On the client-side, this method checks for or creates a `div` element appended
-   * to the `document.body` and initializes a React root on it. This setup is
-   * required for the `toPortal` method to function. It is idempotent and safe
-   * to call multiple times.
-   * @returns `true` if the portal infrastructure is ready, `false` if on the server.
-   * @private
+   * Portal infrastructure setup
    */
   private _ensurePortalInfrastructure() {
     if (BaseNode._isServer) return false
 
-    // If both exist and DOM is connected, we're ready
     if (this._portalDOMElement && this._portalReactRoot && this._portalDOMElement.isConnected) return true
 
-    // If DOM element exists but isn't connected, clear both DOM element and root
     if (this._portalDOMElement && !this._portalDOMElement.isConnected) {
-      // attempt to unmount root if present
       if (this._portalReactRoot) {
         try {
           this._portalReactRoot.unmount()
         } catch {
-          // swallow: unmount might fail if already removed; avoid breaking the app
+          // swallow
         }
         this._portalReactRoot = null
       }
       this._portalDOMElement = null
     }
 
-    // Create DOM element if needed
     if (!this._portalDOMElement) {
       this._portalDOMElement = document.createElement('div')
       document.body.appendChild(this._portalDOMElement)
     }
 
-    // Create react root if needed
     if (!this._portalReactRoot) {
       if (!this._portalDOMElement) return false
       const root = createRoot(this._portalDOMElement)
       this._portalReactRoot = {
         render: root.render.bind(root),
         unmount: root.unmount.bind(root),
-        update: () => {
-          /* will be patched later */
-        },
+        update: () => {},
       }
     }
 
@@ -619,18 +401,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
-   * Renders the node into a React Portal.
-   *
-   * Mounts the node's rendered output into a detached DOM tree (a `div` appended to `document.body`),
-   * enabling UI elements like modals, tooltips, or notifications to appear above the main app content.
-   *
-   * Returns a `NodePortal` object with:
-   * - `render(content)`: Renders new content into the portal.
-   * - `update(next?)`: Rerenders the current node or new content.
-   * - `unmount()`: Unmounts the portal and removes the DOM element.
-   *
-   * Throws if called on the server (where `document.body` is unavailable).
-   * @returns A `NodePortal` instance for managing the portal.
+   * Portal rendering
    */
   public toPortal(): NodePortal {
     if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) {
@@ -646,14 +417,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       }
     }
 
-    // Initial render
     renderCurrent()
 
-    // Patch the root with an update() method and a safe unmount that also removes DOM element.
     try {
       const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
 
-      // Create typed handle
       const handle = this._portalReactRoot as ReactDOMRoot & {
         update: (next: NodeElement) => void
         unmount: () => void
@@ -663,14 +431,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         try {
           if (!this._portalReactRoot) return
 
-          // If next is a BaseNode or NodeInstance, render its output
           if (next instanceof BaseNode || (next && typeof (next as any).render === 'function')) {
             const content = (next as any).render ? (next as any).render() : (next as ReactNode)
             this._portalReactRoot.render(content)
             return
           }
 
-          // Otherwise assume a ReactNode and render directly
           this._portalReactRoot.render(next as ReactNode)
         } catch {
           // swallow
@@ -683,7 +449,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         } catch {
           // swallow
         }
-        // Clear references and remove DOM element
         if (this._portalDOMElement) {
           try {
             if (this._portalDOMElement.parentNode) {
@@ -699,7 +464,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
       return handle
     } catch {
-      // fallback: return the raw root as-is (without update/unmount patch)
       return this._portalReactRoot
     }
   }
@@ -707,12 +471,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
 /**
  * Factory function to create a `BaseNode` instance.
- * @template AdditionalProps Additional props to merge with node props.
- * @template E The React element or component type.
- * @param element The React element or component type to wrap.
- * @param props The props for the node (optional).
- * @param additionalProps Additional props to merge into the node (optional).
- * @returns A new `BaseNode` instance as a `NodeInstance<E>`.
  */
 export function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
@@ -725,17 +483,6 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
 
 /**
  * Creates a curried node factory for a given React element or component type.
- *
- * Returns a function that, when called with props, produces a `NodeInstance<E>`.
- * Useful for creating reusable node factories for specific components or element types.
- * @template AdditionalInitialProps Additional initial props to merge with node props.
- * @template E The React element or component type.
- * @param element The React element or component type to wrap.
- * @param initialProps Initial props to apply to every node instance.
- * @returns A function that takes node props and returns a `NodeInstance<E>`.
- * @example
- * const ButtonNode = createNode('button', { type: 'button' });
- * const myButton = ButtonNode({ children: 'Click me', style: { color: 'red' } });
  */
 export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
@@ -752,22 +499,6 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
 
 /**
  * Creates a node factory function where the first argument is `children` and the second is `props`.
- *
- * Useful for ergonomic creation of nodes where children are the primary concern,
- * such as layout or container components.
- *
- * The returned function takes `children` as the first argument and `props` (excluding `children`) as the second.
- * It merges any `initialProps` provided at factory creation, then creates a `BaseNode` instance.
- *
- * Type parameters:
- * - `AdditionalInitialProps`: Extra props to merge with node props.
- * - `E`: The React element or component type.
- * @param element The React element or component type to wrap.
- * @param initialProps Initial props to apply to every node instance (excluding `children`).
- * @returns A function that takes `children` and `props`, returning a `NodeInstance<E>`.
- * @example
- * const Text = createChildrenFirstNode('p');
- * const myDiv = Text('Hello', { className: 'text-lg' });
  */
 export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
