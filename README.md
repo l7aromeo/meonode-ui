@@ -78,7 +78,7 @@ const App = Component(() =>
 
 📚 **[Complete Documentation & Examples](https://meonode-ui.vercel.app)**
 
-🎮 **[Interactive Playground](https://codesandbox.io/p/github/l7aromeo/react-meonode/main?import=true)**
+🎮 **[Interactive Playground](https://codesandbox.io/p/github/l7aromeo/nextjs-meonode/main?import=true)**
 
 ## Core API
 
