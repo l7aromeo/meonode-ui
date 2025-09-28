@@ -10,9 +10,9 @@ import React, {
   type ExoticComponent,
   type ReactElement,
 } from 'react'
-import type { CSSInterpolation } from '@emotion/serialize'
 import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
-import type { ComponentNodeProps } from '@src/hoc'
+import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
+import type { CSSObject, CSSInterpolation } from '@emotion/serialize'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -152,6 +152,33 @@ export type FinalNodeProps = ReactAttributes &
   }>
 
 /**
+ * A value that can be a direct value or a function of the theme.
+ */
+type ThemedValue<T> = T | ((theme: Theme) => T)
+
+/**
+ * A themed version of CSSProperties where each property can be a theme-dependent function.
+ */
+type ThemedCSSProperties = {
+  [P in keyof CSSProperties]: ThemedValue<CSSProperties[P]>
+}
+
+/**
+ * A themed version of Emotion's `CSSObject` type. It allows property values to be
+ * functions that receive the theme. This is applied recursively to handle
+ * nested objects like pseudo-selectors and media queries.
+ */
+type ThemedCSSObject = {
+  [P in keyof CSSObject]: ThemedValue<CSSObject[P] extends object ? ThemedCSSObject : CSSObject[P]>
+}
+
+/**
+ * The complete type for the `css` prop, combining Emotion's `CSSInterpolation`
+ * with a themed version (`ThemedCSSObject`) to support theme-aware styling functions.
+ */
+export type CssProp = ThemedCSSObject | CSSInterpolation
+
+/**
  * Helper type to determine if the props P have a 'style' property
  * that is compatible with CSSProperties.
  * @template P - The props object of a component (e.g., PropsOf<E>)
@@ -181,8 +208,8 @@ export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true
  */
 export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'props' | 'key'> &
   ReactAttributes &
-  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? CSSProperties : object) &
-  (HasNoStyleProp<E> extends true ? Partial<{ css: CSSInterpolation }> : object) &
+  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? ThemedCSSProperties : object) &
+  (HasNoStyleProp<E> extends false ? Partial<{ css: CssProp }> : object) &
   Partial<{
     props: Partial<Omit<PropsOf<E>, 'children'>>
     children: Children

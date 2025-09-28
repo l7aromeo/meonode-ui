@@ -1,5 +1,6 @@
+'use strict'
 import { getValueByPath } from '@src/helper/common.helper.js'
-import type { ThemeSystem } from '@src/node.type.js'
+import type { Theme, ThemeSystem } from '@src/node.type.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**
@@ -118,33 +119,36 @@ const themeCache = ThemeResolverCache.getInstance()
  * Theme variables are referenced using the format "theme.path.to.value".
  * @param obj The object (or array) whose values should be resolved against the theme. Defaults to an empty object.
  * @param theme The theme object containing variable definitions. Optional.
+ * @param options Options to control processing behavior.
+ * - processFunctions: If true, functions within the object will be executed with the theme as an argument.
+ * If false, functions will be ignored. Defaults to false.
  * @returns A new object (or array) with all theme variables resolved to their corresponding values,
  * or the original object (or array) if no changes were necessary.
  */
-export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: ThemeSystem) => {
+export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme, options: { processFunctions?: boolean } = {}) => {
+  const { processFunctions = false } = options
+
   if (!theme || (!!theme && typeof theme === 'object' && Object.keys(theme).length === 0) || Object.keys(obj).length === 0) {
+    return obj
+  }
+
+  // Ensure theme has a valid system property
+  const themeSystem = theme?.system
+  if (!themeSystem || typeof themeSystem !== 'object' || Object.keys(themeSystem).length === 0) {
     return obj
   }
 
   // Check cache first (only on server-side for RSC optimization)
   if (themeCache.shouldCache()) {
-    const cachedResult = themeCache.getResolution(obj, theme)
+    // Note: Caching is based on the input object. If processFunctions changes behavior,
+    // a more complex cache key may be needed in the future.
+    const cachedResult = themeCache.getResolution(obj, themeSystem)
     if (cachedResult !== null) {
       return cachedResult
     }
   }
 
-  /**
-   * Recursively resolves theme variables within an object or array.
-   * It tracks visited objects to prevent infinite recursion caused by circular references.
-   * This function implements a "smart merge" to preserve object/array identity for unchanged parts.
-   * @param currentObj The current object or array being processed in the recursion.
-   * @param visited A Set to keep track of objects that have already been visited to detect circular references.
-   * @returns The processed object/array with theme variables resolved, or the original `currentObj`
-   * if no changes were made to it or its direct children (excluding deeper nested changes).
-   */
   const resolveRecursively = (currentObj: any, visited: Set<any>): any => {
-    // Base cases for non-objects/null, or already visited objects (circular reference)
     if (currentObj === null || typeof currentObj !== 'object') {
       return currentObj
     }
@@ -155,105 +159,92 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
 
     visited.add(currentObj)
 
-    // Handle Arrays
+    const processThemeString = (value: string) => {
+      let processedValue = value
+      let valueResolved = false
+      const regex = themeCache.getThemeRegex()
+
+      processedValue = processedValue.replace(regex, (match, path) => {
+        let themeValue = themeCache.getPathLookup(themeSystem, path)
+        if (themeValue === null) {
+          themeValue = getValueByPath(themeSystem, path)
+          themeCache.setPathLookup(themeSystem, path, themeValue)
+        }
+
+        if (themeValue !== undefined && themeValue !== null) {
+          valueResolved = true
+          if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
+            return themeValue.default
+          }
+          return themeValue
+        }
+        return match
+      })
+
+      return valueResolved ? processedValue : value
+    }
+
     if (Array.isArray(currentObj)) {
       let resolvedArray: any[] = currentObj
       let changed = false
-
       for (let i = 0; i < currentObj.length; i++) {
         const value = currentObj[i]
-        const newValue = resolveRecursively(value, visited) // Recursively process each element
-
+        const newValue = resolveRecursively(value, visited)
         if (newValue !== value) {
           if (!changed) {
-            resolvedArray = [...currentObj] // Create a shallow copy only if a change is detected
+            resolvedArray = [...currentObj]
             changed = true
           }
           resolvedArray[i] = newValue
         } else if (changed) {
-          // If a change has already occurred, ensure we copy the original values
           resolvedArray[i] = value
         }
       }
       return resolvedArray
     }
 
-    // Handle Plain Objects (only process objects created with {})
     let resolvedObj: Record<string, any> = currentObj
     let changed = false
 
     for (const key in currentObj) {
-      // Ensure it's an own property
       const value = currentObj[key]
       let newValue: any = value
 
-      if (
-        typeof value === 'function' ||
-        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) || // Exclude plain objects and arrays
+      if (typeof value === 'function') {
+        if (processFunctions) {
+          const funcResult = value(theme)
+          newValue = resolveRecursively(funcResult, visited)
+        } else {
+          newValue = value // Ignore function
+        }
+      } else if (
+        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
         (typeof value !== 'object' && typeof value !== 'string')
       ) {
-        newValue = value
+        newValue = value // Ignore non-plain objects and primitives other than strings
       } else if (typeof value === 'string' && value.includes('theme.')) {
-        let processedValue = value
-        let valueResolved = false
-
-        // Use cached regex instance
-        const regex = themeCache.getThemeRegex()
-
-        processedValue = processedValue.replace(regex, (match, path) => {
-          // Check path lookup cache first
-          let themeValue = themeCache.getPathLookup(theme!, path)
-
-          if (themeValue === null) {
-            // Not in cache, perform lookup and cache result
-            themeValue = getValueByPath(theme!, path)
-            themeCache.setPathLookup(theme!, path, themeValue)
-          }
-
-          if (themeValue !== undefined && themeValue !== null) {
-            valueResolved = true
-
-            if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-              return themeValue.default
-            }
-
-            return themeValue
-          }
-
-          return match
-        })
-
-        if (valueResolved && processedValue !== value) {
-          newValue = processedValue
-        } else {
-          newValue = value
-        }
+        newValue = processThemeString(value)
       } else if (typeof value === 'object' && value !== null) {
-        // Recursively process nested objects or arrays
         newValue = resolveRecursively(value, visited)
       }
 
       if (newValue !== value) {
         if (!changed) {
-          resolvedObj = { ...currentObj } // Create a shallow copy only if a change is detected
+          resolvedObj = { ...currentObj }
           changed = true
         }
         resolvedObj[key] = newValue
       } else if (changed) {
-        // If a change has already occurred, ensure we copy the original values
         resolvedObj[key] = value
       }
     }
-
     return resolvedObj
   }
 
-  // Perform the resolution
   const result = resolveRecursively(obj, new Set())
 
-  // Cache the result (only on server-side)
   if (themeCache.shouldCache()) {
-    themeCache.setResolution(obj, theme, result)
+    themeCache.setResolution(obj, themeSystem, result)
   }
 
   return result

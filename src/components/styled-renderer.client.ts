@@ -2,8 +2,7 @@
 
 import { type JSX, type ReactNode, useContext } from 'react'
 import { jsx } from '@emotion/react'
-import type { CSSInterpolation } from '@emotion/serialize'
-import type { NodeElement } from '@src/node.type.js'
+import type { CssProp, NodeElement } from '@src/node.type.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 import { ThemeContext } from '@src/components/theme-provider.client.js'
 import { resolveDefaultStyle } from '@src/helper/node.helper.js'
@@ -11,7 +10,7 @@ import { resolveDefaultStyle } from '@src/helper/node.helper.js'
 export interface StyledRendererProps<E extends NodeElement> {
   element: E
   children?: ReactNode
-  css: CSSInterpolation
+  css: CssProp
 }
 
 /**
@@ -31,12 +30,23 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 }: StyledRendererProps<E> & TProps): JSX.Element {
   const context = useContext(ThemeContext)
   const theme = context?.theme
-  let finalProps = props
 
-  if (theme) finalProps = resolveObjWithTheme(props, theme.system)
-  const css = resolveDefaultStyle(finalProps.css)
+  const { css, ...otherProps } = props
 
-  return jsx(element as keyof JSX.IntrinsicElements, { ...finalProps, css }, children)
+  let finalCss = css
+  let finalOtherProps = otherProps
+
+  if (theme) {
+    // Process `css` prop in "aggressive" mode, allowing functions
+    finalCss = resolveObjWithTheme(css, theme, { processFunctions: true })
+
+    // Process all other props in "safe" mode, ignoring functions
+    finalOtherProps = resolveObjWithTheme(otherProps, theme, { processFunctions: false })
+  }
+
+  const cssForEmotion = resolveDefaultStyle(finalCss)
+
+  return jsx(element as keyof JSX.IntrinsicElements, { ...finalOtherProps, css: cssForEmotion }, children)
 }
 
 StyledRenderer.displayName = 'Styled'

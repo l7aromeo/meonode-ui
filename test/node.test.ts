@@ -196,6 +196,38 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
+  it('should resolve theme values from strings and functions in the css prop', () => {
+    const myTheme: Theme = {
+      mode: 'light',
+      system: {
+        colors: {
+          primary: 'rgb(255, 0, 0)', // red
+        },
+        spacing: {
+          md: '10px',
+        },
+      },
+    }
+
+    const App = ThemeProvider({
+      theme: myTheme,
+      children: Div({
+        children: 'Themed Function Content',
+        css: {
+          padding: 'theme.spacing.md',
+          color: (theme: Theme) => theme.system.colors.primary,
+        },
+      }),
+    })
+
+    const { getByText } = render(App.render())
+    const element = getByText('Themed Function Content')
+
+    const computedStyles = window.getComputedStyle(element)
+    expect(computedStyles.padding).toBe('10px')
+    expect(computedStyles.color).toBe('rgb(255, 0, 0)')
+  })
+
   // Test Case 8: `createChildrenFirstNode` usage (e.g., Text)
   it('should render Text component with children first', () => {
     const App = Text('Hello Text Component', { fontSize: '18px' })
