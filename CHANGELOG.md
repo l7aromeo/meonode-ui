@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2025-09-29
+
+### Added
+
+- **styling**: Enabled theme-aware functions in the `css` prop, allowing for more dynamic styling (e.g., `color: theme => theme.system.colors.primary`).
+
+### Refactor
+
+- **core**: Refactored the style resolution logic (`resolveObjWithTheme` and `StyledRenderer`) to selectively process the `css` prop. This enables the new theme-function feature while ensuring that other props (like `children`) are not processed, maintaining compatibility with Next.js Server Components.
+
 ## [0.3.7] - 2025-09-27
 
 ### Added
