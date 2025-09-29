@@ -13,11 +13,10 @@ export interface StyledRendererProps<E extends NodeElement> {
 
 export default function StyledRenderer<E extends NodeElement, TProps extends Record<string, any>>({
   element,
-  css,
   children,
   ...props
 }: StyledRendererProps<E> & TProps) {
-  return jsx(element as keyof JSX.IntrinsicElements, { ...props, css }, children)
+  return jsx(element as keyof JSX.IntrinsicElements, props, children)
 }
 
 StyledRenderer.displayName = 'Styled'

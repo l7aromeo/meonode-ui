@@ -320,9 +320,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       processed = children
     } else {
       // Process each child node
-      processed = Array.isArray(children)
-        ? children.map((child, index) => BaseNode._processRawNode(child, theme, index))
-        : BaseNode._processRawNode(children, theme)
+      processed = Array.isArray(children) ? children.map(child => BaseNode._processRawNode(child, theme)) : BaseNode._processRawNode(children, theme)
     }
 
     // Only cache on client-side
@@ -454,7 +452,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     // Handle arrays of elements (common in render props)
     if (Array.isArray(result)) {
       return result.map((item, index) => {
-        const processed = BaseNode._processRawNode(item, passedTheme, index)
+        const processed = BaseNode._processRawNode(item, passedTheme)
         return BaseNode._renderProcessedNode(processed, passedTheme, `${getElementTypeName(item)}-${index}`)
       })
     }
@@ -493,47 +491,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
-   * Generates a stable key for a node, especially for elements within an array.
-   *
-   * If an `existingKey` is provided, it is returned. Otherwise, a key is generated
-   * based on the element's type name and its index within a list of siblings.
-   * This helps prevent re-rendering issues in React when dealing with dynamic lists.
-   * @param options The options for key generation.
-   * @param options.nodeIndex The index of the node in an array of children.
-   * @param options.element The element for which to generate a key.
-   * @param options.existingKey An existing key, if one was already provided.
-   * @param options.children The children of the node, used to add complexity to the key.
-   * @returns A React key, or `undefined` if no key could be generated.
-   * @private
-   * @static
-   */
-  private static _generateKey = ({
-    nodeIndex,
-    element,
-    existingKey,
-    children,
-  }: {
-    nodeIndex?: number
-    element: NodeElement
-    existingKey?: string | null
-    children?: Children
-  }): string => {
-    if (existingKey) return existingKey
-    const elementName = getElementTypeName(element)
-
-    let generatedKey: string
-    if (Array.isArray(children) && children.length > 0) {
-      generatedKey = nodeIndex !== undefined ? `${elementName}-${nodeIndex}-${children.length}` : `${elementName}-${children.length}`
-    } else if (nodeIndex !== undefined) {
-      generatedKey = `${elementName}-${nodeIndex}`
-    } else {
-      generatedKey = elementName
-    }
-
-    return generatedKey
-  }
-
-  /**
    * Processes a single raw node, recursively converting it into a `BaseNode` or other renderable type.
    *
    * This is a central method for normalizing children. It handles various types of input:
@@ -547,16 +504,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * It also generates a stable key for elements within an array if one is not provided.
    * @param node The raw child node to process.
    * @param passedTheme The theme inherited from the parent.
-   * @param nodeIndex The index of the child if it is in an array, used for key generation.
    * @returns A processed `NodeElement` (typically a `BaseNode` instance or a primitive).
    * @private
    * @static
    */
-  private static _processRawNode(
-    node: NodeElement,
-    passedTheme?: Theme,
-    nodeIndex?: number, // Index for generating stable keys for array children
-  ): NodeElement {
+  private static _processRawNode(node: NodeElement, passedTheme?: Theme): NodeElement {
     const componentType = getComponentType(node) // Determine the type of the raw node
 
     // Case 1: Child is already a BaseNode instance
@@ -569,12 +521,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         return node
       }
 
-      const keyForChildNode = BaseNode._generateKey({ nodeIndex, element: node.element, existingKey: childRawProps.key, children: childRawProps.children }) // Generate key if needed
-
       return new BaseNode(node.element, {
         ...childRawProps,
         nodetheme: themeForNewNode, // Use the determined theme for the new node
-        key: keyForChildNode,
       }) // Create a new BaseNode with merged props and theme
     }
 
@@ -587,12 +536,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     if (BaseNode._isFunctionChild(node)) {
       // The key is for the BaseNode that wraps the _functionRenderer component.
       // Functions themselves don't have a .key prop that we can access here.
-      const keyForFunctionRenderer = BaseNode._generateKey({ nodeIndex, element: BaseNode._functionRenderer as NodeElement }) // Generate key for function renderer
 
       return new BaseNode(BaseNode._functionRenderer, {
         render: node,
         passedTheme: passedTheme,
-        key: keyForFunctionRenderer,
       })
     }
 
@@ -601,26 +548,18 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
       const themeForChild = combinedProps.theme || combinedProps.nodetheme || passedTheme
-      const keyForChildNode = BaseNode._generateKey({ nodeIndex, element: node.type as ElementType, existingKey: node.key, children: combinedProps.children })
 
       return new BaseNode(node.type as ElementType, {
         ...combinedProps,
         nodetheme: themeForChild,
-        key: keyForChildNode,
       })
     }
 
     // Case 5: Child is an ElementType (string tag, class component, Memo/ForwardRef)
     if (isReactClassComponent(node) || (componentType === 'object' && (isMemo(node) || isForwardRef(node)))) {
       // ElementTypes don't have an intrinsic key from the node itself.
-      const keyForChildNode = BaseNode._generateKey({
-        nodeIndex,
-        element: node as ElementType,
-        children: typeof node === 'object' && 'props' in node ? node.props?.children : undefined,
-      })
       return new BaseNode(node as ElementType, {
         nodetheme: passedTheme, // Apply parent theme
-        key: keyForChildNode,
       })
     }
 
@@ -628,7 +567,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     if ((node as unknown as React.Component) instanceof React.Component) {
       const element = (node as unknown as React.Component).render()
       // Recursively process the rendered element with a parent theme and index if available
-      return BaseNode._processRawNode(element, passedTheme, nodeIndex)
+      return BaseNode._processRawNode(element, passedTheme)
     }
 
     // Case 7: Fallback for other ReactNode types (e.g., Fragments, Portals if not caught by isValidElement)
@@ -710,7 +649,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Extract children and key
-    const { children: childrenInProps, key, nativeProps, ...otherProps } = this.props
+    const { children: childrenInProps, css, nativeProps, ...otherProps } = this.props
 
     let finalChildren: ReactNode = undefined
 
@@ -738,12 +677,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     // If the element is a Fragment, use React.createElement directly
     if (this.element === Fragment || isFragment(this.element)) {
-      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, finalChildren)
+      return createElement(this.element as ExoticComponent<FragmentProps>, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
     }
 
     // If the element has a `css` prop and has style tag, render using the `StyledRenderer` component
     // This enables emotion-based style handling for the element
-    if (this.element && !hasNoStyleTag(this.element) && otherProps.css) {
+    if (this.element && !hasNoStyleTag(this.element) && css) {
       // Set displayName for easier debugging in React DevTools
       try {
         const displayName = getElementTypeName(this.element)
@@ -757,11 +696,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         {
           element: this.element,
           ...(otherProps as ComponentProps<ElementType>),
-          key,
+          css,
           suppressHydrationWarning: true,
           ...nativeProps,
         },
-        finalChildren as ReactNode,
+        ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
       )
     }
 
@@ -777,10 +716,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       this.element as ElementType,
       {
         ...(otherProps as ComponentProps<ElementType>),
-        key,
         ...nativeProps,
       },
-      finalChildren,
+      ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
     )
   }
 
