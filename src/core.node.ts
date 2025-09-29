@@ -500,8 +500,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * - **Valid React Elements**: Converts them into `BaseNode` instances, extracting props and propagating the theme.
    * - **React Component Types**: Wraps them in a `BaseNode` with the parent theme.
    * - **React Component Instances**: Renders them and processes the output recursively.
-   *
-   * It also generates a stable key for elements within an array if one is not provided.
    * @param node The raw child node to process.
    * @param passedTheme The theme inherited from the parent.
    * @returns A processed `NodeElement` (typically a `BaseNode` instance or a primitive).
@@ -534,9 +532,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     // Case 3: Child is a function that needs to be called during render (FunctionRenderer).
     if (BaseNode._isFunctionChild(node)) {
-      // The key is for the BaseNode that wraps the _functionRenderer component.
-      // Functions themselves don't have a .key prop that we can access here.
-
       return new BaseNode(BaseNode._functionRenderer, {
         render: node,
         passedTheme: passedTheme,
@@ -571,8 +566,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Case 7: Fallback for other ReactNode types (e.g., Fragments, Portals if not caught by isValidElement)
-    // These are returned as-is. If they are elements within an array, React expects them to have keys.
-    // This logic primarily adds keys to BaseNode instances we create, other ReactNodes are returned as-is.
     return node
   }
 
@@ -635,7 +628,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * 1.  Validating that the node's `element` type is renderable.
    * 2.  Normalizing processed children into `ReactNode`s using `_normalizeChild`.
    * 3.  Caching normalized children to avoid re-processing on subsequent renders.
-   * 4.  Assembling the final props, including `key`, `style`, and other attributes.
+   * 4.  Assembling the final props, including `style`, and other attributes.
    * 5.  If the element has a `css` prop, it may be wrapped in a `StyledRenderer` to handle
    * CSS-in-JS styling.
    * 6.  Finally, calling `React.createElement` with the element, props, and children.
