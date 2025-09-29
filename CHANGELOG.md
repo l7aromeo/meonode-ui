@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.22] - 2025-09-29
+
+### Refactor
+
+- **refactor(core)**: Refactor key and CSS prop handling for improved rendering
+  - Removed manual key generation logic, relying on React's reconciliation for array children.
+  - Streamlined CSS prop handling within `BaseNode` and `StyledRenderer` for better integration with styling solutions.
+  - Updated `createElement` calls to correctly spread children, supporting both single and array children.
+
 ## [0.2.21] - 2025-09-23
 
 ### Refactor
