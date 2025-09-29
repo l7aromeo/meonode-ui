@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **styling**: Enabled theme-aware functions in the `css` prop, allowing for more dynamic styling (e.g., `color: theme => theme.system.colors.primary`).
+- **styling**: Enabled theme-aware functions for css props, allowing for more dynamic styling (e.g., `color: theme => theme.system.colors.primary`).
 
 ### Refactor
 
