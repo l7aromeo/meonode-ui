@@ -40,8 +40,8 @@ export const Container = Div
 export const Root = createNode('div', {
   display: 'flex',
   flexDirection: 'column',
-  minHeight: '100vh',
-  minWidth: '100vw',
+  minHeight: '100dvh',
+  minWidth: '100dvw',
 })
 
 /**
