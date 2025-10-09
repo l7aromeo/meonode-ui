@@ -275,6 +275,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       return (child as React.Component).render()
     }
 
+    if (typeof child === 'object' && 'isBaseNode' in child && 'rawProps' in child && 'element' in child && !isNodeInstance(child)) {
+      return new BaseNode(child.element as NodeElementType, child.rawProps as object).render()
+    }
+
     if (!isValidElementType(child) && !isPortal(child)) {
       const elementType = getComponentType(child)
       throw new Error(`Invalid element type: ${elementType} provided!`)
