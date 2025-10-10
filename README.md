@@ -76,7 +76,7 @@ const App = Component(() =>
 
 ## Documentation
 
-📚 **[Complete Documentation & Examples](https://meonode-ui.vercel.app)**
+📚 **[Complete Documentation & Examples](https://ui.meonode.com)**
 
 🎮 **[Interactive Playground](https://codesandbox.io/p/github/l7aromeo/nextjs-meonode/main?import=true)**
 
@@ -132,4 +132,4 @@ MIT © [Ukasyah Rahmatullah Zada](https://github.com/l7aromeo)
 
 ---
 
-**[📖 Full Documentation](https://meonode-ui.vercel.app)** • **[🐛 Issues](https://github.com/l7aromeo/meonode-ui/issues)** • **[💬 Discussions](https://github.com/l7aromeo/meonode-ui/discussions)**
+**[📖 Full Documentation](https://ui.meonode.com)** • **[🐛 Issues](https://github.com/l7aromeo/meonode-ui/issues)** • **[💬 Discussions](https://github.com/l7aromeo/meonode-ui/discussions)**
