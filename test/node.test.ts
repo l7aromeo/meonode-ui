@@ -1,4 +1,4 @@
-import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, type Theme } from '@src/main.js'
+import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, type Theme, type NodeInstance } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
@@ -368,5 +368,61 @@ describe('BaseNode - Core Functionality', () => {
     if (hasDisplayName(anonymousInstance.type)) {
       expect(anonymousInstance.type.displayName).toMatch('Component(AnonymousFunctionComponent)')
     }
+  })
+
+  // Test Case 18: Preserving Node instances in props and resolving themes
+  it('should preserve Node instances passed in props and resolve their themes correctly', () => {
+    const theme: Theme = {
+      mode: 'light',
+      system: {
+        colors: {
+          primary: 'rgb(255, 0, 0)',
+          secondary: 'rgb(0, 0, 255)',
+        },
+      },
+    }
+
+    // These Node instances have theme-dependent styles.
+    const ChildOne = Div({
+      children: 'Child One',
+      color: 'theme.colors.primary',
+    })
+    const ChildTwo = Div({
+      children: 'Child Two',
+      color: 'theme.colors.secondary',
+    })
+
+    // A component that accepts another Node instance as a prop and renders it.
+    const Wrapper = (props: { childNode: NodeInstance }) => {
+      return Div({
+        'data-testid': 'wrapper',
+        children: props.childNode,
+      }).render()
+    }
+
+    // The component to be rendered.
+    // It uses ThemeProvider and passes Node instances as props.
+    const App = ThemeProvider({
+      theme,
+      children: [Node(Wrapper, { childNode: ChildOne }), Node(Wrapper, { childNode: ChildTwo })],
+    })
+
+    const { getByText, getAllByTestId } = render(App.render())
+
+    // Check that the wrappers are rendered.
+    const wrappers = getAllByTestId('wrapper')
+    expect(wrappers.length).toBe(2)
+
+    // Check ChildOne
+    const elementOne = getByText('Child One')
+    expect(elementOne).toBeInTheDocument()
+    expect(elementOne.parentElement).toBe(wrappers[0])
+    expect(window.getComputedStyle(elementOne).color).toBe('rgb(255, 0, 0)')
+
+    // Check ChildTwo
+    const elementTwo = getByText('Child Two')
+    expect(elementTwo).toBeInTheDocument()
+    expect(elementTwo.parentElement).toBe(wrappers[1])
+    expect(window.getComputedStyle(elementTwo).color).toBe('rgb(0, 0, 255)')
   })
 })
