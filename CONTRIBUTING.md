@@ -71,7 +71,7 @@ For larger design discussions or proposals, opening a GitHub Discussion or draft
 ## Development setup
 
 Prerequisites
-- Node.js (LTS recommended; >= 18)
+- Node.js (LTS recommended; >= 22)
 - Yarn (Berry/Plug'n'Play recommended since the repository includes .yarnrc.yml), or use npm if you prefer.
 
 Quick start
