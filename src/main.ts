@@ -10,6 +10,7 @@ export * from '@src/helper/node.helper.js'
 export * from '@src/node.type.js'
 
 // Components
+export * from '@src/components/react.node.js'
 export * from '@src/components/html.node.js'
 export * from '@src/components/theme-provider.js'
 
