@@ -217,7 +217,11 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
           newValue = value // Ignore function
         }
       } else if (
-        (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype) ||
+        (typeof value === 'object' &&
+          value !== null &&
+          !Array.isArray(value) &&
+          Object.getPrototypeOf(value) !== Object.prototype &&
+          Object.getPrototypeOf(value) !== null) ||
         (typeof value !== 'object' && typeof value !== 'string')
       ) {
         newValue = value // Ignore non-plain objects and primitives other than strings
