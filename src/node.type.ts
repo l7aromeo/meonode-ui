@@ -1,4 +1,3 @@
-'use strict'
 import React, {
   type CSSProperties,
   type ReactNode,

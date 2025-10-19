@@ -1,4 +1,3 @@
-'use strict'
 import type { CSSInterpolation, CSSProperties } from '@emotion/serialize'
 import type { NodeInstance } from '@src/node.type.js'
 

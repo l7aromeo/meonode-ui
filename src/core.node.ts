@@ -1,4 +1,3 @@
-'use strict'
 import React, {
   type ComponentProps,
   createElement,

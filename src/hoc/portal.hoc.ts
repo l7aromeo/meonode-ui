@@ -1,4 +1,3 @@
-'use strict'
 import { BaseNode, Node } from '@src/core.node.js'
 import type { BasePortalProps, ComponentNode, NodeElement, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps } from '@src/node.type.js'
 import type { ReactNode } from 'react'

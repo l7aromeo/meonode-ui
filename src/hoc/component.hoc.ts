@@ -1,5 +1,3 @@
-'use strict'
-
 import { BaseNode, Node } from '@src/core.node.js'
 import type { Children, ComponentNode, HasCSSCompatibleStyleProp } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
