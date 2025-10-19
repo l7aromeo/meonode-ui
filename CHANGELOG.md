@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11] - 2025-10-19
+
+### Added
+- **components**: add react activity node and export it in main ([`aadbc2d`](https://github.com/l7aromeo/meonode-ui/commit/aadbc2d08a928f1ba88bd4572b45eed8cb100a87))
+- **theme.helper**: update resolveObjWithTheme to improve object type checking ([`da1ce4c`](https://github.com/l7aromeo/meonode-ui/commit/da1ce4cd53ccbe2d2a562a49730151434177dc59))
+
+### Changed
+- **chore**: update dependencies in package.json and yarn.lock ([`0c0ced6`](https://github.com/l7aromeo/meonode-ui/commit/0c0ced68662bb701634d49dc79da86e4ddce5392))
+- **chore**: remove 'use strict' directive from multiple files ([`17d79dc`](https://github.com/l7aromeo/meonode-ui/commit/17d79dcb105a8c2062695071c3f587f6db9a5711))
+
+### Docs
+- **docs**: update Node.js version requirement in CONTRIBUTING.md ([`4c577c3`](https://github.com/l7aromeo/meonode-ui/commit/4c577c3e23294bdc188cda5b14375af1cb967888))
+
+### Test
+- **node**: add test case for preserving Node instances passed through props and theme resolution ([`f4d1344`](https://github.com/l7aromeo/meonode-ui/commit/f4d1344355f2a4631ccdf04998bcf618d4ce1dc6))
+
 ## [0.3.10] - 2025-10-09
 
 ### Fixed
