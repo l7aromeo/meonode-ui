@@ -23,7 +23,6 @@
     "dist",
     "package.json",
     "LICENSE",
-    "CHANGELOG.md",
     "README.md"
   ],
   "scripts": {
