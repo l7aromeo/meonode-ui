@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13] - 2025-10-30
+
+### Fixed
+- **theme.helper**: process theme strings returned from functions ([`286fd89`](https://github.com/l7aromeo/meonode-ui/commit/286fd89e28cc10b467a208be4cdf1b7508d0be8c))
+
 ## [0.3.12] - 2025-10-23
 
 ### Added
