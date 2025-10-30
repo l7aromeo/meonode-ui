@@ -212,9 +212,14 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
       if (typeof value === 'function') {
         if (processFunctions) {
           const funcResult = value(theme)
-          newValue = resolveRecursively(funcResult, visited)
+          // Process string results that contain theme references
+          if (typeof funcResult === 'string' && funcResult.includes('theme.')) {
+            newValue = processThemeString(funcResult)
+          } else {
+            newValue = resolveRecursively(funcResult, visited)
+          }
         } else {
-          newValue = value // Ignore function
+          newValue = value
         }
       } else if (
         (typeof value === 'object' &&
