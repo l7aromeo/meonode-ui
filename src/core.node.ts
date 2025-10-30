@@ -1,4 +1,5 @@
 import React, {
+  Activity,
   type ComponentProps,
   createElement,
   type ElementType,
@@ -8,6 +9,7 @@ import React, {
   isValidElement,
   type ReactElement,
   type ReactNode,
+  Suspense,
 } from 'react'
 import type {
   Children,
@@ -24,7 +26,7 @@ import type {
   PropsOf,
 } from '@src/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
-import { isForwardRef, isFragment, isMemo, isPortal, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
+import { isActivity, isForwardRef, isFragment, isMemo, isPortal, isReactClassComponent, isSuspense, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
@@ -328,12 +330,33 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       ...nativeProps,
     }
 
-    // Fragment handling
-    if (this.element === Fragment || isFragment(this.element)) {
+    /* Built-in React component handling: Fragment, Suspense, Activity */
+    const checks: Array<(e: any) => boolean> = [
+      e => e === Fragment,
+      e => e === Suspense,
+      e => e === Activity,
+      e => e instanceof Fragment,
+      e => e instanceof Suspense,
+      e => e instanceof Activity,
+      e => isFragment(e),
+      e => isSuspense(e),
+      e => isActivity(e),
+    ]
+
+    const _isBuiltInFragmentOrSuspense = checks.some(fn => {
+      try {
+        return fn(this.element)
+      } catch {
+        return false
+      }
+    })
+
+    if (_isBuiltInFragmentOrSuspense) {
       return createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
     }
+    /* End built-in React component handling */
 
-    // Styled component handling
+    /* Styled component handling */
     if (this.element && !hasNoStyleTag(this.element) && css) {
       try {
         const displayName = getElementTypeName(this.element)
@@ -353,8 +376,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
       )
     }
+    /* End styled component handling */
 
-    // Regular element handling with spread children
+    // Regular element handling
     try {
       ;(this.element as NodeElement & { displayName: string }).displayName = getElementTypeName(this.element)
     } catch {

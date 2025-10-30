@@ -25,6 +25,7 @@ export const REACT_MEMO_TYPE = Symbol.for('react.memo')
 export const REACT_LAZY_TYPE = Symbol.for('react.lazy')
 export const REACT_VIEW_TRANSITION_TYPE = Symbol.for('react.view_transition')
 export const REACT_CLIENT_REFERENCE = Symbol.for('react.client.reference')
+export const REACT_ACTIVITY_TYPE = Symbol.for('react.activity')
 
 /**
  * Union type of all possible React internal type symbols.
@@ -46,6 +47,7 @@ export type ReactTypeSymbols =
   | typeof REACT_LAZY_TYPE
   | typeof REACT_VIEW_TRANSITION_TYPE
   | typeof REACT_CLIENT_REFERENCE
+  | typeof REACT_ACTIVITY_TYPE
 
 /**
  * Interface describing the minimal shape of a React element-like object.
@@ -186,6 +188,20 @@ export const isSuspense = (object: unknown): boolean => typeOf(object) === REACT
  * @returns {boolean} - True if `object` is SuspenseList
  */
 export const isSuspenseList = (object: unknown): boolean => typeOf(object) === REACT_SUSPENSE_LIST_TYPE
+
+/**
+ * Checks if an object is a React ViewTransition component
+ * @param {unknown} object Object to check
+ * @returns {boolean} - True if object is ViewTransition
+ */
+export const isViewTransition = (object: unknown): boolean => typeOf(object) === REACT_VIEW_TRANSITION_TYPE
+
+/**
+ * Checks if an object is a React Activity component
+ * @param {unknown} object Object to check
+ * @returns {boolean} - True if object is Activity
+ */
+export const isActivity = (object: unknown): boolean => typeOf(object) === REACT_ACTIVITY_TYPE
 
 /**
  * Set of known valid React special element types.
