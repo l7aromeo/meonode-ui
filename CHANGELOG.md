@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2025-10-30
+
+### Added
+- **core**: Add handling for Suspense and Activity components ([`0f9fcb1`](https://github.com/l7aromeo/meonode-ui/commit/0f9fcb171fdce28b5a880e69e2d591543e3af817))
+
 ## [0.3.13] - 2025-10-30
 
 ### Fixed
