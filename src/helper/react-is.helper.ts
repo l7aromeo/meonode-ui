@@ -89,6 +89,7 @@ export function typeOf(object: unknown): ReactTypeSymbols | undefined {
               case REACT_FORWARD_REF_TYPE:
               case REACT_LAZY_TYPE:
               case REACT_MEMO_TYPE:
+              case REACT_PROVIDER_TYPE:
               case REACT_CONSUMER_TYPE:
                 return innerType
               default:
@@ -116,7 +117,7 @@ export const isContextConsumer = (object: unknown): boolean => typeOf(object) ==
  * @param {unknown} object Object to check
  * @returns {boolean} - True if object is a Context.Provider
  */
-export const isContextProvider = (object: unknown): boolean => typeOf(object) === REACT_CONTEXT_TYPE
+export const isContextProvider = (object: unknown): boolean => typeOf(object) === REACT_PROVIDER_TYPE
 
 /**
  * Checks if an object is a valid React element
@@ -250,12 +251,11 @@ export const isValidElementType = <T>(type: T): boolean => {
  * @returns {boolean} - True if component is a React class component
  */
 export const isReactClassComponent = (component: unknown): component is React.ComponentType => {
-  if (typeof component !== 'function') return false
-
-  try {
-    const proto = Object.getPrototypeOf(component)
-    return proto === React.Component || proto === React.PureComponent || proto instanceof React.Component
-  } catch {
+  if (typeof component !== 'function') {
     return false
   }
+  // Check for `isReactComponent` flag which is set on class components.
+  // Also handles components created with React.createClass.
+  const prototype = component.prototype
+  return !!(prototype && prototype.isReactComponent)
 }
