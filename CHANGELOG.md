@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2025-11-04
+
+### Added
+- **core**: add disableEmotion prop to disable emotion styling and propagate to children ([`377a9e9`](https://github.com/l7aromeo/meonode-ui/commit/377a9e9d4844ba7869155e686c9b31f0f9ce2329))
+- **react**: enhance isContextProvider and isReactClassComponent checks ([`e8839e4`](https://github.com/l7aromeo/meonode-ui/commit/e8839e4c231bdd66686f7b43d9889a18cd9fc791))
+
 ## [0.3.14] - 2025-10-30
 
 ### Added
