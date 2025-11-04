@@ -425,4 +425,54 @@ describe('BaseNode - Core Functionality', () => {
     expect(elementTwo.parentElement).toBe(wrappers[1])
     expect(window.getComputedStyle(elementTwo).color).toBe('rgb(0, 0, 255)')
   })
+
+  // Test Case 19: disableEmotion propagation
+  it('should propagate disableEmotion to children and prevent styling', () => {
+    const App = Div({
+      disableEmotion: true,
+      children: [
+        Div({
+          'data-testid': 'child1',
+          children: 'Child 1',
+          backgroundColor: 'red',
+        }),
+        () =>
+          Div({
+            'data-testid': 'child2',
+            children: 'Child 2 (from function)',
+            color: 'blue',
+          }),
+      ],
+    })
+
+    const { getByTestId } = render(App.render())
+
+    const child1 = getByTestId('child1')
+    expect(child1).toBeInTheDocument()
+    // Emotion styles should NOT be applied
+    expect(child1).not.toHaveStyleRule('background-color', 'red')
+
+    const child2 = getByTestId('child2')
+    expect(child2).toBeInTheDocument()
+    // Emotion styles should NOT be applied
+    expect(child2).not.toHaveStyleRule('color', 'blue')
+  })
+
+  it('should propagate disableEmotion to BaseNode children', () => {
+    const ChildNode = Div({
+      'data-testid': 'child-node',
+      children: 'Child Node',
+      padding: '10px',
+    })
+
+    const App = Div({
+      disableEmotion: true,
+      children: ChildNode,
+    })
+
+    const { getByTestId } = render(App.render())
+    const child = getByTestId('child-node')
+    expect(child).toBeInTheDocument()
+    expect(child).not.toHaveStyleRule('padding', '10px')
+  })
 })

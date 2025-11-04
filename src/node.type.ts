@@ -147,6 +147,7 @@ export type FinalNodeProps = ReactAttributes &
     ref: any | React.Ref<unknown> | undefined
     style: any
     css: any
+    disableEmotion: boolean
     children: Children
   }>
 
@@ -210,6 +211,7 @@ export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSPropert
   (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? ThemedCSSProperties : object) &
   (HasNoStyleProp<E> extends false ? Partial<{ css: CssProp }> : object) &
   Partial<{
+    disableEmotion: boolean
     props: Partial<Omit<PropsOf<E>, 'children'>>
     children: Children
   }>
@@ -232,6 +234,7 @@ export type NodeFunction<E extends ReactNode | NodeInstance = ReactNode | NodeIn
 export interface FunctionRendererProps<E extends ReactNode | NodeInstance> {
   /** Function that returns the child content to render */
   render: NodeFunction<E>
+  disableEmotion?: boolean
 }
 
 export type ComponentNode = (NodeInstance<any> | ReactNode) | (() => NodeInstance<any> | ReactNode)

@@ -1,14 +1,14 @@
 import React, {
-  Activity,
   type ComponentProps,
-  createElement,
   type ElementType,
   type ExoticComponent,
-  Fragment,
   type FragmentProps,
-  isValidElement,
   type ReactElement,
   type ReactNode,
+  createElement,
+  isValidElement,
+  Activity,
+  Fragment,
   Suspense,
 } from 'react'
 import type {
@@ -80,12 +80,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * Processes raw props into a final, normalized form.
    */
   private _processProps(): FinalNodeProps {
-    const { ref, key, children, css, props: nativeProps = {}, ...restRawProps } = this.rawProps
+    const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
     const { style: nativeStyle, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
     const styleProps = getCSSProps(restRawProps)
     const domProps = getDOMProps(restRawProps)
-    const normalizedChildren = this._processChildren(children)
+    const normalizedChildren = this._processChildren(children, disableEmotion)
 
     return omitUndefined({
       ref,
@@ -93,6 +93,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       css: { ...styleProps, ...css },
       style: nativeStyle,
       ...domProps,
+      disableEmotion,
       nativeProps: restNativeProps,
       children: normalizedChildren,
     })
@@ -101,7 +102,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /**
    * Recursively processes raw children, converting them into `BaseNode` instances as needed.
    */
-  private _processChildren(children: Children) {
+  private _processChildren(children: Children, disableEmotion?: boolean) {
     if (!children) return undefined
 
     let processed: Children
@@ -109,7 +110,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       processed = children
     } else {
       // Process each child node
-      processed = Array.isArray(children) ? children.map(child => BaseNode._processRawNode(child)) : BaseNode._processRawNode(children)
+      processed = Array.isArray(children)
+        ? children.map(child => BaseNode._processRawNode(child, disableEmotion))
+        : BaseNode._processRawNode(children, disableEmotion)
     }
 
     return processed
@@ -118,7 +121,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /**
    * Renders a processed `NodeElement` into a `ReactNode`.
    */
-  private static _renderProcessedNode(processedElement: NodeElement, passedKey?: string) {
+  private static _renderProcessedNode({
+    processedElement,
+    passedKey,
+    disableEmotion,
+  }: {
+    processedElement: NodeElement
+    passedKey?: string
+    disableEmotion?: boolean
+  }) {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
     if (passedKey !== undefined) {
       commonBaseNodeProps.key = passedKey
@@ -126,6 +137,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     if (processedElement instanceof BaseNode || isNodeInstance(processedElement)) {
       const existingKey = processedElement.rawProps?.key
+      processedElement.rawProps.disableEmotion = disableEmotion
       if (existingKey === passedKey) {
         return processedElement.render()
       }
@@ -137,10 +149,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     if (isReactClassComponent(processedElement)) {
-      return new BaseNode(processedElement, commonBaseNodeProps).render()
+      return new BaseNode(processedElement, { ...commonBaseNodeProps, disableEmotion }).render()
     }
 
     if (isNodeInstance(processedElement)) {
+      processedElement.rawProps.disableEmotion = disableEmotion
       return processedElement.render()
     }
 
@@ -174,7 +187,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /**
    * Renders the output of a function-as-a-child.
    */
-  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render }: FunctionRendererProps<E>) {
+  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>) {
     let result: NodeElement
     try {
       result = render()
@@ -186,29 +199,34 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       return result
     }
 
+    if (result instanceof BaseNode || isNodeInstance(result)) {
+      // If disableEmotion is true and the result doesn't have it, create a new node.
+      if (disableEmotion && !result.rawProps.disableEmotion) {
+        return new BaseNode(result.element, { ...result.rawProps, disableEmotion: true }).render()
+      }
+      // Otherwise, just render the result.
+      return result.render()
+    }
+
     if (Array.isArray(result)) {
       return result.map((item, index) => {
-        const processed = BaseNode._processRawNode(item)
-        return BaseNode._renderProcessedNode(processed, `${getElementTypeName(item)}-${index}`)
+        const processed = BaseNode._processRawNode(item, disableEmotion)
+        return BaseNode._renderProcessedNode({ processedElement: processed, passedKey: `${getElementTypeName(item)}-${index}` })
       })
     }
 
     if (result instanceof React.Component) {
       const element = result.render()
-      const processed = BaseNode._processRawNode(element)
-      return BaseNode._renderProcessedNode(processed)
-    }
-
-    if (result instanceof BaseNode || isNodeInstance(result)) {
-      return result.render()
+      const processed = BaseNode._processRawNode(element, disableEmotion)
+      return BaseNode._renderProcessedNode({ processedElement: processed, disableEmotion })
     }
 
     if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
       return result
     }
 
-    const processedResult = BaseNode._processRawNode(result as NodeElement)
-    if (processedResult) return BaseNode._renderProcessedNode(processedResult)
+    const processedResult = BaseNode._processRawNode(result as NodeElement, disableEmotion)
+    if (processedResult) return BaseNode._renderProcessedNode({ processedElement: processedResult, disableEmotion })
 
     return result
   }
@@ -216,7 +234,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   /**
    * Processes a single raw node, recursively converting it into a `BaseNode` or other renderable type.
    */
-  private static _processRawNode(node: NodeElement): NodeElement {
+  private static _processRawNode(node: NodeElement, disableEmotion?: boolean): NodeElement {
     // Primitives and null/undefined - return as-is
     if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') {
       return node
@@ -224,12 +242,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     // Already processed nodes - return as-is
     if (node instanceof BaseNode || isNodeInstance(node)) {
+      if (disableEmotion && !node.rawProps.disableEmotion) {
+        return new BaseNode(node.element, { ...node.rawProps, disableEmotion: true })
+      }
       return node
     }
 
     // Function children (render props) - wrap in function renderer
     if (BaseNode._isFunctionChild(node)) {
-      return new BaseNode(BaseNode._functionRenderer, { render: node })
+      return new BaseNode(BaseNode._functionRenderer, { props: { render: node, disableEmotion } })
     }
 
     // React elements - extract props and wrap in BaseNode
@@ -241,18 +262,19 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         ...combinedProps,
         // Only preserve non-null keys
         ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
+        disableEmotion,
       })
     }
 
     // Component types - wrap in BaseNode
     if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) {
-      return new BaseNode(node as ElementType, {})
+      return new BaseNode(node as ElementType, { disableEmotion })
     }
 
     // React.Component instances - render and process recursively
     if (node instanceof React.Component) {
       const element = node.render()
-      return BaseNode._processRawNode(element)
+      return BaseNode._processRawNode(element, disableEmotion)
     }
 
     // Everything else - return as-is
@@ -297,7 +319,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
 
-    const { children: childrenInProps, key, css, nativeProps, ...otherProps } = this.props
+    const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = this.props
 
     let finalChildren: ReactNode | ReactNode[] = undefined
 
@@ -323,6 +345,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       finalChildren = this._normalizedChildren
     }
 
+    // Fragment handling
+    if (this.element === Fragment || isFragment(this.element)) {
+      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
+    }
+
     // Common props for all createElement calls
     const elementProps = {
       ...(otherProps as ComponentProps<ElementType>),
@@ -330,20 +357,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       ...nativeProps,
     }
 
-    /* Built-in React component handling: Fragment, Suspense, Activity */
-    const checks: Array<(e: any) => boolean> = [
-      e => e === Fragment,
-      e => e === Suspense,
-      e => e === Activity,
-      e => e instanceof Fragment,
-      e => e instanceof Suspense,
-      e => e instanceof Activity,
-      e => isFragment(e),
-      e => isSuspense(e),
-      e => isActivity(e),
-    ]
+    // Determine if the element is a non-styled React component
+    const checks: Array<(e: any) => boolean> = [e => e === Suspense, e => e === Activity, e => isSuspense(e), e => isActivity(e)]
 
-    const _isBuiltInFragmentOrSuspense = checks.some(fn => {
+    const isNonStyledReactComponent = checks.some(fn => {
       try {
         return fn(this.element)
       } catch {
@@ -351,13 +368,22 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       }
     })
 
-    if (_isBuiltInFragmentOrSuspense) {
-      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
-    }
-    /* End built-in React component handling */
+    // Determine if the element is a styled component
+    const isStyledComponent =
+      this.element &&
+      !hasNoStyleTag(this.element) &&
+      css &&
+      !disableEmotion &&
+      !isNonStyledReactComponent &&
+      !isFragment(this.element) &&
+      this.element !== Fragment &&
+      !isSuspense(this.element) &&
+      this.element !== Suspense &&
+      !isActivity(this.element) &&
+      this.element !== Activity
 
     /* Styled component handling */
-    if (this.element && !hasNoStyleTag(this.element) && css) {
+    if (isStyledComponent) {
       try {
         const displayName = getElementTypeName(this.element)
         StyledRenderer.displayName = `Styled(${displayName})`
