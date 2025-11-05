@@ -25,3 +25,4 @@ export const NO_STYLE_TAGS = [
 ] as const
 
 export const noStyleTagsSet = new Set(NO_STYLE_TAGS)
+export type NO_STYLE_TAGS = typeof NO_STYLE_TAGS
