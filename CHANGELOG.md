@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2025-11-05
+
+### Added
+- **tests**: add tests for Fragment, Suspense, and Activity components to verify styling prop handling ([`2af386f`](https://github.com/l7aromeo/meonode-ui/commit/2af386f))
+- **core**: enhance NodeProps type to conditionally include built-in React components ([`3b8a4cb`](https://github.com/l7aromeo/meonode-ui/commit/3b8a4cb))
+- **react**: add REACT_ACTIVITY_TYPE to react-is helper ([`e91e48f`](https://github.com/l7aromeo/meonode-ui/commit/e91e48f))
+- **core**: export NO_STYLE_TAGS type for better type inference ([`a6db6e8`](https://github.com/l7aromeo/meonode-ui/commit/a6db6e8))
+- **react**: add Fragment component to create a container without extra DOM elements ([`d5e376a`](https://github.com/l7aromeo/meonode-ui/commit/d5e376a))
+
 ## [0.3.15] - 2025-11-04
 
 ### Added
@@ -35,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **chore**: update dependencies in package.json and yarn.lock ([`0c0ced6`](https://github.com/l7aromeo/meonode-ui/commit/0c0ced68662bb701634d49dc79da86e4ddce5392))
-- **chore**: remove 'use strict' directive from multiple files ([`17d79dc`](https://github.com/l7aromeo/meonode-ui/commit/17d79dcb105a8c2062695071c3f587f6db9a5711))
+- **chore**: remove \'use strict\' directive from multiple files ([`17d79dc`](https://github.com/l7aromeo/meonode-ui/commit/17d79dcb105a8c2062695071c3f587f6db9a5711))
 
 ### Docs
 - **docs**: update Node.js version requirement in CONTRIBUTING.md ([`4c577c3`](https://github.com/l7aromeo/meonode-ui/commit/4c577c3e23294bdc188cda5b14375af1cb967888))
@@ -136,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **feat(theme):** use React Context for theme propagation
 
   **Before**:
-  '''typescript
+  ```typescript
   import { Div } from '@meonode/ui';
 
   const App = () => {
@@ -147,10 +156,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       children: 'Hello world!',
     });
   };
-  '''
+  ```
 
   **After**:
-  '''typescript
+  ```typescript
   import { Div, ThemeProvider } from '@meonode/ui';
 
   const App = () => {
@@ -173,7 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       ],
     });
   };
-  '''
+  ```
 
 ## [0.2.21] - 2025-09-23
 
@@ -233,7 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **feat(portal)**: use `usePortal` hook to make the portal reactive to state changes
 
-  '''typescript
+  ```typescript
   import { Button, Div, Node, Portal, type PortalProps } from '@meonode/ui';
   import { usePortal } from '@meonode/ui';
   import { useState } from 'react';
@@ -272,7 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       ],
     }).render();
   };
-  '''
+  ```
 
 ## [0.2.17] - 2025-09-14
 
@@ -384,22 +393,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **core**: add top-level `render` function for a cleaner and simpler API when mounting a Meonode instance to the DOM.
   This abstracts away the need to manually use `react-dom/client`.
     - **Before**:
-      '''typescript
+      ```typescript
       import { createRoot } from 'react-dom/client';
       import { Div } from '@meonode/ui';
   
       const container = document.getElementById('root');
       const root = createRoot(container);
       root.render(Div({ children: 'Hello' }).render());
-      '''
+      ```
     - **After**:
-      '''typescript
+      ```typescript
       import { Div } from '@meonode/ui';
       import { render } from '@meonode/ui/client';
   
       const container = document.getElementById('root');
       render(Div({ children: 'Hello' }), container);
-      '''
+      ```
 - **constants**: add `NO_STYLE_TAGS` array and `noStyleTagsSet` for quick lookup of tags that should not receive styles
 
 ### Enhanced
@@ -431,7 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplifies and unifies the typing system for node factories (`createNode`, `createChildrenFirstNode`).
 - Improves developer experience when working with prebuilt components:
     - Example:
-      '''typescript
+      ```typescript
       import { Div, Input } from '@meonode/ui'
   
       // Add new props
@@ -441,7 +450,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       Input<{ onChange: (e: { target: { value: string } }) => void }>({ 
         onChange: ({ target }) => console.log(target.value),
       })
-      '''
+      ```
   Extending prebuilt components is now safer and more predictable, with generic props always taking precedence when keys
   overlap.
 
@@ -473,7 +482,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **core**: Exposed the original element via the created Node for easier access and debugging.
-    '''typescript
+    ```typescript
     import { createNode } from "@meonode/ui";
 
     // Create a Node wrapping a 'div' element
@@ -481,7 +490,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     // Access the underlying element type
     console.log(MyComp.element); // 'div'
-    '''
+    ```
 
 ## [0.2.3] - 2025-09-01
 
