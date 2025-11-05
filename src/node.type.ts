@@ -8,6 +8,9 @@ import React, {
   type Component,
   type ExoticComponent,
   type ReactElement,
+  type FragmentProps,
+  type SuspenseProps,
+  type ActivityProps,
 } from 'react'
 import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
@@ -26,6 +29,13 @@ export type HasRequiredProps<T> = RequiredKeys<T> extends never ? false : true
 export interface ReactAttributes {
   key?: string
 }
+
+/**
+ * Type guard to check if a given element is a built-in React component (Fragment, Suspense, Activity).
+ * @template E - The element type to check
+ */
+export type IsReactBuiltInComponent<E> =
+  E extends ExoticComponent<FragmentProps> ? true : E extends ExoticComponent<SuspenseProps> ? true : E extends ExoticComponent<ActivityProps> ? true : false
 
 /**
  * Excludes array types from ReactNode, ensuring a single, non-array React element or primitive.
@@ -206,15 +216,23 @@ export type HasNoStyleProp<E extends NodeElement> = E extends NoStyleTags ? true
  * - Maintains React's key prop for reconciliation
  * @template E - The element type these props apply to
  */
-export type NodeProps<E extends NodeElement> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'props' | 'key'> &
-  ReactAttributes &
-  (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? ThemedCSSProperties : object) &
-  (HasNoStyleProp<E> extends false ? Partial<{ css: CssProp }> : object) &
-  Partial<{
-    disableEmotion: boolean
-    props: Partial<Omit<PropsOf<E>, 'children'>>
-    children: Children
-  }>
+export type NodeProps<E extends NodeElement> =
+  IsReactBuiltInComponent<E> extends false
+    ? Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'style' | 'props' | 'key'> &
+        ReactAttributes &
+        (HasCSSCompatibleStyleProp<PropsOf<E>> extends true ? ThemedCSSProperties : object) &
+        (HasNoStyleProp<E> extends false ? Partial<{ css: CssProp }> : object) &
+        Partial<{
+          disableEmotion: boolean
+          props: Partial<Omit<PropsOf<E>, 'children'>>
+          children: Children
+        }>
+    : PropsOf<E> &
+        ReactAttributes &
+        Partial<{
+          disableEmotion: boolean
+          children: Children
+        }>
 
 /**
  * Function type for dynamic node content generation.

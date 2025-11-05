@@ -546,7 +546,7 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
     Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps)
 
   Instance.element = element
-  return Instance
+  return Instance as any
 }
 
 /**
@@ -570,5 +570,5 @@ export function createChildrenFirstNode<AdditionalInitialProps extends Record<st
   ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
 
   Instance.element = element
-  return Instance
+  return Instance as any
 }
