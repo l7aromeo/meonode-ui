@@ -1,4 +1,4 @@
-import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, type Theme, type NodeInstance } from '@src/main.js'
+import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, type Theme, type NodeInstance, Fragment, Suspense, Activity } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 describe('BaseNode - Core Functionality', () => {
-  // Test Case 1: Basic Div rendering
+  // Basic Div rendering
   it('should render an empty prop Div node', () => {
     const App = Div()
     const { container } = render(App.render())
@@ -33,7 +33,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(getByText('Hello, World!')).toBeInTheDocument()
   })
 
-  // Test Case 2: Rendering different HTML elements
+  // Rendering different HTML elements
   it('should render a paragraph (P) element', () => {
     const App = P('This is a paragraph.')
     const { getByText } = render(App.render())
@@ -55,7 +55,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(getByText('Inline Text').tagName).toBe('SPAN')
   })
 
-  // Test Case 3: Applying basic CSS properties
+  // Applying basic CSS properties
   it('should apply basic CSS properties to a Div', () => {
     const App = Div({
       children: 'Styled Div',
@@ -70,7 +70,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(element).toHaveStyleRule('font-size', '20px')
   })
 
-  // Test Case 4: Applying `css` prop (Emotion.js)
+  // Applying `css` prop (Emotion.js)
   it('should apply css prop for Emotion styling', () => {
     const App = Div({
       children: 'Emotion Styled Div',
@@ -82,7 +82,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(element).toHaveStyleRule('padding', '10px')
   })
 
-  // Test Case 5: Handling multiple and nested children
+  // Handling multiple and nested children
   it('should render multiple children', () => {
     const App = Div({
       children: [P('First paragraph'), P('Second paragraph')],
@@ -105,7 +105,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(getByText('Nested Text').parentElement?.parentElement?.tagName).toBe('DIV')
   })
 
-  // Test Case 6: Handling function as children (render props)
+  // Handling function as children (render props)
   it('should render content from a function as child with props and context from a Provider', () => {
     function DataProvider({ children }: { children: (props: { data: string[]; loading: boolean }) => any }) {
       const [data] = useState(['User 1', 'User 2'])
@@ -128,7 +128,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(getByText('User 2')).toBeInTheDocument()
   })
 
-  // Test Case 7: Theme propagation and inheritance
+  // Theme propagation and inheritance
   it('should propagate theme to children', () => {
     const myTheme: Theme = {
       mode: 'light',
@@ -228,7 +228,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(computedStyles.color).toBe('rgb(255, 0, 0)')
   })
 
-  // Test Case 8: `createChildrenFirstNode` usage (e.g., Text)
+  // `createChildrenFirstNode` usage (e.g., Text)
   it('should render Text component with children first', () => {
     const App = Text('Hello Text Component', { fontSize: '18px' })
     const { getByText } = render(App.render())
@@ -240,7 +240,7 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 9: `Node` factory usage
+  // `Node` factory usage
   it('should create and render a node using the Node factory', () => {
     const App = Node('span', { children: 'Node Factory Span', className: 'my-span' })
     const { getByText } = render(App.render())
@@ -252,7 +252,77 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 10: Root component with default styles (Emotion-based)
+  // Built-in React components (Fragment, Suspense, Activity)
+  it('should not apply styling props to Fragment component', () => {
+    const App = Fragment({
+      children: Div({ children: 'Fragment Child' }),
+      // These styling props should be ignored by Fragment
+      backgroundColor: 'red',
+      css: { border: '1px solid green' },
+    })
+    const { getByText, container } = render(App.render())
+
+    // Verify that the child is rendered
+    const childElement = getByText('Fragment Child')
+    expect(childElement).toBeInTheDocument()
+
+    // Verify that the Fragment itself does not have styling applied
+    // React Fragment renders as a DocumentFragment, which does not have style properties
+    expect(container.firstChild).not.toHaveStyleRule('background-color', 'red')
+    expect(container.firstChild).not.toHaveStyleRule('border', '1px solid green')
+
+    // Verify that the child element does not inherit styles from the Fragment (as Fragment should ignore them)
+    expect(childElement).not.toHaveStyleRule('background-color', 'red')
+    expect(childElement).not.toHaveStyleRule('border', '1px solid green')
+  })
+
+  it('should not apply styling props to Suspense component', () => {
+    const App = Suspense({
+      fallback: Div({ children: 'Loading...' }),
+      children: Div({ children: 'Suspense Child' }),
+      // These styling props should be ignored by Suspense
+      backgroundColor: 'blue',
+      css: { border: '1px solid yellow' },
+    })
+    const { getByText, container } = render(App.render())
+
+    // Verify that the child is rendered (or fallback if not yet resolved)
+    const childElement = getByText('Suspense Child')
+    expect(childElement).toBeInTheDocument()
+
+    // Verify that the Suspense component itself does not have styling applied
+    // Suspense renders its children directly, or a fallback, and does not create a DOM element for itself
+    expect(container.firstChild).not.toHaveStyleRule('background-color', 'blue')
+    expect(container.firstChild).not.toHaveStyleRule('border', '1px solid yellow')
+
+    // Verify that the child element does not inherit styles from Suspense (as Suspense should ignore them)
+    expect(childElement).not.toHaveStyleRule('background-color', 'blue')
+    expect(childElement).not.toHaveStyleRule('border', '1px solid yellow')
+  })
+
+  it('should not apply styling props to Activity component', () => {
+    const App = Activity({
+      children: Div({ children: 'Activity Child' }),
+      // These styling props should be ignored by Activity
+      backgroundColor: 'green',
+      css: { border: '1px solid purple' },
+    })
+    const { getByText, container } = render(App.render())
+
+    // Verify that the child is rendered
+    const childElement = getByText('Activity Child')
+    expect(childElement).toBeInTheDocument()
+
+    // Verify that the Activity component itself does not have styling applied
+    // Activity renders its children directly and does not create a DOM element for itself
+    expect(container.firstChild).not.toHaveStyleRule('background-color', 'green')
+    expect(container.firstChild).not.toHaveStyleRule('border', '1px solid purple')
+
+    // Verify that the child element does not inherit styles from Activity (as Activity should ignore them)
+    expect(childElement).not.toHaveStyleRule('background-color', 'green')
+    expect(childElement).not.toHaveStyleRule('border', '1px solid purple')
+  })
+
   it('should render Root component and apply styles via Emotion', () => {
     const App = Root({ children: 'Root Content' })
     const { getByText } = render(App.render())
@@ -261,7 +331,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(element).toHaveStyleRule('display', 'flex')
   })
 
-  // Test Case 11: Props merging with nativeProps
+  // Root component with default styles (Emotion-based)
   it('should merge nativeProps correctly', () => {
     const App = Div({
       children: 'Native Props Test',
@@ -275,7 +345,7 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 12: Ref forwarding (basic check, full ref testing is complex)
+  // Ref forwarding (basic check, full ref testing is complex)
   it('should allow ref to be passed', () => {
     const ref = createRef<HTMLDivElement>()
     const App = Div({ children: 'Ref Test', ref: ref })
@@ -284,7 +354,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(ref.current).toHaveTextContent('Ref Test')
   })
 
-  // Test Case 13: toHaveStyle with inline styles
+  // toHaveStyle with inline styles
   it('should apply inline styles correctly', () => {
     const App = Node('div', { children: 'Inline Styled Div', style: { backgroundColor: 'purple', border: '2px solid orange' } })
     const { getByText } = render(App.render())
@@ -296,7 +366,7 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 14: expect custom props type safety (compile-time check)
+  // expect custom props type safety (compile-time check)
   it('should apply custom props with type safety', () => {
     const Comp = Div<{ 'data-custom': string }>({ 'data-custom': 'custom-value', children: 'Custom Prop Div' })
     const { getByText } = render(Comp.render())
@@ -306,14 +376,14 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 15: expect custom props type error (compile-time check)
+  // expect custom props type error (compile-time check)
   it('should expect custom props type error', () => {
     // This line should cause a TypeScript error as intended
     // @ts-expect-error: 'data-custom' should be a string, not a number
     Div<{ 'data-custom': string }>({ 'data-custom': 2 })
   })
 
-  // Test Case 16: Portal System
+  // Portal System
   it('should render content in a portal and unmount it', () => {
     const PortalContent = Div({ children: 'Portal Content' })
     const MyPortal = Portal(() => PortalContent)
@@ -330,7 +400,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(document.body).not.toHaveTextContent('Portal Content')
   })
 
-  // Test Case 17: Display Name as expected (for debugging and React DevTools)
+  // Display Name as expected (for debugging and React DevTools)
   it('should have correct display names for components', async () => {
     function hasDisplayName(type: any): type is { displayName: string } {
       return type && typeof type === 'object' && 'displayName' in type
@@ -370,7 +440,7 @@ describe('BaseNode - Core Functionality', () => {
     }
   })
 
-  // Test Case 18: Preserving Node instances in props and resolving themes
+  // Preserving Node instances in props and resolving themes
   it('should preserve Node instances passed in props and resolve their themes correctly', () => {
     const theme: Theme = {
       mode: 'light',
@@ -426,7 +496,7 @@ describe('BaseNode - Core Functionality', () => {
     expect(window.getComputedStyle(elementTwo).color).toBe('rgb(0, 0, 255)')
   })
 
-  // Test Case 19: disableEmotion propagation
+  // disableEmotion propagation
   it('should propagate disableEmotion to children and prevent styling', () => {
     const App = Div({
       disableEmotion: true,
