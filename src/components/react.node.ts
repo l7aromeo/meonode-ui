@@ -1,5 +1,24 @@
-import { Activity as BaseActivity, Suspense as BaseSuspense } from 'react'
+import { Fragment as BaseFragment, Activity as BaseActivity, Suspense as BaseSuspense } from 'react'
 import { createNode } from '@src/core.node.js'
+
+/**
+ * A container that does not render any extra DOM element.
+ * @see {@link https://react.dev/reference/react/Fragment React Docs}
+ * @example
+ *
+ * ```typescript
+ * import { Fragment, Div, Span } from '@meonode/ui';
+ *
+ * Fragment({
+ *   children: [
+ *     Div('First Div'),
+ *     Span('A Span inside Fragment'),
+ *     Div('Second Div'),
+ *   ],
+ * })
+ * ```
+ */
+export const Fragment = createNode(BaseFragment)
 
 /**
  * Lets you hide and restore the UI and internal state of its children.
