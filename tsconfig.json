@@ -1,7 +1,18 @@
 {
-  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "types": ["jest", "@testing-library/jest-dom"]
+    "types": ["jest", "@testing-library/jest-dom"],
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"]
+    },
+    "outDir": "dist",
+    "importHelpers": true,
+    "isolatedModules": true
   },
-  "include": ["src", "test"]
+  "include": ["src"]
 }
