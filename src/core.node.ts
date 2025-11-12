@@ -7,9 +7,7 @@ import React, {
   type ReactNode,
   createElement,
   isValidElement,
-  Activity,
   Fragment,
-  Suspense,
 } from 'react'
 import type {
   Children,
@@ -26,48 +24,59 @@ import type {
   PropsOf,
 } from '@src/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
-import { isActivity, isForwardRef, isFragment, isMemo, isPortal, isReactClassComponent, isSuspense, isValidElementType } from '@src/helper/react-is.helper.js'
+import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 
 /**
- * Represents a node in a React component tree.
- * This class wraps React elements and handles:
- * - Props processing and normalization
- * - Child node processing and management
- * - Style processing
- * @template E The type of React element or component this node represents
+ * Defines the structure for caching CSS property processing results.
+ * This cache helps to avoid re-computing CSS props for the same set of input props,
+ * significantly speeding up rendering for components with static styles.
+ * @interface PropProcessingCache
+ * @property {Record<string, any>} cssProps - The computed CSS properties.
+ * @property {string} signature - A unique signature generated from the cacheable props.
+ */
+interface PropProcessingCache {
+  cssProps: Record<string, any>
+  signature: string
+}
+
+/**
+ * The core abstraction of the MeoNode library. It wraps a React element or component,
+ * providing a unified interface for processing props, normalizing children, and handling styles.
+ * This class is central to the library's ability to offer a JSX-free, fluent API for building UIs.
+ * It uses an iterative rendering approach to handle deeply nested structures without causing stack overflows.
+ * @class BaseNode
+ * @template E - The type of React element or component this node represents.
  */
 export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
-  /** The underlying React element or component type that this node represents */
   public element: E
-  /** Original props passed during construction, preserved for cloning/recreation */
   public rawProps: Partial<NodeProps<E>> = {}
-  /** Flag to identify BaseNode instances */
   public readonly isBaseNode = true
 
-  /** Processed props after style processing, and child normalization */
   private _props?: FinalNodeProps
-  /** DOM element used for portal rendering */
   private _portalDOMElement: HTMLDivElement | null = null
-  /** React root instance for portal rendering */
   private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
-  /** Cache for normalized children */
-  private _normalizedChildren?: ReactNode | ReactNode[]
-  /** Indicates whether the code is running on the server (true) or client (false) */
-  private static _isServer = typeof window === 'undefined'
 
-  /**
-   * Constructs a new BaseNode instance.
-   */
+  private static _isServer = typeof window === 'undefined'
+  private static _propProcessingCache = new Map<string, PropProcessingCache>()
+  private static _isValidElement = isValidElementType
+
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}) {
+    // Element type validation is performed once at construction to prevent invalid nodes from being created.
+    if (!BaseNode._isValidElement(element)) {
+      const elementType = getComponentType(element)
+      throw new Error(`Invalid element type: ${elementType} provided!`)
+    }
     this.element = element
     this.rawProps = rawProps
   }
 
   /**
    * Lazily processes and retrieves the final, normalized props for the node.
+   * The props are processed only once and then cached for subsequent accesses.
+   * @getter props
    */
   public get props(): FinalNodeProps {
     if (!this._props) {
@@ -76,50 +85,243 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     return this._props
   }
 
+  // --- Prop Caching and Processing ---
+
   /**
-   * Processes raw props into a final, normalized form.
+   * A fast, non-cryptographic hash function (FNV-1a) used to generate a unique signature for a set of props.
+   * This is significantly faster than `JSON.stringify` for creating cache keys.
+   * @method _hashString
+   */
+  private static _hashString(str: string): string {
+    let hash = 2166136261 // FNV offset basis
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i)
+      hash = Math.imul(hash, 16777619) // FNV prime
+    }
+    return (hash >>> 0).toString(36)
+  }
+
+  /**
+   * Creates a unique, stable signature from a set of props. This signature is used as a key for caching computed CSS props.
+   * It serializes only primitive values and the structure of objects/arrays to ensure speed and stability.
+   * @method _createPropSignature
+   */
+  private static _createPropSignature(props: Record<string, any>): string {
+    const keys = Object.keys(props).sort()
+    let signatureStr = ''
+
+    for (const key of keys) {
+      const val = props[key]
+      let valStr: string
+
+      const valType = typeof val
+      if (valType === 'string' || valType === 'number' || valType === 'boolean') {
+        valStr = `${key}:${val};`
+      } else if (val === null) {
+        valStr = `${key}:null;`
+      } else if (val === undefined) {
+        valStr = `${key}:undefined;`
+      } else if (Array.isArray(val)) {
+        valStr = `${key}:[${val.length}];`
+      } else {
+        valStr = `${key}:{${Object.keys(val).length}};`
+      }
+      signatureStr += valStr
+    }
+
+    return BaseNode._hashString(signatureStr)
+  }
+
+  /**
+   * Retrieves computed CSS props from the cache if available. If not, it computes them,
+   * adds them to the cache, and then returns them. An LRU-like mechanism is used to prevent the cache from growing indefinitely.
+   * @method _getCachedCssProps
+   */
+  private static _getCachedCssProps(cacheableProps: Record<string, any>, signature: string): { cssProps: Record<string, any> } {
+    const cached = BaseNode._propProcessingCache.get(signature)
+    if (cached) {
+      return { cssProps: cached.cssProps }
+    }
+
+    const cssProps = getCSSProps(cacheableProps)
+    BaseNode._propProcessingCache.set(signature, { cssProps, signature })
+
+    // LRU-like cache eviction policy.
+    if (BaseNode._propProcessingCache.size > 500) {
+      const firstKey = BaseNode._propProcessingCache.keys().next().value
+      if (firstKey) BaseNode._propProcessingCache.delete(firstKey)
+    }
+
+    return { cssProps }
+  }
+
+  /**
+   * Separates props into cacheable (primitives, arrays, plain objects) and non-cacheable (functions) groups.
+   * This is crucial for ensuring that only serializable, static values are used for generating cache signatures.
+   * @method _splitProps
+   */
+  private static _splitProps(props: Record<string, any>): { cacheable: Record<string, any> } {
+    const cacheable: Record<string, any> = {}
+    for (const key in props) {
+      if (Object.prototype.hasOwnProperty.call(props, key)) {
+        // Functions are not cacheable as their references change.
+        if (typeof props[key] !== 'function') {
+          cacheable[key] = props[key]
+        }
+      }
+    }
+    return { cacheable }
+  }
+
+  /**
+   * The main prop processing pipeline. It orchestrates splitting props, generating cache signatures,
+   * retrieving cached CSS props, computing DOM props, and normalizing children.
+   * @method _processProps
    */
   private _processProps(): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
-    const { style: nativeStyle, ...restNativeProps } = nativeProps as Omit<PropsOf<E>, 'children'>
 
-    const styleProps = getCSSProps(restRawProps)
+    // --- Fast Path Optimization ---
+    // For simple nodes with no styling props, we can bypass most of the expensive processing.
+    // This dramatically improves performance for deeply nested, unstyled structures.
+    if (Object.keys(restRawProps).length === 0 && !css) {
+      return omitUndefined({
+        ref,
+        key,
+        css: {},
+        style: (nativeProps as any).style,
+        disableEmotion,
+        nativeProps: omitUndefined(nativeProps),
+        children: this._processChildren(children, disableEmotion),
+      })
+    }
+
+    // --- Prop Caching and Computation ---
+    const { cacheable } = BaseNode._splitProps(restRawProps)
+    const signature = BaseNode._createPropSignature(cacheable)
+    const { cssProps: cachedCssProps } = BaseNode._getCachedCssProps(cacheable, signature)
+
+    // DOM props (like event handlers) are always computed fresh to ensure reference correctness.
     const domProps = getDOMProps(restRawProps)
+
+    // Merge computed CSS props with any explicit `css` prop provided.
+    const finalCssProps = { ...cachedCssProps, ...css }
+
+    // --- Child Normalization ---
     const normalizedChildren = this._processChildren(children, disableEmotion)
 
+    // --- Final Assembly ---
     return omitUndefined({
       ref,
       key,
-      css: { ...styleProps, ...css },
-      style: nativeStyle,
+      css: finalCssProps,
+      style: (nativeProps as any).style,
       ...domProps,
       disableEmotion,
-      nativeProps: restNativeProps,
+      nativeProps: omitUndefined(nativeProps),
       children: normalizedChildren,
     })
   }
 
+  // --- Child Processing ---
+
   /**
-   * Recursively processes raw children, converting them into `BaseNode` instances as needed.
+   * Processes the `children` prop of a node. It handles single children, arrays of children,
+   * and function-as-a-child render props, passing them to `_processRawNode` for normalization.
+   * @method _processChildren
    */
-  private _processChildren(children: Children, disableEmotion?: boolean) {
+  private _processChildren(children: Children, disableEmotion?: boolean): Children {
     if (!children) return undefined
-
-    let processed: Children
-    if (typeof children === 'function') {
-      processed = children
-    } else {
-      // Process each child node
-      processed = Array.isArray(children)
-        ? children.map(child => BaseNode._processRawNode(child, disableEmotion))
-        : BaseNode._processRawNode(children, disableEmotion)
-    }
-
-    return processed
+    if (typeof children === 'function') return children
+    return Array.isArray(children) ? children.map(child => BaseNode._processRawNode(child, disableEmotion)) : BaseNode._processRawNode(children, disableEmotion)
   }
 
   /**
-   * Renders a processed `NodeElement` into a `ReactNode`.
+   * The core normalization function for a single child. It takes any valid `NodeElement`
+   * (primitive, React element, function, `BaseNode` instance) and converts it into a standardized `BaseNode`
+   * instance if it isn't one already. This ensures a consistent structure for the iterative renderer.
+   * @method _processRawNode
+   */
+  private static _processRawNode(node: NodeElement, disableEmotion?: boolean): NodeElement {
+    // Primitives and null/undefined are returned as-is.
+    if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return node
+
+    // If it's already a BaseNode, just ensure the `disableEmotion` flag is propagated.
+    if (isNodeInstance(node)) {
+      if (disableEmotion && !node.rawProps.disableEmotion) return new BaseNode(node.element, { ...node.rawProps, disableEmotion: true })
+      return node
+    }
+
+    // Handle function-as-a-child (render props).
+    if (BaseNode._isFunctionChild(node)) return new BaseNode(BaseNode._functionRenderer as NodeElementType, { props: { render: node, disableEmotion } })
+
+    // Handle standard React elements.
+    if (isValidElement(node)) {
+      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
+      const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
+      return new BaseNode(node.type as ElementType, {
+        ...combinedProps,
+        ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
+        disableEmotion,
+      })
+    }
+
+    // Handle component classes and memos.
+    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return new BaseNode(node as ElementType, { disableEmotion })
+
+    // Handle component instances.
+    if (node instanceof React.Component) return BaseNode._processRawNode(node.render(), disableEmotion)
+
+    return node
+  }
+
+  /**
+   * A helper to reliably identify if a given function is a "function-as-a-child" (render prop)
+   * rather than a standard Function Component.
+   * @method _isFunctionChild
+   */
+  private static _isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
+    if (typeof node !== 'function' || isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return false
+    try {
+      return !(node.prototype && typeof node.prototype.render === 'function')
+    } catch {
+      return true
+    }
+  }
+
+  /**
+   * A wrapper component that executes a function-as-a-child and processes its return value.
+   * @method _functionRenderer
+   */
+  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>) {
+    let result: NodeElement
+    try {
+      result = render()
+    } catch {
+      result = null
+    }
+    if (result === null || result === undefined) return result
+    if (isNodeInstance(result)) {
+      if (disableEmotion && !result.rawProps.disableEmotion) return new BaseNode(result.element, { ...result.rawProps, disableEmotion: true }).render()
+      return result.render()
+    }
+    if (Array.isArray(result)) {
+      return result.map((item, index) =>
+        BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(item, disableEmotion), passedKey: `${getElementTypeName(item)}-${index}` }),
+      )
+    }
+    if (result instanceof React.Component) {
+      return BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(result.render(), disableEmotion), disableEmotion })
+    }
+    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result
+    const processedResult = BaseNode._processRawNode(result as NodeElement, disableEmotion)
+    if (processedResult) return BaseNode._renderProcessedNode({ processedElement: processedResult, disableEmotion })
+    return result
+  }
+
+  /**
+   * A legacy helper for the recursive child processing path. This is primarily used by `_functionRenderer`.
+   * @method _renderProcessedNode
    */
   private static _renderProcessedNode({
     processedElement,
@@ -131,295 +333,103 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     disableEmotion?: boolean
   }) {
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
-    if (passedKey !== undefined) {
-      commonBaseNodeProps.key = passedKey
-    }
-
-    if (processedElement instanceof BaseNode || isNodeInstance(processedElement)) {
-      const existingKey = processedElement.rawProps?.key
-      processedElement.rawProps.disableEmotion = disableEmotion
-      if (existingKey === passedKey) {
-        return processedElement.render()
-      }
-
-      return new BaseNode(processedElement.element, {
-        ...processedElement.rawProps,
-        ...commonBaseNodeProps,
-      }).render()
-    }
-
-    if (isReactClassComponent(processedElement)) {
-      return new BaseNode(processedElement, { ...commonBaseNodeProps, disableEmotion }).render()
-    }
+    if (passedKey !== undefined) commonBaseNodeProps.key = passedKey
 
     if (isNodeInstance(processedElement)) {
+      const existingKey = processedElement.rawProps?.key
       processedElement.rawProps.disableEmotion = disableEmotion
-      return processedElement.render()
+      if (existingKey === passedKey) return processedElement.render()
+      return new BaseNode(processedElement.element, { ...processedElement.rawProps, ...commonBaseNodeProps }).render()
     }
-
-    if (processedElement instanceof React.Component) {
-      return processedElement.render()
-    }
-
-    if (typeof processedElement === 'function') {
-      return createElement(processedElement as ElementType, { key: passedKey })
-    }
-
+    if (isReactClassComponent(processedElement)) return new BaseNode(processedElement, { ...commonBaseNodeProps, disableEmotion }).render()
+    if (processedElement instanceof React.Component) return processedElement.render()
+    if (typeof processedElement === 'function') return createElement(processedElement as ElementType, { key: passedKey })
     return processedElement as ReactNode
   }
 
-  /**
-   * Checks if a node is a function child (render prop style).
-   */
-  private static _isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
-    if (typeof node !== 'function') return false
-    if (isReactClassComponent(node)) return false
-    if (isMemo(node)) return false
-    if (isForwardRef(node)) return false
-
-    try {
-      return !(node.prototype && typeof node.prototype.render === 'function')
-    } catch {
-      return true
-    }
-  }
+  // --- Iterative Renderer ---
 
   /**
-   * Renders the output of a function-as-a-child.
-   */
-  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>) {
-    let result: NodeElement
-    try {
-      result = render()
-    } catch {
-      result = null
-    }
-
-    if (result === null || result === undefined) {
-      return result
-    }
-
-    if (result instanceof BaseNode || isNodeInstance(result)) {
-      // If disableEmotion is true and the result doesn't have it, create a new node.
-      if (disableEmotion && !result.rawProps.disableEmotion) {
-        return new BaseNode(result.element, { ...result.rawProps, disableEmotion: true }).render()
-      }
-      // Otherwise, just render the result.
-      return result.render()
-    }
-
-    if (Array.isArray(result)) {
-      return result.map((item, index) => {
-        const processed = BaseNode._processRawNode(item, disableEmotion)
-        return BaseNode._renderProcessedNode({ processedElement: processed, passedKey: `${getElementTypeName(item)}-${index}` })
-      })
-    }
-
-    if (result instanceof React.Component) {
-      const element = result.render()
-      const processed = BaseNode._processRawNode(element, disableEmotion)
-      return BaseNode._renderProcessedNode({ processedElement: processed, disableEmotion })
-    }
-
-    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
-      return result
-    }
-
-    const processedResult = BaseNode._processRawNode(result as NodeElement, disableEmotion)
-    if (processedResult) return BaseNode._renderProcessedNode({ processedElement: processedResult, disableEmotion })
-
-    return result
-  }
-
-  /**
-   * Processes a single raw node, recursively converting it into a `BaseNode` or other renderable type.
-   */
-  private static _processRawNode(node: NodeElement, disableEmotion?: boolean): NodeElement {
-    // Primitives and null/undefined - return as-is
-    if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') {
-      return node
-    }
-
-    // Already processed nodes - return as-is
-    if (node instanceof BaseNode || isNodeInstance(node)) {
-      if (disableEmotion && !node.rawProps.disableEmotion) {
-        return new BaseNode(node.element, { ...node.rawProps, disableEmotion: true })
-      }
-      return node
-    }
-
-    // Function children (render props) - wrap in function renderer
-    if (BaseNode._isFunctionChild(node)) {
-      return new BaseNode(BaseNode._functionRenderer, { props: { render: node, disableEmotion } })
-    }
-
-    // React elements - extract props and wrap in BaseNode
-    if (isValidElement(node)) {
-      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
-      const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
-
-      return new BaseNode(node.type as ElementType, {
-        ...combinedProps,
-        // Only preserve non-null keys
-        ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
-        disableEmotion,
-      })
-    }
-
-    // Component types - wrap in BaseNode
-    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) {
-      return new BaseNode(node as ElementType, { disableEmotion })
-    }
-
-    // React.Component instances - render and process recursively
-    if (node instanceof React.Component) {
-      const element = node.render()
-      return BaseNode._processRawNode(element, disableEmotion)
-    }
-
-    // Everything else - return as-is
-    return node
-  }
-
-  /**
-   * Normalizes a processed child node into a final, renderable `ReactNode`.
-   */
-  private _normalizeChild = (child: NodeElement): ReactNode => {
-    if (child === null || child === undefined) return child
-
-    const t = typeof child
-    if (t === 'string' || t === 'number' || t === 'boolean') return child as ReactNode
-
-    if (child instanceof BaseNode || isNodeInstance(child)) {
-      return child.render()
-    }
-
-    if (typeof (child as any).render === 'function') {
-      return (child as React.Component).render()
-    }
-
-    if (typeof child === 'object' && 'isBaseNode' in child && 'rawProps' in child && 'element' in child && !isNodeInstance(child)) {
-      return new BaseNode(child.element as NodeElementType, child.rawProps as object).render()
-    }
-
-    if (!isValidElementType(child) && !isPortal(child)) {
-      const elementType = getComponentType(child)
-      throw new Error(`Invalid element type: ${elementType} provided!`)
-    }
-
-    return child as ReactNode
-  }
-
-  /**
-   * Renders the `BaseNode` into a `ReactElement`.
+   * Renders the `BaseNode` and its entire subtree into a ReactElement.
+   * This method uses an **iterative (non-recursive) approach** with a manual work stack.
+   * This is a crucial architectural choice to prevent "Maximum call stack size exceeded" errors
+   * when rendering very deeply nested component trees, a common limitation of naive recursive rendering.
+   *
+   * The process works in two phases for each node:
+   * 1. **Begin Phase:** When a node is first visited, its children are pushed onto the stack. This ensures a bottom-up build.
+   * 2. **Complete Phase:** After all of a node's descendants have been rendered, the loop returns to the node.
+   *    It then collects the rendered children from a temporary map and creates its own React element.
+   * @method render
    */
   public render(): ReactElement<FinalNodeProps> {
-    if (!isValidElementType(this.element)) {
-      const elementType = getComponentType(this.element)
-      throw new Error(`Invalid element type: ${elementType} provided!`)
-    }
+    const workStack: { node: BaseNode<any>; isProcessed: boolean }[] = [{ node: this, isProcessed: false }]
+    const renderedElements = new Map<BaseNode<any>, ReactElement>()
 
-    const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = this.props
+    while (workStack.length > 0) {
+      const currentWork = workStack[workStack.length - 1] // Peek at the top of the stack
+      const { node, isProcessed } = currentWork
 
-    let finalChildren: ReactNode | ReactNode[] = undefined
-
-    if (childrenInProps !== undefined && childrenInProps !== null) {
-      if (!this._normalizedChildren) {
-        if (Array.isArray(childrenInProps)) {
-          if (childrenInProps.length > 0) {
-            const mappedArray = childrenInProps.map(child => this._normalizeChild(child))
-
-            if (mappedArray.every(child => child === null || child === undefined)) {
-              this._normalizedChildren = undefined
-            } else {
-              this._normalizedChildren = mappedArray
-            }
-          } else {
-            this._normalizedChildren = undefined
+      if (!isProcessed) {
+        // --- Begin Phase ---
+        // Mark the node as processed and push its children onto the stack.
+        // We process children first to ensure they are rendered before the parent.
+        currentWork.isProcessed = true
+        const children = node.props.children
+        if (children) {
+          const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(isNodeInstance)
+          // Push children in reverse order to maintain the correct processing sequence.
+          for (let i = childrenToProcess.length - 1; i >= 0; i--) {
+            workStack.push({ node: childrenToProcess[i], isProcessed: false })
           }
-        } else {
-          this._normalizedChildren = this._normalizeChild(childrenInProps)
         }
+      } else {
+        // --- Complete Phase ---
+        // All children of this node have been processed. Now, we can render the node itself.
+        workStack.pop() // Pop the completed work.
+
+        const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
+        let finalChildren: ReactNode[] = []
+
+        // Collect rendered children from the map.
+        if (childrenInProps) {
+          finalChildren = (Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]).map(child => {
+            if (isNodeInstance(child)) return renderedElements.get(child)!
+            if (isValidElement(child)) return child
+            return child as ReactNode
+          })
+        }
+
+        const elementProps = { ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps }
+        let element: ReactElement
+
+        // Handle special cases like Fragment.
+        if (node.element === Fragment || isFragment(node.element)) {
+          element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
+        } else {
+          // Determine if the component should be styled with Emotion.
+          const isStyledComponent = css && !disableEmotion && !hasNoStyleTag(node.element)
+          if (isStyledComponent) {
+            element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
+          } else {
+            element = createElement(node.element as ElementType, elementProps, ...finalChildren)
+          }
+        }
+        // Store the final rendered element in the map for its parent to retrieve.
+        renderedElements.set(node, element)
       }
-
-      finalChildren = this._normalizedChildren
     }
-
-    // Fragment handling
-    if (this.element === Fragment || isFragment(this.element)) {
-      return createElement(this.element as ExoticComponent<FragmentProps>, { key }, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
-    }
-
-    // Common props for all createElement calls
-    const elementProps = {
-      ...(otherProps as ComponentProps<ElementType>),
-      key,
-      ...nativeProps,
-    }
-
-    // Determine if the element is a non-styled React component
-    const checks: Array<(e: any) => boolean> = [e => e === Suspense, e => e === Activity, e => isSuspense(e), e => isActivity(e)]
-
-    const isNonStyledReactComponent = checks.some(fn => {
-      try {
-        return fn(this.element)
-      } catch {
-        return false
-      }
-    })
-
-    // Determine if the element is a styled component
-    const isStyledComponent =
-      this.element &&
-      !hasNoStyleTag(this.element) &&
-      css &&
-      !disableEmotion &&
-      !isNonStyledReactComponent &&
-      !isFragment(this.element) &&
-      this.element !== Fragment &&
-      !isSuspense(this.element) &&
-      this.element !== Suspense &&
-      !isActivity(this.element) &&
-      this.element !== Activity
-
-    /* Styled component handling */
-    if (isStyledComponent) {
-      try {
-        const displayName = getElementTypeName(this.element)
-        StyledRenderer.displayName = `Styled(${displayName})`
-      } catch {
-        // swallow: displayName is not critical
-      }
-
-      return createElement(
-        StyledRenderer,
-        {
-          element: this.element,
-          ...elementProps,
-          css,
-          suppressHydrationWarning: true,
-        },
-        ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]),
-      )
-    }
-    /* End styled component handling */
-
-    // Regular element handling
-    try {
-      ;(this.element as NodeElement & { displayName: string }).displayName = getElementTypeName(this.element)
-    } catch {
-      // swallow: displayName is not critical
-    }
-
-    return createElement(this.element as ElementType, elementProps, ...(Array.isArray(finalChildren) ? finalChildren : [finalChildren]))
+    return renderedElements.get(this) as ReactElement<FinalNodeProps>
   }
 
+  // --- Portal System ---
+
   /**
-   * Portal infrastructure setup
+   * Ensures that the necessary DOM element and React root are available for portal rendering.
+   * This is only executed on the client-side.
+   * @method _ensurePortalInfrastructure
    */
   private _ensurePortalInfrastructure() {
     if (BaseNode._isServer) return false
-
     if (this._portalDOMElement && this._portalReactRoot && this._portalDOMElement.isConnected) return true
 
     if (this._portalDOMElement && !this._portalDOMElement.isConnected) {
@@ -427,7 +437,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         try {
           this._portalReactRoot.unmount()
         } catch {
-          // swallow
+          /* empty */
         }
         this._portalReactRoot = null
       }
@@ -442,18 +452,16 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     if (!this._portalReactRoot) {
       if (!this._portalDOMElement) return false
       const root = createRoot(this._portalDOMElement)
-      this._portalReactRoot = {
-        render: root.render.bind(root),
-        unmount: root.unmount.bind(root),
-        update: () => {},
-      }
+      this._portalReactRoot = { render: root.render.bind(root), unmount: root.unmount.bind(root), update: () => {} }
     }
 
     return true
   }
 
   /**
-   * Portal rendering
+   * Renders the node into a React Portal, mounting it directly under `document.body`.
+   * Returns a handle with `update` and `unmount` methods to control the portal's lifecycle.
+   * @method toPortal
    */
   public toPortal(): NodePortal {
     if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) {
@@ -462,36 +470,24 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     const renderCurrent = () => {
       try {
-        const content = this.render()
-        this._portalReactRoot!.render(content)
+        this._portalReactRoot!.render(this.render())
       } catch {
-        // swallow render errors to avoid breaking caller
+        /* empty */
       }
     }
-
     renderCurrent()
 
     try {
       const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
-
-      const handle = this._portalReactRoot as ReactDOMRoot & {
-        update: (next: NodeElement) => void
-        unmount: () => void
-      }
+      const handle = this._portalReactRoot as ReactDOMRoot & { update: (next: NodeElement) => void; unmount: () => void }
 
       handle.update = (next: NodeElement) => {
         try {
           if (!this._portalReactRoot) return
-
-          if (next instanceof BaseNode || (next && typeof (next as any).render === 'function')) {
-            const content = (next as any).render ? (next as any).render() : (next as ReactNode)
-            this._portalReactRoot.render(content)
-            return
-          }
-
-          this._portalReactRoot.render(next as ReactNode)
+          const content = isNodeInstance(next) ? next.render() : (next as ReactNode)
+          this._portalReactRoot.render(content)
         } catch {
-          // swallow
+          /* empty */
         }
       }
 
@@ -499,30 +495,40 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         try {
           originalUnmount()
         } catch {
-          // swallow
+          /* empty */
         }
         if (this._portalDOMElement) {
           try {
-            if (this._portalDOMElement.parentNode) {
-              this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
-            }
+            if (this._portalDOMElement.parentNode) this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
           } catch {
-            // swallow
+            /* empty */
           }
           this._portalDOMElement = null
         }
         this._portalReactRoot = null
       }
-
       return handle
     } catch {
       return this._portalReactRoot
     }
   }
+
+  /**
+   * A static method to clear all internal caches. This is primarily useful for testing
+   * to ensure that tests run in a clean, isolated state.
+   * @method clearCaches
+   */
+  public static clearCaches() {
+    BaseNode._propProcessingCache.clear()
+  }
 }
 
+// --- Factory Functions ---
+
 /**
- * Factory function to create a `BaseNode` instance.
+ * The primary factory function for creating a `BaseNode` instance.
+ * It's the simplest way to wrap a component or element.
+ * @function Node
  */
 export function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
@@ -535,6 +541,8 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
 
 /**
  * Creates a curried node factory for a given React element or component type.
+ * This is useful for creating reusable, specialized factory functions (e.g., `const Div = createNode('div')`).
+ * @function createNode
  */
 export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
@@ -544,13 +552,14 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
   : (<AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>) => NodeInstance<E>) & { element: E } {
   const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>) =>
     Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps)
-
   Instance.element = element
   return Instance as any
 }
 
 /**
  * Creates a node factory function where the first argument is `children` and the second is `props`.
+ * This provides a more ergonomic API for components that primarily wrap content (e.g., `P('Some text')`).
+ * @function createChildrenFirstNode
  */
 export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
@@ -568,7 +577,6 @@ export function createChildrenFirstNode<AdditionalInitialProps extends Record<st
     children?: Children,
     props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
   ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps)
-
   Instance.element = element
   return Instance as any
 }

@@ -2,13 +2,15 @@ import { Component, Div, H1, Node, P, Portal, Root, Span, Text, ThemeProvider, t
 import { act, cleanup, render } from '@testing-library/react'
 import { createRef, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
+import { BaseNode } from '@src/core.node.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
-// Clean up DOM between tests to avoid open handles
+// Clean up DOM and caches between tests
 afterEach(() => {
   cleanup()
+  BaseNode.clearCaches() // Call clearCaches
 })
 
 describe('BaseNode - Core Functionality', () => {

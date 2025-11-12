@@ -28,6 +28,7 @@ import {
   ThemeProvider,
   type Theme,
 } from '@src/main.js'
+import { BaseNode } from '@src/core.node.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -38,6 +39,7 @@ jest.useRealTimers()
 // Clean up DOM between tests to avoid open handles
 afterEach(() => {
   cleanup()
+  BaseNode.clearCaches() // Call clearCaches
 })
 
 const theme: Theme = {
@@ -426,6 +428,49 @@ describe('Performance Testing', () => {
     // Assert median render time is under threshold
     // (Set threshold based on performance goals and test environment)
     const MAX_ALLOWED_MS = 200
+    expect(median).toBeLessThan(MAX_ALLOWED_MS)
+  })
+
+  it('should render 10,000 same-level nodes quickly', async () => {
+    const NUM_NODES = 10000
+    const children = []
+    for (let i = 0; i < NUM_NODES; i++) {
+      children.push(Column({ color: 'theme.primary', children: `Node ${i}` }))
+    }
+
+    const App = Column({ children })
+    const element = ThemeProvider({ theme, children: App.render() }).render()
+
+    console.time('measure-10k-flat')
+    const { median } = await measureRender(element, { iterations: 3, warmups: 1 })
+    console.timeEnd('measure-10k-flat')
+
+    console.log(`Median render time for ${NUM_NODES} flat nodes (ms):`, median.toFixed(2))
+
+    // Set a reasonable threshold, may need adjustment for different environments
+    const MAX_ALLOWED_MS = 1500
+    expect(median).toBeLessThan(MAX_ALLOWED_MS)
+  })
+
+  it('should render 10000 deeply nested nodes without stack overflow', async () => {
+    const NUM_NODES = 10000
+    let nestedNode = Column({ color: 'theme.primary', children: `Deepest Node` })
+
+    for (let i = 0; i < NUM_NODES - 1; i++) {
+      nestedNode = Column({ children: nestedNode })
+    }
+
+    const App = nestedNode
+    const element = ThemeProvider({ theme, children: App.render() }).render()
+
+    console.time('measure-10k-nested')
+    const { median } = await measureRender(element, { iterations: 3, warmups: 1 })
+    console.timeEnd('measure-10k-nested')
+
+    console.log(`Median render time for ${NUM_NODES} nested nodes (ms):`, median.toFixed(2))
+
+    // Set a reasonable threshold, may need adjustment for different environments
+    const MAX_ALLOWED_MS = 2000
     expect(median).toBeLessThan(MAX_ALLOWED_MS)
   })
 })
