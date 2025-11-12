@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18] - 2025-11-12
+
+### Fixed
+- **core**: refine prop caching to handle dynamic props correctly ([`4c0641e`](https://github.com/l7aromeo/meonode-ui/commit/4c0641e892f934551f100629cac72fc3f4649ab0))
+
 ## [0.3.17] - 2025-11-12
 
 ### Perf
