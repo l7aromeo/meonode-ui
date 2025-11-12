@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.17] - 2025-11-12
+
+### Perf
+- **core**: implement iterative renderer and prop caching ([`8a3a264`](https://github.com/l7aromeo/meonode-ui/commit/8a3a264be68bd041b6340636f5f7ee2b0caa63ff))
+- **helper**: refactor theme resolution logic for improved performance and cache correctness ([`9614cb8`](https://github.com/l7aromeo/meonode-ui/commit/9614cb8d2aeae0d9bd2f9cf3edd51c022cd93273))
+
+### Chore
+- fix typo in JSDoc comment for useTheme hook ([`de0ddd9`](https://github.com/l7aromeo/meonode-ui/commit/de0ddd9a6308f4a76b6ad843a6139d42bd3fcf53))
+- add deprecation notice to usePortal hook for future removal ([`f8a2923`](https://github.com/l7aromeo/meonode-ui/commit/f8a29230cad3962addb8cf28ed3538e6de236181))
+- update PortalProps type definition to provide a default type parameter ([`de73ba5`](https://github.com/l7aromeo/meonode-ui/commit/de73ba5b9d9dd51637b24b0309d681309d9338ae))
+- update isNodeInstance type guard to use BaseNode instead of NodeInstance ([`2c69d05`](https://github.com/l7aromeo/meonode-ui/commit/2c69d05b3d1593a976e439ca7404696b781e5012))
+- rename jest.config.mjs to jest.config.ts and update configuration for TypeScript support ([`a3213eb`](https://github.com/l7aromeo/meonode-ui/commit/a3213eb5b91a55364cb4f5362005bc2a46934de5))
+- **scripts**: increase stack size for jest test and fix build commands ([`e046cdf`](https://github.com/l7aromeo/meonode-ui/commit/e046cdf397e2cf418e09e149a9e0cf1e48f3d926))
+- update tsconfig.json to exclude dist and node_modules directories ([`eeb9577`](https://github.com/l7aromeo/meonode-ui/commit/eeb957722ab7a26cbe59047c068f9955b082502e))
+- update tsconfig.json with enhanced compiler options and path mappings for better development experience ([`89bc1a4`](https://github.com/l7aromeo/meonode-ui/commit/89bc1a42c23f015acfed1bcb860ebb6a4c684fc1))
+
 ## [0.3.16] - 2025-11-05
 
 ### Added
@@ -441,7 +457,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improves developer experience when working with prebuilt components:
     - Example:
       ```typescript
-      import { Div, Input } from '@meonode/ui'
+      import { Div, Input } from '@meonode/ui' 
   
       // Add new props
       Div<{ field: string }>({ field: 'Hello' })
