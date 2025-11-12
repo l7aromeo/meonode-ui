@@ -28,9 +28,9 @@
   "scripts": {
     "watch:build": "yarn dlx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --ci",
+    "test": "node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci",
     "prebuild": "yarn lint && yarn test",
-    "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo --project tsconfig.build.json --diagnostics && tsc-alias",
+    "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
     "publish:patch": "./prepublish.sh && yarn build && yarn version -i patch && yarn npm publish --tag latest",
     "publish:minor": "./prepublish.sh && yarn build && yarn version -i minor && yarn npm publish --tag latest",
