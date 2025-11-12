@@ -279,7 +279,7 @@ export interface BasePortalProps {
  * Extends the component's own props with portal-specific functionality.
  * @template T The component's own prop types
  */
-export type PortalProps<T extends BasePortalProps | Record<string, any>> = T & BasePortalProps
+export type PortalProps<T extends BasePortalProps | Record<string, any> = Record<string, any>> = T & BasePortalProps
 
 /**
  * Interface representing a portal instance with lifecycle methods.
