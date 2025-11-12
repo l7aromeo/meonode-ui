@@ -4,6 +4,10 @@ import { type ReactElement, useCallback, useEffect, useRef } from 'react'
 import type { NodeElementType, NodePortal, PortalProps } from '@src/node.type.js'
 import { Node } from '@src/core.node.js'
 
+/**
+ * Hook for managing a portal that renders node components outside the React component tree.
+ * @deprecated This hook is unstable and will likely be removed in future versions
+ */
 export function usePortal<T extends any[]>(deps: T = [] as unknown as T) {
   const state = useRef<{ portal?: NodePortal; component?: NodeElementType; props?: any }>({})
 
