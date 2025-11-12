@@ -1,5 +1,6 @@
 import type { CSSInterpolation, CSSProperties } from '@emotion/serialize'
 import type { NodeInstance } from '@src/node.type.js'
+import { BaseNode } from '@src/core.node.js'
 
 /**
  * Type guard to check if an object is a NodeInstance.
@@ -12,7 +13,7 @@ import type { NodeInstance } from '@src/node.type.js'
  * @param obj The object to check.
  * @returns True if the object is a NodeInstance, false otherwise.
  */
-export const isNodeInstance = (obj: unknown): obj is NodeInstance<any> => {
+export const isNodeInstance = (obj: unknown): obj is BaseNode<any> => {
   return (
     typeof obj === 'object' &&
     obj !== null &&
