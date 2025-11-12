@@ -4,7 +4,6 @@ import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**
  * Cache manager for theme resolution operations.
- * Provides singleton-based caching with different strategies for server vs client environments.
  */
 class ThemeResolverCache {
   private static _instance: ThemeResolverCache | null = null
@@ -13,21 +12,6 @@ class ThemeResolverCache {
   private readonly _pathLookupCache = new Map<string, any>()
   private readonly _themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
 
-  // Track cache statistics for performance monitoring
-  private _stats = {
-    hits: 0,
-    misses: 0,
-    pathHits: 0,
-    pathMisses: 0,
-  }
-
-  private constructor() {
-    // Private constructor for singleton pattern
-  }
-
-  /**
-   * Get the singleton instance of the cache manager
-   */
   static getInstance(): ThemeResolverCache {
     if (!ThemeResolverCache._instance) {
       ThemeResolverCache._instance = new ThemeResolverCache()
@@ -36,223 +20,175 @@ class ThemeResolverCache {
   }
 
   /**
-   * Generate a stable cache key from object and theme
+   * Generate a stable cache key from object and theme, including the theme mode.
    */
-  private _generateCacheKey(obj: Record<string, any>, theme: ThemeSystem): string {
-    // Use a more efficient key generation for better performance
-    return `${ObjHelper.stringify(obj)}_${ObjHelper.stringify(theme)}`
+  private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
+    // Including theme.mode is critical for cache correctness.
+    return `${ObjHelper.stringify(obj)}_${theme.mode}_${ObjHelper.stringify(theme.system)}`
   }
 
-  /**
-   * Check if resolution result exists in cache
-   */
-  getResolution(obj: Record<string, any>, theme: ThemeSystem): any | null {
+  getResolution(obj: Record<string, any>, theme: Theme): any | null {
     const key = this._generateCacheKey(obj, theme)
-
-    if (this._resolutionCache.has(key)) {
-      this._stats.hits++
-      return this._resolutionCache.get(key)
-    }
-
-    this._stats.misses++
-    return null
+    return this._resolutionCache.get(key) || null
   }
 
-  /**
-   * Store resolution result in cache
-   */
-  setResolution(obj: Record<string, any>, theme: ThemeSystem, result: any): void {
+  setResolution(obj: Record<string, any>, theme: Theme, result: any): void {
     const key = this._generateCacheKey(obj, theme)
     this._resolutionCache.set(key, result)
   }
 
-  /**
-   * Get cached theme path lookup
-   */
   getPathLookup(theme: ThemeSystem, path: string): any | null {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
-
-    if (this._pathLookupCache.has(pathKey)) {
-      this._stats.pathHits++
-      return this._pathLookupCache.get(pathKey)
-    }
-
-    this._stats.pathMisses++
-    return null
+    return this._pathLookupCache.get(pathKey) || null
   }
 
-  /**
-   * Cache theme path lookup result
-   */
   setPathLookup(theme: ThemeSystem, path: string, value: any): void {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     this._pathLookupCache.set(pathKey, value)
   }
 
-  /**
-   * Get the shared regex instance (reused for performance)
-   */
   getThemeRegex(): RegExp {
-    // Reset lastIndex to ensure consistent behavior
     this._themeRegex.lastIndex = 0
     return this._themeRegex
   }
 
-  /**
-   * Check if we should use caching (server-side only for RSC optimization)
-   */
   shouldCache(): boolean {
     return typeof window === 'undefined'
   }
 }
 
-// Module-level cache instance
 const themeCache = ThemeResolverCache.getInstance()
 
+const isPlainObject = (value: any): boolean => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const proto = Object.getPrototypeOf(value)
+  return proto === null || proto === Object.prototype
+}
+
 /**
- * Resolves theme variable references in an object's values recursively.
- * This function performs a "smart merge" to maintain object reference identity
- * for parts of the object that do not contain resolved theme variables or
- * other modifications. Only creates new objects or properties when a change occurs.
- * Handles nested objects and arrays, and prevents circular references.
- * Theme variables are referenced using the format "theme.path.to.value".
- * @param obj The object (or array) whose values should be resolved against the theme. Defaults to an empty object.
- * @param theme The theme object containing variable definitions. Optional.
- * @param options Options to control processing behavior.
- * - processFunctions: If true, functions within the object will be executed with the theme as an argument.
- * If false, functions will be ignored. Defaults to false.
- * @returns A new object (or array) with all theme variables resolved to their corresponding values,
- * or the original object (or array) if no changes were necessary.
+ * Resolves theme variable references in an object's values iteratively.
+ * This function uses a manual work stack to traverse the object, which prevents
+ * "Maximum call stack size exceeded" errors for deeply nested objects.
+ * It performs a "smart merge" by using a copy-on-write strategy, creating new
+ * objects/arrays only when a value inside them has changed. This preserves
+ * object references for unchanged parts of the tree, which is critical for
+ * React's reconciliation and memoization.
  */
 export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme, options: { processFunctions?: boolean } = {}) => {
   const { processFunctions = false } = options
 
-  if (!theme || (!!theme && typeof theme === 'object' && Object.keys(theme).length === 0) || Object.keys(obj).length === 0) {
+  if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || Object.keys(obj).length === 0) {
     return obj
   }
 
-  // Ensure theme has a valid system property
-  const themeSystem = theme?.system
-  if (!themeSystem || typeof themeSystem !== 'object' || Object.keys(themeSystem).length === 0) {
-    return obj
-  }
+  const themeSystem = theme.system
 
-  // Check cache first (only on server-side for RSC optimization)
   if (themeCache.shouldCache()) {
-    // Note: Caching is based on the input object. If processFunctions changes behavior,
-    // a more complex cache key may be needed in the future.
-    const cachedResult = themeCache.getResolution(obj, themeSystem)
+    const cachedResult = themeCache.getResolution(obj, theme)
     if (cachedResult !== null) {
       return cachedResult
     }
   }
 
-  const resolveRecursively = (currentObj: any, visited: Set<any>): any => {
-    if (currentObj === null || typeof currentObj !== 'object') {
-      return currentObj
-    }
+  const workStack: { value: any; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
+  const resolvedValues = new Map<any, any>()
+  const path = new Set<any>() // Used for cycle detection within the current traversal path.
 
-    if (visited.has(currentObj)) {
-      return currentObj
-    }
-
-    visited.add(currentObj)
-
-    const processThemeString = (value: string) => {
-      let processedValue = value
-      let valueResolved = false
-      const regex = themeCache.getThemeRegex()
-
-      processedValue = processedValue.replace(regex, (match, path) => {
-        let themeValue = themeCache.getPathLookup(themeSystem, path)
-        if (themeValue === null) {
-          themeValue = getValueByPath(themeSystem, path)
-          themeCache.setPathLookup(themeSystem, path, themeValue)
-        }
-
-        if (themeValue !== undefined && themeValue !== null) {
-          valueResolved = true
-          if (typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue) {
-            return themeValue.default
-          }
-          return themeValue
-        }
-        return match
-      })
-
-      return valueResolved ? processedValue : value
-    }
-
-    if (Array.isArray(currentObj)) {
-      let resolvedArray: any[] = currentObj
-      let changed = false
-      for (let i = 0; i < currentObj.length; i++) {
-        const value = currentObj[i]
-        const newValue = resolveRecursively(value, visited)
-        if (newValue !== value) {
-          if (!changed) {
-            resolvedArray = [...currentObj]
-            changed = true
-          }
-          resolvedArray[i] = newValue
-        } else if (changed) {
-          resolvedArray[i] = value
-        }
+  const processThemeString = (value: string) => {
+    const regex = themeCache.getThemeRegex()
+    let hasChanged = false
+    const resolved = value.replace(regex, (match, path) => {
+      let themeValue = themeCache.getPathLookup(themeSystem, path)
+      if (themeValue === null) {
+        themeValue = getValueByPath(themeSystem, path)
+        themeCache.setPathLookup(themeSystem, path, themeValue)
       }
-      return resolvedArray
-    }
-
-    let resolvedObj: Record<string, any> = currentObj
-    let changed = false
-
-    for (const key in currentObj) {
-      const value = currentObj[key]
-      let newValue: any = value
-
-      if (typeof value === 'function') {
-        if (processFunctions) {
-          const funcResult = value(theme)
-          // Process string results that contain theme references
-          if (typeof funcResult === 'string' && funcResult.includes('theme.')) {
-            newValue = processThemeString(funcResult)
-          } else {
-            newValue = resolveRecursively(funcResult, visited)
-          }
-        } else {
-          newValue = value
-        }
-      } else if (
-        (typeof value === 'object' &&
-          value !== null &&
-          !Array.isArray(value) &&
-          Object.getPrototypeOf(value) !== Object.prototype &&
-          Object.getPrototypeOf(value) !== null) ||
-        (typeof value !== 'object' && typeof value !== 'string')
-      ) {
-        newValue = value // Ignore non-plain objects and primitives other than strings
-      } else if (typeof value === 'string' && value.includes('theme.')) {
-        newValue = processThemeString(value)
-      } else if (typeof value === 'object' && value !== null) {
-        newValue = resolveRecursively(value, visited)
+      if (themeValue !== undefined && themeValue !== null) {
+        hasChanged = true
+        return typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue ? themeValue.default : themeValue
       }
-
-      if (newValue !== value) {
-        if (!changed) {
-          resolvedObj = { ...currentObj }
-          changed = true
-        }
-        resolvedObj[key] = newValue
-      } else if (changed) {
-        resolvedObj[key] = value
-      }
-    }
-    return resolvedObj
+      return match
+    })
+    return hasChanged ? resolved : value
   }
 
-  const result = resolveRecursively(obj, new Set())
+  while (workStack.length > 0) {
+    const currentWork = workStack[workStack.length - 1]
+    const currentValue = currentWork.value
+
+    if (!isPlainObject(currentValue) && !Array.isArray(currentValue)) {
+      workStack.pop()
+      continue
+    }
+
+    if (resolvedValues.has(currentValue)) {
+      workStack.pop()
+      continue
+    }
+
+    if (!currentWork.isProcessed) {
+      // --- Begin Phase ---
+      currentWork.isProcessed = true
+      path.add(currentValue)
+
+      const children = Array.isArray(currentValue) ? currentValue : Object.values(currentValue)
+      for (let i = children.length - 1; i >= 0; i--) {
+        const child = children[i]
+        // Only push containers that are not already in the current path (cycle detection).
+        if ((isPlainObject(child) || Array.isArray(child)) && !path.has(child)) {
+          workStack.push({ value: child, isProcessed: false })
+        }
+      }
+    } else {
+      // --- Complete Phase ---
+      workStack.pop()
+      path.delete(currentValue) // Unwind the path
+
+      let finalValue = currentValue
+
+      if (Array.isArray(currentValue)) {
+        let newArray: any[] | null = null
+        for (let i = 0; i < currentValue.length; i++) {
+          const item = currentValue[i]
+          const resolvedItem = resolvedValues.get(item) ?? item
+          if (resolvedItem !== item) {
+            if (newArray === null) newArray = [...currentValue] // Copy-on-write
+            newArray![i] = resolvedItem
+          }
+        }
+        if (newArray !== null) finalValue = newArray
+      } else {
+        let newObj: Record<string, any> | null = null
+        for (const key in currentValue) {
+          if (Object.prototype.hasOwnProperty.call(currentValue, key)) {
+            const value = currentValue[key]
+            let newValue = resolvedValues.get(value) ?? value
+
+            if (typeof newValue === 'function' && processFunctions) {
+              const funcResult = newValue(theme)
+              newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult) : funcResult
+            } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
+              newValue = processThemeString(newValue)
+            }
+
+            if (newValue !== value) {
+              if (newObj === null) newObj = { ...currentValue } // Copy-on-write
+              newObj![key] = newValue
+            }
+          }
+        }
+        if (newObj !== null) finalValue = newObj
+      }
+      resolvedValues.set(currentValue, finalValue)
+    }
+  }
+
+  const result = resolvedValues.get(obj) ?? obj
 
   if (themeCache.shouldCache()) {
-    themeCache.setResolution(obj, themeSystem, result)
+    themeCache.setResolution(obj, theme, result)
   }
 
   return result
