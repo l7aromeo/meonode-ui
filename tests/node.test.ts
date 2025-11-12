@@ -136,6 +136,9 @@ describe('BaseNode - Core Functionality', () => {
       mode: 'light',
       system: {
         spacing: { md: '16px' },
+        primary: {
+          default: '#fff',
+        },
       },
     }
 
@@ -143,6 +146,7 @@ describe('BaseNode - Core Functionality', () => {
       theme: myTheme,
       children: Div({
         children: Div({
+          backgroundColor: ({ system }) => system.primary.default,
           padding: 'theme.spacing.md',
           children: 'Themed Content',
         }),
@@ -152,17 +156,16 @@ describe('BaseNode - Core Functionality', () => {
     const { getByText } = render(App.render())
     const element = getByText('Themed Content')
 
-    if (element) {
-      // Use getComputedStyle to get the actual computed CSS
-      const computedStyles = window.getComputedStyle(element)
-      expect(computedStyles.padding).toBe('16px')
+    // Use getComputedStyle to get the actual computed CSS
+    const computedStyles = window.getComputedStyle(element)
+    expect(computedStyles.backgroundColor).toBe('rgb(255, 255, 255)')
+    expect(computedStyles.padding).toBe('16px')
 
-      // Alternative: Check for specific padding properties
-      expect(computedStyles.paddingTop).toBe('16px')
-      expect(computedStyles.paddingRight).toBe('16px')
-      expect(computedStyles.paddingBottom).toBe('16px')
-      expect(computedStyles.paddingLeft).toBe('16px')
-    }
+    // Alternative: Check for specific padding properties
+    expect(computedStyles.paddingTop).toBe('16px')
+    expect(computedStyles.paddingRight).toBe('16px')
+    expect(computedStyles.paddingBottom).toBe('16px')
+    expect(computedStyles.paddingLeft).toBe('16px')
   })
 
   // If you need to test multiple style properties:

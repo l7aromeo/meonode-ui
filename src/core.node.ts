@@ -21,6 +21,7 @@ import type {
   NodeInstance,
   NodePortal,
   NodeProps,
+  PropProcessingCache,
   PropsOf,
 } from '@src/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
@@ -28,19 +29,6 @@ import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElement
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-
-/**
- * Defines the structure for caching CSS property processing results.
- * This cache helps to avoid re-computing CSS props for the same set of input props,
- * significantly speeding up rendering for components with static styles.
- * @interface PropProcessingCache
- * @property {Record<string, any>} cssProps - The computed CSS properties.
- * @property {string} signature - A unique signature generated from the cacheable props.
- */
-interface PropProcessingCache {
-  cssProps: Record<string, any>
-  signature: string
-}
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -156,24 +144,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
-   * Separates props into cacheable (primitives, arrays, plain objects) and non-cacheable (functions) groups.
-   * This is crucial for ensuring that only serializable, static values are used for generating cache signatures.
-   * @method _splitProps
-   */
-  private static _splitProps(props: Record<string, any>): { cacheable: Record<string, any> } {
-    const cacheable: Record<string, any> = {}
-    for (const key in props) {
-      if (Object.prototype.hasOwnProperty.call(props, key)) {
-        // Functions are not cacheable as their references change.
-        if (typeof props[key] !== 'function') {
-          cacheable[key] = props[key]
-        }
-      }
-    }
-    return { cacheable }
-  }
-
-  /**
    * The main prop processing pipeline. It orchestrates splitting props, generating cache signatures,
    * retrieving cached CSS props, computing DOM props, and normalizing children.
    * @method _processProps
@@ -182,8 +152,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
 
     // --- Fast Path Optimization ---
-    // For simple nodes with no styling props, we can bypass most of the expensive processing.
-    // This dramatically improves performance for deeply nested, unstyled structures.
     if (Object.keys(restRawProps).length === 0 && !css) {
       return omitUndefined({
         ref,
@@ -196,16 +164,33 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       })
     }
 
-    // --- Prop Caching and Computation ---
-    const { cacheable } = BaseNode._splitProps(restRawProps)
-    const signature = BaseNode._createPropSignature(cacheable)
-    const { cssProps: cachedCssProps } = BaseNode._getCachedCssProps(cacheable, signature)
+    // --- Hybrid Caching Strategy ---
+    const cacheableProps: Record<string, any> = {}
+    const nonCacheableProps: Record<string, any> = {}
 
-    // DOM props (like event handlers) are always computed fresh to ensure reference correctness.
-    const domProps = getDOMProps(restRawProps)
+    // 1. Categorize props into cacheable (primitives) and non-cacheable (objects/functions).
+    for (const key in restRawProps) {
+      if (Object.prototype.hasOwnProperty.call(restRawProps, key)) {
+        const value = (restRawProps as Record<string, unknown>)[key]
+        const type = typeof value
+        if (type === 'string' || type === 'number' || type === 'boolean') {
+          cacheableProps[key] = value
+        } else {
+          nonCacheableProps[key] = value
+        }
+      }
+    }
 
-    // Merge computed CSS props with any explicit `css` prop provided.
-    const finalCssProps = { ...cachedCssProps, ...css }
+    // 2. Cache only the CSS props derived from primitive values.
+    const signature = BaseNode._createPropSignature(cacheableProps)
+    const { cssProps: cachedCssProps } = BaseNode._getCachedCssProps(cacheableProps, signature)
+
+    // 3. Process non-cacheable props on every render to ensure correctness for functions and objects.
+    const nonCachedCssProps = getCSSProps(nonCacheableProps)
+    const domProps = getDOMProps(restRawProps) // DOM props are always processed fresh.
+
+    // 4. Assemble the final CSS object.
+    const finalCssProps = { ...cachedCssProps, ...nonCachedCssProps, ...css }
 
     // --- Child Normalization ---
     const normalizedChildren = this._processChildren(children, disableEmotion)

@@ -69,6 +69,14 @@ export type NodeElementType =
 export type Children = NodeElement | NodeElement[]
 
 /**
+ * Cache for prop processing results to avoid repeated computations
+ */
+export interface PropProcessingCache {
+  cssProps: Record<string, any>
+  signature: string
+}
+
+/**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
  * Defines the core structure and capabilities of a BaseNode instance.
  * @template E - The type of React element/component that this node represents
