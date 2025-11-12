@@ -6,7 +6,7 @@ import { ThemeContext } from '@src/components/theme-provider.client.js'
  * A hook that provides access to the theme context.
  * It also handles side effects like updating localStorage and applying the theme to the document root.
  * @returns {ThemeContextValue} The theme context value.
- * @throws {Error} If used outside of a ThemeProvider.
+ * @throws {Error} If used outside a ThemeProvider.
  */
 export const useTheme = () => {
   const context = useContext(ThemeContext)
