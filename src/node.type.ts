@@ -25,6 +25,12 @@ type RequiredKeys<T> = {
 // Utility to check if a type T has any required properties.
 export type HasRequiredProps<T> = RequiredKeys<T> extends never ? false : true
 
+/**
+ * A list of dependencies for a memoized value.
+ * Mimics React's `DependencyList`.
+ */
+export type DependencyList = readonly any[]
+
 /** Basic React attributes, currently only includes 'key' */
 export interface ReactAttributes {
   key?: string
@@ -74,6 +80,8 @@ export type Children = NodeElement | NodeElement[]
 export interface PropProcessingCache {
   cssProps: Record<string, any>
   signature: string
+  lastAccess: number
+  hitCount: number
 }
 
 /**
@@ -89,6 +97,9 @@ export interface NodeInstance<E extends NodeElement = NodeElement> {
   readonly rawProps: Partial<NodeProps<E>>
 
   readonly isBaseNode: true
+
+  /** The dependency list for memoization */
+  readonly dependencies: DependencyList | undefined
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactElement

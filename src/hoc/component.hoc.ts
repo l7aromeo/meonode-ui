@@ -1,5 +1,5 @@
 import { BaseNode, Node } from '@src/core.node.js'
-import type { Children, ComponentNode, HasCSSCompatibleStyleProp } from '@src/node.type.js'
+import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp } from '@src/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { getElementTypeName } from '@src/helper/common.helper.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
@@ -44,7 +44,7 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
  */
 export function Component<TProps extends undefined>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props?: ComponentNodeProps<TProps>) => ReactElement | Promise<Awaited<ReactElement>>
+): (props?: ComponentNodeProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Creates a component from a function that uses a defined props interface.
@@ -70,7 +70,7 @@ export function Component<TProps extends undefined>(
  */
 export function Component<TProps extends Record<string, any>>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props: ComponentNodeProps<TProps>) => ReactElement | Promise<Awaited<ReactElement>>
+): (props: ComponentNodeProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Internal implementation of the `Component` HOC.
@@ -92,8 +92,8 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
   }
   Renderer.displayName = `Renderer(${displayName})`
 
-  function Func(props: Partial<ComponentNodeProps<TProps>> = {}) {
-    return Node(Renderer, props as never).render()
+  function Func(props: Partial<ComponentNodeProps<TProps>> = {}, deps?: DependencyList) {
+    return Node(Renderer, props as never, deps).render()
   }
   Func.displayName = `Component(${displayName})`
 
