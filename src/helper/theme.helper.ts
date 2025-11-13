@@ -1,5 +1,5 @@
 import { getValueByPath } from '@src/helper/common.helper.js'
-import type { Theme, ThemeSystem } from '@src/node.type.js'
+import type { Theme, ThemeSystem } from '@src/types/node.type.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 
 /**

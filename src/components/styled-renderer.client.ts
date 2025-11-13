@@ -2,7 +2,7 @@
 
 import { type JSX, type ReactNode, useContext } from 'react'
 import { jsx } from '@emotion/react'
-import type { CssProp, NodeElement } from '@src/node.type.js'
+import type { CssProp, NodeElement } from '@src/types/node.type.js'
 import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 import { ThemeContext } from '@src/components/theme-provider.client.js'
 import { resolveDefaultStyle } from '@src/helper/node.helper.js'

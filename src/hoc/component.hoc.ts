@@ -1,5 +1,5 @@
 import { BaseNode, Node } from '@src/core.node.js'
-import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp } from '@src/node.type.js'
+import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp } from '@src/types/node.type.js'
 import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { getElementTypeName } from '@src/helper/common.helper.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'

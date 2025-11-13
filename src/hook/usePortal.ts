@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactElement, useCallback, useEffect, useRef } from 'react'
-import type { NodeElementType, NodePortal, PortalProps } from '@src/node.type.js'
+import type { NodeElementType, NodePortal, PortalProps } from '@src/types/node.type.js'
 import { Node } from '@src/core.node.js'
 
 /**

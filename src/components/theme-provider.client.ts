@@ -1,6 +1,6 @@
 'use client'
 import { createContext, type ReactNode, useState } from 'react'
-import type { Children, Theme } from '@src/node.type.js'
+import type { Children, Theme } from '@src/types/node.type.js'
 import { Node } from '@src/core.node.js'
 
 export interface ThemeContextValue {

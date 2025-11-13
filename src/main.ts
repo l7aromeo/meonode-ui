@@ -7,7 +7,7 @@ export * from '@src/hoc/index.js'
 export * from '@src/helper/node.helper.js'
 
 // Types
-export * from '@src/node.type.js'
+export * from '@src/types/node.type.js'
 
 // Components
 export * from '@src/components/react.node.js'
