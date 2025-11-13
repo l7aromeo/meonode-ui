@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-13
+
+### Feature
+- **core**: Implemented an advanced memoization and caching system to optimize rendering performance. This includes:
+    - **Dependency-Based Memoization**: Nodes can now be created with a dependency array, similar to React's `useMemo`, to prevent unnecessary re-renders of the node and its entire subtree if dependencies have not changed. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+    - **Enhanced Prop Caching**: The prop signature generation is now more robust, and the cache uses an advanced LRU eviction strategy to remain efficient. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+    - **API Updates**: The `Node`, `createNode`, `createChildrenFirstNode`, and `Component` HOCs have been updated to accept an optional `deps` array to enable memoization. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+
+### Test
+- **core**: Added a comprehensive suite of tests for the new memoization and caching system, covering dependency-based memoization, reactive and non-reactive children, complex state updates, and memoization of Higher-Order Components (HOCs). ([`6bcd1b1`](https://github.com/l7aromeo/meonode-ui/commit/6bcd1b1bc6b2450c3d4296cb4af326f61cfee401))
+
 ## [0.3.18] - 2025-11-12
 
 ### Fixed
