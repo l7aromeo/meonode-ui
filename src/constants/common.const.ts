@@ -26,3 +26,5 @@ export const NO_STYLE_TAGS = [
 
 export const noStyleTagsSet = new Set(NO_STYLE_TAGS)
 export type NO_STYLE_TAGS = typeof NO_STYLE_TAGS
+
+export const __DEV__ = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development'

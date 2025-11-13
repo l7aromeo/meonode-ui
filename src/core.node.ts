@@ -24,12 +24,13 @@ import type {
   PropProcessingCache,
   PropsOf,
   DependencyList,
-} from '@src/node.type.js'
+} from '@src/types/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
 import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
+import { __DEV__ } from '@src/constants/common.const.js'
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -47,8 +48,8 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   private _props?: FinalNodeProps
   private _portalDOMElement: HTMLDivElement | null = null
   private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
-  private _deps?: DependencyList
   private _stableKey: string
+  private readonly _deps?: DependencyList
 
   private static _isServer = typeof window === 'undefined'
   private static _propProcessingCache = new Map<string, PropProcessingCache>()
@@ -58,6 +59,8 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   // Cache configuration
   private static readonly CACHE_SIZE_LIMIT = 500
   private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
+  private _lastPropsRef: unknown = null
+  private _lastSignature: string = ''
 
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}, deps?: DependencyList) {
     // Element type validation is performed once at construction to prevent invalid nodes from being created.
@@ -69,10 +72,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     this.rawProps = rawProps
     this._deps = deps
 
-    // Generate an initial stable key for internal caching.
-    // This key is based on the element type and other props (excluding children, ref, and the React 'key' prop).
+    // Generate an initial stable key used for internal caching.
+    // Exclude React's `key`, `ref`, and `children` from the signature so positional or ref changes
+    // do not unintentionally affect the component's cache identity.
     const { key, children, ref, ...propsForSignature } = rawProps
-    this._stableKey = BaseNode._createPropSignature(element, propsForSignature)
+    this._stableKey = this._getCachedSignature(propsForSignature)
 
     // If a React 'key' prop was explicitly provided by the user, prepend it to our internal stable key.
     // This ensures that if the user provides a key, it influences our internal cache key,
@@ -109,17 +113,80 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   // --- Enhanced Prop Caching and Processing ---
 
   /**
-   * A fast, non-cryptographic hash function (FNV-1a) used to generate a unique signature for a set of props.
-   * This is significantly faster than `JSON.stringify` for creating cache keys.
-   * @method _hashString
+   * FNV-1a hash function.
+   * @method _fnv1aHash
    */
-  private static _hashString(str: string): string {
+  private static _fnv1aHash(str: string): number {
     let hash = 2166136261 // FNV offset basis
     for (let i = 0; i < str.length; i++) {
       hash ^= str.charCodeAt(i)
       hash = Math.imul(hash, 16777619) // FNV prime
     }
-    return (hash >>> 0).toString(36)
+    return hash >>> 0 // Convert to unsigned 32-bit integer
+  }
+
+  /**
+   * djb2 hash function.
+   * @method _djb2Hash
+   */
+  private static _djb2Hash(str: string): number {
+    let hash = 5381
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 33) ^ str.charCodeAt(i)
+    }
+    return hash >>> 0 // Convert to unsigned 32-bit integer
+  }
+
+  /**
+   * Combines FNV-1a and djb2 hash functions for a more robust signature.
+   * @method _hashString
+   */
+  private static _hashString(str: string): string {
+    const fnvHash = BaseNode._fnv1aHash(str)
+    const djb2Hash = BaseNode._djb2Hash(str)
+    return `${fnvHash.toString(36)}_${djb2Hash.toString(36)}` // Combine and convert to base36
+  }
+
+  /**
+   * Generates or returns a cached signature representing the props shape and values.
+   * The signature is used as a stable key for caching prop-derived computations (e.g. CSS extraction).
+   * - Uses a fast reference check to return the previous signature if the same props object is passed.
+   * - For very large prop objects (> 100 keys) it builds a smaller "criticalProps" fingerprint
+   * containing only style-related keys, event handlers, className/css and a `_keyCount` to avoid
+   * expensive serialization of huge objects while still retaining reasonable cache discrimination.
+   * - Stores the last props reference and computed signature to speed up repeated calls with the same object.
+   * @param props The props object to create a signature for.
+   * @returns A compact string signature suitable for use as a cache key.
+   */
+  private _getCachedSignature(props: Record<string, any>): string {
+    if (props === this._lastPropsRef) {
+      return this._lastSignature
+    }
+
+    const keys = Object.keys(props)
+    const keyCount = keys.length
+    const isStyleProp = (k: string) => !BaseNode._isServer && typeof document !== 'undefined' && k in document.body.style
+
+    if (keyCount > 100) {
+      const criticalProps: Record<string, any> = { _keyCount: keyCount }
+
+      for (const k of keys) {
+        if (isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
+          criticalProps[k] = props[k]
+        }
+      }
+
+      this._lastSignature = BaseNode._createPropSignature(this.element, criticalProps)
+
+      if (__DEV__ && keyCount > 200) {
+        console.warn(`MeoNode: Large props (${keyCount} keys) on "${getElementTypeName(this.element)}". Consider splitting.`)
+      }
+    } else {
+      this._lastSignature = BaseNode._createPropSignature(this.element, props)
+    }
+
+    this._lastPropsRef = props
+    return this._lastSignature
   }
 
   /**
