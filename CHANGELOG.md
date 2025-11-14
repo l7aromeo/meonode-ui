@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-11-14
+
+### Test
+- **node**: enhance dependency and memoization tests with real-world scenarios ([`d7452fa`](https://github.com/l7aromeo/meonode-ui/commit/d7452fae9b3ef22a82dc83210851849d82de479f))
+
+### Fix
+- **core**: enhance error handling and improve style property detection ([`ca79c27`](https://github.com/l7aromeo/meonode-ui/commit/ca79c277cdfea5b62b54779ec2492518681639d1))
+
+### Chore
+- **deps**: update dependencies in package.json for improved stability and performance ([`eba2108`](https://github.com/l7aromeo/meonode-ui/commit/eba21080c953b1c6b6c1bbb6a401257845116f09))
+
+### Perf
+- **core**: Optimize prop processing and caching with new signature generation ([`8cf0319`](https://github.com/l7aromeo/meonode-ui/commit/8cf0319fd99c3c8496b6e63207cb378b6c521ae2))
+
+### Refactor
+- **types**: move node.type.ts to types directory and update imports ([`ccf769a`](https://github.com/l7aromeo/meonode-ui/commit/ccf769a2670e4546bfa776034a4fa8925ca2d27d))
+
 ## [0.4.0] - 2025-11-13
 
 ### Feature
