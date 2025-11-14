@@ -339,7 +339,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         key,
         style: nativeProps.style,
         disableEmotion,
-        deps: this._deps,
         nativeProps: omitUndefined(nativeProps),
         children: this._processChildren(children, disableEmotion),
       })
@@ -384,7 +383,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       style: nativeProps.style,
       ...domProps,
       disableEmotion,
-      deps: this._deps,
       nativeProps: omitUndefined(nativeProps),
       children: normalizedChildren,
     })
