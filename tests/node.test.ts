@@ -1,6 +1,7 @@
+import { jest } from '@jest/globals'
 import { Activity, Component, Div, Fragment, H1, Node, type NodeInstance, P, Portal, Root, Span, Suspense, Text, type Theme, ThemeProvider } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
-import { createRef, useState } from 'react'
+import { createRef, useEffect, useState, memo } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode } from '@src/core.node.js'
 
@@ -653,79 +654,134 @@ describe('BaseNode - Core Functionality', () => {
     })
   })
 
-  // Step 7: Dependency and Memoization Tests
-  // This suite validates the memoization and dependency tracking system, ensuring components only re-render when their specified dependencies change.
-  describe('Dependency and Memoization', () => {
-    it('non-reactive children should not update on parent state change', () => {
-      // Define an App component that manages a `count` state.
-      // It renders a reactive child (updates with `count`) and a non-reactive child (empty dependency array).
-      const App = () => {
-        const [count, setCount] = useState(0)
-        return Div({
-          'data-testid': 'root-node',
-          onClick: () => setCount(count + 1), // Increment count on click
-          children: [
-            Div({ children: `Reactive ${count}` }), // Reactive child
-            Div({ children: `Non Reactive ${count}` }, []), // Non-reactive child
-          ],
-        }).render()
+  // Step 7: Dependency and Memoization in a Real-World Scenario
+  // This test suite is designed to validate the memoization and dependency tracking capabilities of the Node component system.
+  // It simulates a practical, real-world application where a component's re-rendering is controlled by specific dependencies.
+  describe('Dependency and Memoization in a Real-World Scenario', () => {
+    // Mock user data and a fake service to simulate API calls.
+    const mockUsers = {
+      '1': { name: 'Alice', email: 'alice@example.com' },
+      '2': { name: 'Bob', email: 'bob@example.com' },
+    }
+    const userService = {
+      fetchUser: jest.fn(async (userId: keyof typeof mockUsers) => {
+        await new Promise(resolve => setTimeout(resolve, 50)) // Simulate network delay
+        return mockUsers[userId]
+      }),
+    }
+
+    // A reusable UserProfile component that fetches and displays user data.
+    // It is designed to be memoized based on the userId.
+    let userProfileRenderCount: jest.Mock
+    const UserProfile = memo(({ userId }: { userId: keyof typeof mockUsers }) => {
+      userProfileRenderCount()
+      const [user, setUser] = useState<{ name: string; email: string } | null>(null)
+
+      useEffect(() => {
+        userService.fetchUser(userId).then(setUser)
+      }, [userId]) // Effect depends only on userId
+
+      if (!user) {
+        return P('Loading profile...').render()
       }
 
-      // Render the App component.
-      const { getByTestId, getByText } = render(Node(App).render())
-      // Get the root node to trigger the click event.
-      const rootNode = getByTestId('root-node')
-
-      // Act: Click the root node to change the parent's state.
-      act(() => {
-        rootNode.click()
-      })
-
-      // Assert: The reactive child should show the updated count.
-      expect(getByText('Reactive 1')).toBeInTheDocument()
-      // Assert: The non-reactive child should still show the initial count.
-      expect(getByText('Non Reactive 0')).toBeInTheDocument()
+      return Div({
+        'data-testid': `profile-${userId}`,
+        children: [H1(user.name), P(user.email)],
+      }).render()
     })
 
-    it('should only update child with single dependency when parent has multiple states', () => {
-      // Define an App component with two independent state variables (count1, count2).
-      // It renders buttons to update each count and two children, each dependent on only one count.
+    // The main App component that controls which user profile is displayed
+    // and has an unrelated state variable (theme) to test memoization.
+    const App = () => {
+      const [currentUserId, setCurrentUserId] = useState<keyof typeof mockUsers>('1')
+      const [theme, setTheme] = useState('light')
+
+      return Div({
+        children: [
+          // Controls to change the state
+          Div({
+            children: [
+              P(`Current Theme: ${theme}`),
+              Node('button', { onClick: () => setCurrentUserId('1'), children: 'View Alice' }),
+              Node('button', { onClick: () => setCurrentUserId('2'), children: 'View Bob' }),
+              Node('button', { onClick: () => setTheme(t => (t === 'light' ? 'dark' : 'light')), children: 'Toggle Theme' }),
+            ],
+          }),
+          // The memoized UserProfile component. It should only re-render if `currentUserId` changes.
+          Node(UserProfile, { userId: currentUserId }, [currentUserId]),
+        ],
+      }).render()
+    }
+
+    beforeEach(() => {
+      // Reset mocks and spies before each test in this suite.
+      userProfileRenderCount = jest.fn()
+      userProfileRenderCount.mockClear()
+      userService.fetchUser.mockClear()
+    })
+
+    it('distinguishes static nodes with different children', () => {
+      // Arrange: create static Div nodes each with a different child
+      const nodeA = Div({ children: Span('A') }, [])
+      const nodeB = Div({ children: Span('B') }, [])
+      const nodeC = Div({ children: Div({ children: Span('C') }, []) })
+      const StaticNodesApp = Div({ children: [nodeA, nodeB, nodeC] })
+
+      // Act: render the App component
+      const { getByText } = render(StaticNodesApp.render())
+
+      // Assert: the rendered Span elements exist and their parent elements are distinct
+      const spanA = getByText('A')
+      const spanB = getByText('B')
+      const spanC = getByText('C')
+
+      expect(spanA.parentElement).not.toBe(spanB.parentElement)
+      expect(spanC.parentElement).not.toBe(spanA.parentElement)
+    })
+
+    it('should memoize a simple component based on dependencies', async () => {
+      let renderCount = 0
+      const MemoizedComponent = ({ value }: { value: string }) => {
+        renderCount++
+        return Div({ children: `Value: ${value}` }).render()
+      }
+
       const App = () => {
-        const [count1, setCount1] = useState(0)
-        const [count2, setCount2] = useState(0)
+        const [stateValue, setStateValue] = useState('initial')
+        const [unrelatedState, setUnrelatedState] = useState(0)
 
         return Div({
           children: [
-            Div({ onClick: () => setCount1(c => c + 1), children: 'Increment Count 1' }),
-            Div({ onClick: () => setCount2(c => c + 1), children: 'Increment Count 2' }),
-            Div({ children: `Count 1 is ${count1}` }, [count1]), // Dependent on count1
-            Div({ children: `Count 2 is ${count2}` }, [count2]), // Dependent on count2
+            Node(MemoizedComponent, { value: stateValue }, [stateValue]),
+            Node('button', { onClick: () => setStateValue('changed'), children: 'Change Value' }),
+            Node('button', { onClick: () => setUnrelatedState(unrelatedState + 1), children: 'Change Unrelated' }),
+            P(`Unrelated: ${unrelatedState}`),
           ],
         }).render()
       }
 
-      // Render the App component.
       const { getByText } = render(Node(App).render())
 
-      // Act: Click the button to increment count2.
+      // Initial render
+      expect(getByText('Value: initial')).toBeInTheDocument()
+      expect(renderCount).toBe(1)
+
+      // Change unrelated state
       act(() => {
-        getByText('Increment Count 2').click()
+        getByText('Change Unrelated').click()
       })
+      await getByText('Unrelated: 1')
+      // MemoizedComponent should NOT re-render
+      expect(renderCount).toBe(1)
 
-      // Assert: The child dependent on count1 should NOT have re-rendered.
-      expect(getByText('Count 1 is 0')).toBeInTheDocument()
-      // Assert: The child dependent on count2 SHOULD have re-rendered.
-      expect(getByText('Count 2 is 1')).toBeInTheDocument()
-
-      // Act: Click the button to increment count1.
+      // Change stateValue
       act(() => {
-        getByText('Increment Count 1').click()
+        getByText('Change Value').click()
       })
-
-      // Assert: The child dependent on count1 SHOULD have re-rendered.
-      expect(getByText('Count 1 is 1')).toBeInTheDocument()
-      // Assert: The child dependent on count2 should remain unchanged (unless count2 was clicked again).
-      expect(getByText('Count 2 is 1')).toBeInTheDocument()
+      await getByText('Value: changed')
+      // MemoizedComponent SHOULD re-render
+      expect(renderCount).toBe(2)
     })
 
     it('handles dependency-driven re-renders and static child', () => {
@@ -774,46 +830,70 @@ describe('BaseNode - Core Functionality', () => {
       expect(getByText('Initial User: John')).toBeInTheDocument()
     })
 
-    it('distinguishes static nodes with different children', () => {
-      // Create two static Div nodes, each with a different Span child.
-      const nodeA = Div({ children: Span('A') }, [])
-      const nodeB = Div({ children: Span('B') }, [])
-      // Create an App component that renders both static nodes.
-      const StaticNodesApp = Div({ children: [nodeA, nodeB] })
+    it('should render the initial profile and not re-render on unrelated state changes', async () => {
+      // Step 1: Mount the App and obtain query utilities
+      const { getByText, findByText } = render(Node(App).render())
 
-      // Render the App component.
-      const { getByText } = render(StaticNodesApp.render())
-      // Get the rendered Span elements.
-      const spanA = getByText('A')
-      const spanB = getByText('B')
-      // Assert that the parent elements of the two spans are different,
-      // confirming that even static nodes with different content are distinct instances.
-      expect(spanA.parentElement).not.toBe(spanB.parentElement)
+      // Step 2: Wait for the initial profile (Alice) to load and assert initial state
+      await findByText('Alice')
+      expect(getByText('alice@example.com')).toBeInTheDocument()
+      const initialRenderCount = userProfileRenderCount.mock.calls.length
+      expect(userService.fetchUser).toHaveBeenCalledWith('1')
+      expect(userService.fetchUser).toHaveBeenCalledTimes(1)
+
+      // Step 3: Trigger an unrelated state change (toggle theme)
+      act(() => {
+        getByText('Toggle Theme').click()
+      })
+
+      // Step 4: Wait for the unrelated UI update to settle
+      await findByText('Current Theme: dark')
+
+      // Step 5: Verify memoization prevented re-render and no additional fetch occurred
+      expect(userProfileRenderCount.mock.calls.length).toBe(initialRenderCount)
+      expect(userService.fetchUser).toHaveBeenCalledTimes(1)
+      expect(getByText('Alice')).toBeInTheDocument()
     })
 
-    it('keeps HOC child static when given empty dependencies', () => {
-      // Define a Higher-Order Component (HOC) that simply renders its children in a Div.
-      const HocComp = Component(({ children }) => Div({ children }))
-      // Define an App component that manages a `count` state and renders an HOC-wrapped child.
-      // The HOC child is given an empty dependency array, making it static.
-      const HocApp = () => {
-        const [count, setCount] = useState(0)
-        return Div({
-          'data-testid': 'root-node-hoc',
-          onClick: () => setCount(c => c + 1), // Increment count on click
-          children: HocComp({ children: `Count ${count}` }, []), // Static HOC child
-        }).render()
-      }
+    it('should re-render the profile only when the userId dependency changes', async () => {
+      const { getByText, findByText } = render(Node(App).render())
 
-      // Render the App component.
-      const { getByTestId, getByText } = render(Node(HocApp).render())
-      // Act: Click the root node to change the parent's state.
+      // 1. Initial Render (Alice)
+      // First render: Loading state (renderCount = 1)
+      // Second render: Data loaded (renderCount = 2)
+      await findByText('Alice')
+      expect(getByText('alice@example.com')).toBeInTheDocument()
+      expect(userProfileRenderCount).toHaveBeenCalledTimes(2) // Loading + Loaded
+      expect(userService.fetchUser).toHaveBeenCalledWith('1')
+      expect(userService.fetchUser).toHaveBeenCalledTimes(1)
+
+      // 2. Switch Profile to Bob
       act(() => {
-        getByTestId('root-node-hoc').click()
+        getByText('View Bob').click()
       })
-      // Assert: The static HOC child should still display its initial content,
-      // as it did not re-render despite the parent's state change.
-      expect(getByText('Count 0')).toBeInTheDocument()
+
+      // 3. Assert Re-render and Data Fetch
+      // Third render: Loading state with userId='2' (renderCount = 3)
+      // Fourth render: Bob's data loaded (renderCount = 4)
+      await findByText('Bob')
+      expect(getByText('bob@example.com')).toBeInTheDocument()
+      expect(userProfileRenderCount).toHaveBeenCalledTimes(4) // +2 for new profile
+      expect(userService.fetchUser).toHaveBeenCalledWith('2')
+      expect(userService.fetchUser).toHaveBeenCalledTimes(2)
+
+      // 4. Switch back to Alice
+      act(() => {
+        getByText('View Alice').click()
+      })
+
+      // 5. Assert Re-render and Data Fetch again
+      // Fifth render: Loading state with userId='1' (renderCount = 5)
+      // Sixth render: Alice's data loaded (renderCount = 6)
+      await findByText('Alice')
+      expect(getByText('alice@example.com')).toBeInTheDocument()
+      expect(userProfileRenderCount).toHaveBeenCalledTimes(6) // +2 for switching back
+      expect(userService.fetchUser).toHaveBeenCalledWith('1')
+      expect(userService.fetchUser).toHaveBeenCalledTimes(3)
     })
   })
 })
