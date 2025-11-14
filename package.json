@@ -85,7 +85,7 @@
     "type": "git",
     "url": "git+https://github.com/l7aromeo/meonode-ui.git"
   },
-  "homepage": "https://github.com/l7aromeo/meonode-ui#readme",
+  "homepage": "https://ui.meonode.com",
   "bugs": {
     "url": "https://github.com/l7aromeo/meonode-ui/issues"
   },
