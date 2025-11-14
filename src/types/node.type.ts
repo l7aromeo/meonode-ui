@@ -85,6 +85,15 @@ export interface PropProcessingCache {
 }
 
 /**
+ * Represents an entry in the element cache.
+ * Stores the rendered React element and its previous dependencies for memoization.
+ */
+export interface ElementCacheEntry {
+  renderedElement: ReactElement<FinalNodeProps>
+  prevDeps?: DependencyList
+}
+
+/**
  * Forward declaration of the BaseNode interface to avoid circular dependencies.
  * Defines the core structure and capabilities of a BaseNode instance.
  * @template E - The type of React element/component that this node represents
@@ -175,9 +184,10 @@ export type FinalNodeProps = ReactAttributes &
     nativeProps: Omit<Omit<PropsOf<NodeElement>, 'children'>, 'style'>
     ref: any | React.Ref<unknown> | undefined
     style: any
-    css: any
+    css: CssProp
     disableEmotion: boolean
     children: Children
+    [key: string]: any
   }>
 
 /**
