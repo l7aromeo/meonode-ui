@@ -231,7 +231,7 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
 
   for (const key in props) {
     if (Object.prototype.hasOwnProperty.call(props, key) && !CSSPropertySet.has(key)) {
-      result[key as keyof NonNullable<FinalNodeProps>] = props[key]
+      result[key] = props[key]
     }
   }
 
