@@ -515,36 +515,60 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
-   * A wrapper component that executes a function-as-a-child and processes its return value.
+   * A special internal React component used to render "function-as-a-child" (render prop) patterns.
+   * When a `BaseNode` receives a function as its `children` prop, it wraps that function
+   * inside this `_functionRenderer` component. This component then executes the render function
+   * and processes its return value, normalizing it into a renderable ReactNode.
+   *
+   * This allows `BaseNode` to support render props while maintaining its internal processing
+   * and normalization logic for the dynamically generated content.
    * @method _functionRenderer
+   * @param {Object} props The properties passed to the renderer.
+   * @param {Function} props.render The function-as-a-child to execute.
+   * @param {boolean} [props.disableEmotion] Inherited flag to disable Emotion styling for children.
+   * @returns {ReactNode | null | undefined} The processed and rendered output of the render function.
    */
-  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>) {
+  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>): ReactNode | null | undefined {
     let result: NodeElement
     try {
+      // Execute the render prop function to get its output.
       result = render()
     } catch (error) {
       if (__DEV__) {
         console.error('MeoNode: Error executing function-as-a-child.', error)
       }
+      // If the render function throws, treat its output as null to prevent crashes.
       result = null
     }
-    if (result === null || result === undefined) return result
+
+    // Handle null or undefined results directly, as they are valid React render outputs.
+    if (result === null || result === undefined) return result as never
+
+    // If the result is already a BaseNode instance, process it.
     if (isNodeInstance(result)) {
+      // If emotion is disabled for the parent and not explicitly re-enabled on the child,
+      // create a new BaseNode with emotion disabled and render it.
       if (disableEmotion && !result.rawProps.disableEmotion) return new BaseNode(result.element, { ...result.rawProps, disableEmotion: true }).render()
+      // Otherwise, render the existing BaseNode directly.
       return result.render()
     }
+
+    // If the result is an array, it likely contains multiple children.
     if (Array.isArray(result)) {
+      // Helper to generate a stable key for array items, crucial for React's reconciliation.
       const safeGetKey = (item: any, index: number) => {
         try {
+          // Attempt to get a meaningful name for the element type.
           return `${getElementTypeName(item)}-${index}`
         } catch (error) {
           if (__DEV__) {
             console.error('MeoNode: Could not determine element type name for key in function-as-a-child.', error)
           }
+          // Fallback to a generic key if type name cannot be determined.
           return `item-${index}`
         }
       }
-
+      // Map over the array, processing each item and assigning a key.
       return result.map((item, index) =>
         BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(item, disableEmotion), passedKey: safeGetKey(item, index) }),
       )
@@ -552,14 +576,26 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     if (result instanceof React.Component) {
       return BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(result.render(), disableEmotion), disableEmotion })
     }
+
+    // Handle primitive types directly, as they are valid React children.
     if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result
+
+    // For any other non-primitive, non-array result, process it as a single NodeElement.
     const processedResult = BaseNode._processRawNode(result as NodeElement, disableEmotion)
+    // If processing yields a valid element, render it.
     if (processedResult) return BaseNode._renderProcessedNode({ processedElement: processedResult, disableEmotion })
-    return result
+    // Fallback: return the original result if it couldn't be processed into a renderable node.
+    return result as ReactNode
   }
 
   /**
-   * A legacy helper for the recursive child processing path. This is primarily used by `_functionRenderer`.
+   * Renders a processed `NodeElement` into a ReactNode.
+   * This helper is primarily used by `_functionRenderer` to handle the output of render props,
+   * ensuring that `BaseNode` instances are correctly rendered and other React elements or primitives
+   * are passed through. It also applies `disableEmotion` and `key` props as needed.
+   *
+   * This method is part of the child processing pipeline, converting internal `NodeElement` representations
+   * into actual React elements that can be rendered by React.
    * @method _renderProcessedNode
    */
   private static _renderProcessedNode({
@@ -571,18 +607,34 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     passedKey?: string
     disableEmotion?: boolean
   }) {
+    // Initialize an object to hold common props that might be applied to the new BaseNode.
     const commonBaseNodeProps: Partial<NodeProps<any>> = {}
+    // If a `passedKey` is provided, add it to `commonBaseNodeProps`.
+    // This key is typically used for React's reconciliation process.
     if (passedKey !== undefined) commonBaseNodeProps.key = passedKey
 
+    // If the processed element is already a BaseNode instance.
     if (isNodeInstance(processedElement)) {
+      // Get the existing key from the raw props of the BaseNode.
       const existingKey = processedElement.rawProps?.key
+      // Apply the `disableEmotion` flag to the raw props of the BaseNode.
       processedElement.rawProps.disableEmotion = disableEmotion
+      // If the existing key is the same as the passed key, render the existing BaseNode directly.
+      // This avoids unnecessary re-creation of the BaseNode instance.
       if (existingKey === passedKey) return processedElement.render()
+      // Otherwise, create a new BaseNode instance, merging existing raw props with common props, then render it.
       return new BaseNode(processedElement.element, { ...processedElement.rawProps, ...commonBaseNodeProps }).render()
     }
+    // If the processed element is a React class component (e.g., `class MyComponent extends React.Component`).
+    // Create a new BaseNode for it, applying common props and `disableEmotion`, then render.
     if (isReactClassComponent(processedElement)) return new BaseNode(processedElement, { ...commonBaseNodeProps, disableEmotion }).render()
+    // If the processed element is an instance of a React component (e.g., `new MyComponent()`).
+    // Directly call its `render` method.
     if (processedElement instanceof React.Component) return processedElement.render()
+    // If the processed element is a function (likely a functional component or a render prop that returned a component type).
+    // Create a React element directly using `createElement`, passing the `passedKey`.
     if (typeof processedElement === 'function') return createElement(processedElement as ElementType, { key: passedKey })
+    // For any other type (primitives, null, undefined, etc.), return it as a ReactNode.
     return processedElement as ReactNode
   }
 
@@ -603,59 +655,77 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method render
    */
   public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
+    // A stable cache key derived from the element + important props signature.
     const cacheKey = this._stableKey
 
-    // Skip cache lookup on server-side
-    // Server side rendering is always a fresh render, no cached elements should exist
+    // On server we never reuse cached elements because that can cause hydration mismatches.
     const cacheEntry = BaseNode._isServer ? undefined : BaseNode._elementCache.get(cacheKey)
 
+    // Decide whether this node (and its subtree) should update given dependency arrays.
     const shouldUpdate = BaseNode._shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
 
+    // Fast return: if nothing should update and we have a cached element, reuse it.
     if (!shouldUpdate && cacheEntry?.cachedElement) {
       return cacheEntry.cachedElement
     }
 
+    // When this node doesn't need update, its children are considered "blocked" and may be skipped.
     const childrenBlocked = !shouldUpdate
 
+    // Work stack for iterative, non-recursive traversal.
+    // Each entry tracks the BaseNode, whether its children were pushed (isProcessed) and whether it is blocked.
     const workStack: { node: BaseNode<any>; isProcessed: boolean; blocked: boolean }[] = [{ node: this, isProcessed: false, blocked: childrenBlocked }]
+    // Map to collect rendered React elements for processed BaseNode instances.
     const renderedElements = new Map<BaseNode<any>, ReactElement>()
 
+    // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
     while (workStack.length > 0) {
       const currentWork = workStack[workStack.length - 1]
       const { node, isProcessed, blocked } = currentWork
 
       if (!isProcessed) {
+        // Begin phase: mark processed and push child BaseNodes onto the stack (in reverse order)
         currentWork.isProcessed = true
         const children = node.props.children
 
         if (children) {
+          // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
           const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(isNodeInstance)
 
           for (let i = childrenToProcess.length - 1; i >= 0; i--) {
             const child = childrenToProcess[i]
             const childCacheKey = child._stableKey
 
-            // Skip cache lookup for children on server-side
+            // Respect server/client differences for child cache lookup.
             const childCacheEntry = BaseNode._isServer ? undefined : BaseNode._elementCache.get(childCacheKey)
 
+            // Determine whether the child should update given its deps and the parent's blocked state.
             const childShouldUpdate = BaseNode._shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
 
+            // If child doesn't need update and has cached element, reuse it immediately (no push).
             if (!childShouldUpdate && childCacheEntry?.cachedElement) {
               renderedElements.set(child, childCacheEntry.cachedElement)
               continue
             }
 
+            // Otherwise push child for processing; childBlocked inherits parent's blocked state.
             const childBlocked = blocked || !childShouldUpdate
             workStack.push({ node: child, isProcessed: false, blocked: childBlocked })
           }
         }
       } else {
+        // Complete phase: all descendants have been processed; build this node's React element.
         workStack.pop()
 
+        // Extract node props. Non-present props default to undefined via destructuring.
         const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
         let finalChildren: ReactNode[] = []
 
         if (childrenInProps) {
+          // Convert child placeholders into concrete React nodes:
+          // - If it's a BaseNode, lookup its rendered ReactElement from the map.
+          // - If it's already a React element, use it directly.
+          // - Otherwise treat as primitive ReactNode.
           finalChildren = (Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]).map(child => {
             if (isNodeInstance(child)) return renderedElements.get(child)!
             if (isValidElement(child)) return child
@@ -663,12 +733,16 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
           })
         }
 
+        // Merge element props: explicit other props + DOM native props + React key.
         const elementProps = { ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps }
         let element: ReactElement<FinalNodeProps>
 
+        // Handle fragments specially: create fragment element with key and children.
         if (node.element === Fragment || isFragment(node.element)) {
           element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
         } else {
+          // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
+          // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
           const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
           if (isStyledComponent) {
             element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
@@ -677,8 +751,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
           }
         }
 
-        // Only cache on client-side
-        // Server-side cache would pollute and cause hydration mismatches
+        // Cache the generated element on client-side to speed up future renders.
         if (!BaseNode._isServer) {
           BaseNode._elementCache.set(node._stableKey, {
             prevDeps: node._deps,
@@ -686,10 +759,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
           })
         }
 
+        // Store the rendered element so parent nodes can reference it.
         renderedElements.set(node, element)
       }
     }
 
+    // Return the ReactElement corresponding to the root node (this).
     return renderedElements.get(this) as ReactElement<FinalNodeProps>
   }
 
