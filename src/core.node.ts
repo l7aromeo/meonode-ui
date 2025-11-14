@@ -329,15 +329,13 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method _processProps
    */
   private _processProps(): FinalNodeProps {
-    const { ref, key, children, css, props: _nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
-    const nativeProps = _nativeProps as Record<string, any>
+    const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
 
     // --- Fast Path Optimization ---
     if (Object.keys(restRawProps).length === 0 && !css) {
       return omitUndefined({
         ref,
         key,
-        style: nativeProps.style,
         disableEmotion,
         nativeProps: omitUndefined(nativeProps),
         children: this._processChildren(children, disableEmotion),
@@ -380,7 +378,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       ref,
       key,
       css: finalCssProps,
-      style: nativeProps.style,
       ...domProps,
       disableEmotion,
       nativeProps: omitUndefined(nativeProps),
