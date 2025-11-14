@@ -823,8 +823,7 @@ export function Node<AdditionalProps extends Record<string, any>, E extends Node
   props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
   deps?: DependencyList,
 ): NodeInstance<E> {
-  const { deps: _deps, ...finalProps } = props as any
-  return new BaseNode(element, finalProps, deps)
+  return new BaseNode(element, props as NodeProps<E>, deps)
 }
 
 /**
