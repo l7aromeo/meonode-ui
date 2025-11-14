@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2025-11-15
+
+### Perf
+- **core**: implement intelligent caching and memory management ([`0e5671b`](https://github.com/l7aromeo/meonode-ui/commit/0e5671b36189c964d66676ef633f3ccdbd9004e2))
+  Introduces a sophisticated caching and memory management system to prevent memory leaks and improve performance in Single Page Applications (SPAs).
+
+  This new system intelligently tracks mounted components and automatically cleans up caches of unmounted components during navigation events.
+
+  Key features and improvements include:
+
+  - **Navigation-aware Cache Eviction:** A new `NavigationCacheManager` listens for browser navigation events (popstate, pushState, etc.) and triggers a safe cleanup of the element cache. This prevents the cache from growing indefinitely with stale entries from previous pages.
+
+  - **Mount Tracking:** A `MountTracker` class now keeps a record of all mounted `BaseNode` instances. This allows the cache eviction logic to accurately determine which components are safe to remove from the cache.
+
+  - **Advanced Eviction Policies:** The `SafeCacheManager` implements several eviction policies, including evicting unmounted components, old unmounted components, and an emergency eviction policy for high memory pressure scenarios.
+
+  - **Memory-Safe Portal System:** The portal implementation has been refactored to use a `WeakMap`. This ensures that portal-related DOM elements and React roots are automatically garbage collected when the corresponding `BaseNode` instance is no longer in use, preventing a common source of memory leaks.
+
+  - **Improved Cache Entry Metadata:** The element cache entries now store additional metadata, such as creation timestamp, access count, and a `WeakRef` to the node instance, enabling more intelligent eviction decisions.
+
+  - **Enhanced Stability:** Component identifiers for caching are now generated using a `WeakMap`, providing more stable and reliable keys than relying on component names, which can be affected by minification.
+
+  - **Comprehensive Test Coverage:** Added a suite of new integration tests to validate the caching and memory management system. These tests cover key scenarios including cache collision, rapid navigation, React 18 Strict Mode compatibility, large prop object fingerprinting, and LRU eviction logic.
+
+### Fix
+- **core**: simplify property assignment in common helper ([`312af57`](https://github.com/l7aromeo/meonode-ui/commit/312af574712202a25bdd62fab94441a937f159f2))
+
+### Refactor
+- **core**: add ElementCacheEntry interface for memoization and update css prop type ([`6a8381c`](https://github.com/l7aromeo/meonode-ui/commit/6a8381c4c85cb22df4ba398637401d420461e413))
+
 ## [0.4.3] - 2025-11-14
 
 ### Docs
