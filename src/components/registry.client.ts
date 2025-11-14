@@ -1,10 +1,10 @@
 'use client'
 
 import { createElement, type ReactElement, useState } from 'react'
-import { useServerInsertedHTML } from 'next/navigation'
 import { CacheProvider } from '@emotion/react'
 import createCache from '@emotion/cache'
 import { Node } from '@src/core.node.js'
+import { useServerInsertedHTML } from 'next/navigation.js'
 
 function createEmotionCache() {
   return createCache({ key: 'meonode-css' })

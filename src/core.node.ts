@@ -8,6 +8,7 @@ import React, {
   createElement,
   isValidElement,
   Fragment,
+  StrictMode,
 } from 'react'
 import type {
   Children,
@@ -24,13 +25,16 @@ import type {
   PropProcessingCache,
   PropsOf,
   DependencyList,
+  ElementCacheEntry,
 } from '@src/types/node.type.js'
 import { isNodeInstance } from '@src/helper/node.helper.js'
 import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
-import { createRoot, type Root as ReactDOMRoot } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 import { __DEV__ } from '@src/constants/common.const.js'
+import { MountTracker } from '@src/helper/mount-tracker.helper.js'
+import { NavigationCacheManager } from '@src/helper/navigation-cache-manager.helper.js'
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -46,16 +50,23 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   public readonly isBaseNode = true
 
   private _props?: FinalNodeProps
-  private _portalDOMElement: HTMLDivElement | null = null
-  private _portalReactRoot: (NodePortal & { render(children: React.ReactNode): void }) | null = null
-  private _stableKey: string
   private readonly _deps?: DependencyList
+  public _stableKey: string
 
   private static _isServer = typeof window === 'undefined'
   private static _propProcessingCache = new Map<string, PropProcessingCache>()
-  private static _elementCache = new Map<any, { prevDeps?: DependencyList; cachedElement?: ReactElement<FinalNodeProps> }>()
   private static _isValidElement = isValidElementType
   private static _isStyleProp = !BaseNode._isServer && typeof document !== 'undefined' ? (k: string) => k in document.body.style : () => false
+  public static _elementCache = new Map<string, ElementCacheEntry>()
+
+  // Portal infrastructure using WeakMap for memory-safe management
+  private static _portalInfrastructure = new WeakMap<
+    BaseNode<any>,
+    {
+      domElement: HTMLDivElement
+      reactRoot: NodePortal & { render(children: React.ReactNode): void }
+    }
+  >()
 
   // Cache configuration
   private static readonly CACHE_SIZE_LIMIT = 500
@@ -65,6 +76,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
   private _lastPropsRef: unknown = null
   private _lastSignature: string = ''
+
+  // Unique ID generation for elements
+  private static _elementIdMap = new WeakMap<any, string>()
+  private static _elementIdCounter = 0
+
+  // Cleanup scheduling flag
+  private static _scheduledCleanup = false
+
+  private static _navigationStarted = false
 
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}, deps?: DependencyList) {
     // Element type validation is performed once at construction to prevent invalid nodes from being created.
@@ -87,6 +107,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     // but our internal key is still unique even if the user's key is not.
     if (key !== undefined && key !== null) {
       this._stableKey = `${String(key)}:${this._stableKey}`
+    }
+
+    if (!BaseNode._isServer && !BaseNode._navigationStarted) {
+      NavigationCacheManager.getInstance().start()
+      BaseNode._navigationStarted = true
     }
   }
 
@@ -152,6 +177,45 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   }
 
   /**
+   * Performs a shallow equality check between two objects.
+   * @method _shallowEqual
+   */
+  private _shallowEqual(a: Record<string, any>, b: Record<string, any>): boolean {
+    const keysA = Object.keys(a)
+    const keysB = Object.keys(b)
+    if (keysA.length !== keysB.length) return false
+    return keysA.every(key => a[key] === b[key])
+  }
+
+  /**
+   * Generates a stable identifier for the given element type.
+   * For primitive types (strings), it returns the string itself.
+   * For component types (functions, classes, exotic components), it generates
+   * and caches a unique ID using a WeakMap to ensure stability across calls.
+   * @method _getStableElementId
+   */
+  private static _getStableElementId(element: NodeElementType): string {
+    if (element === StrictMode) return 'StrictMode'
+    if (typeof element === 'string') return element
+
+    // On server, avoid WeakMap caching. Directly return a stable string identifier.
+    if (BaseNode._isServer) {
+      try {
+        return getElementTypeName(element)
+      } catch {
+        // Fallback for components without a name
+        return `ServerComponentFallback_${BaseNode._elementIdCounter++}`
+      }
+    }
+
+    // Client-side: Use WeakMap to maintain stable IDs across calls
+    if (!BaseNode._elementIdMap.has(element)) {
+      BaseNode._elementIdMap.set(element, `Component_${BaseNode._elementIdCounter++}`)
+    }
+    return BaseNode._elementIdMap.get(element)!
+  }
+
+  /**
    * Generates or returns a cached signature representing the props shape and values.
    * The signature is used as a stable key for caching prop-derived computations (e.g. CSS extraction).
    * - Uses a fast reference check to return the previous signature if the same props object is passed.
@@ -163,7 +227,16 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @returns A compact string signature suitable for use as a cache key.
    */
   private _getCachedSignature(props: Record<string, any>): string {
+    if (BaseNode._isServer) {
+      return BaseNode._createPropSignature(this.element, props)
+    }
+
     if (props === this._lastPropsRef) {
+      return this._lastSignature
+    }
+
+    if (this._lastPropsRef && this._shallowEqual(props, this._lastPropsRef)) {
+      this._lastPropsRef = props
       return this._lastSignature
     }
 
@@ -172,10 +245,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     if (keyCount > 100) {
       const criticalProps: Record<string, any> = { _keyCount: keyCount }
+      let criticalCount = 0
+      const MAX_CRITICAL = 50
 
       for (const k of keys) {
+        if (criticalCount >= MAX_CRITICAL) break
         if (BaseNode._isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
           criticalProps[k] = props[k]
+          criticalCount++
         }
       }
 
@@ -202,27 +279,18 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     // Safe element identification that works with Next.js Client Components
     let elementName: string
 
-    try {
-      // Try to get element name safely
-      if (typeof element === 'string') {
-        elementName = element
-      } else if (typeof element === 'function') {
-        // Use a stable identifier without accessing component internals
-        // This prevents Next.js proxy errors for Client Components
-        elementName = element.name || 'Component'
-      } else if (element && typeof element === 'object') {
-        // Handle exotic components (Fragment, Memo, ForwardRef, etc.)
-        elementName = (element as any).displayName || (element as any).name || 'ExoticComponent'
-      } else {
-        elementName = 'Unknown'
+    if (BaseNode._isServer) {
+      elementName = BaseNode._getStableElementId(element)
+    } else {
+      try {
+        elementName = getElementTypeName(element)
+      } catch (error) {
+        if (__DEV__) {
+          console.error('MeoNode: Could not determine element name for signature.', error)
+        }
+        // Fallback to stable ID if name cannot be determined
+        elementName = BaseNode._getStableElementId(element)
       }
-    } catch (error) {
-      if (__DEV__) {
-        console.error('MeoNode: Could not determine element name for signature.', error)
-      }
-      // Fallback for Client Components that throw when accessed
-      // Use a generic identifier - this is safe because we still have props in the signature
-      elementName = 'ClientComponent'
     }
 
     const keys = Object.keys(props).sort()
@@ -269,6 +337,8 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method _getCachedCssProps
    */
   private static _getCachedCssProps(cacheableProps: Record<string, any>, signature: string): { cssProps: Record<string, any> } {
+    if (BaseNode._isServer) return { cssProps: getCSSProps(cacheableProps) }
+
     const cached = BaseNode._propProcessingCache.get(signature)
 
     if (cached) {
@@ -287,8 +357,23 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     })
 
     // Batch cleanup for better performance
-    if (BaseNode._propProcessingCache.size > BaseNode.CACHE_SIZE_LIMIT) {
-      BaseNode._evictLRUEntries()
+    if (BaseNode._propProcessingCache.size > BaseNode.CACHE_SIZE_LIMIT && !BaseNode._scheduledCleanup) {
+      BaseNode._scheduledCleanup = true
+
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(
+          () => {
+            BaseNode._evictLRUEntries()
+            BaseNode._scheduledCleanup = false
+          },
+          { timeout: 2000 },
+        )
+      } else {
+        setTimeout(() => {
+          BaseNode._evictLRUEntries()
+          BaseNode._scheduledCleanup = false
+        }, 100)
+      }
     }
 
     return { cssProps }
@@ -655,6 +740,11 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method render
    */
   public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
+    // Auto-track this node for mount detection
+    if (!BaseNode._isServer) {
+      MountTracker.trackMount(this)
+    }
+
     // A stable cache key derived from the element + important props signature.
     const cacheKey = this._stableKey
 
@@ -665,8 +755,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     const shouldUpdate = BaseNode._shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
 
     // Fast return: if nothing should update and we have a cached element, reuse it.
-    if (!shouldUpdate && cacheEntry?.cachedElement) {
-      return cacheEntry.cachedElement
+    if (!shouldUpdate && cacheEntry?.renderedElement) {
+      cacheEntry.accessCount += 1
+      return cacheEntry.renderedElement
     }
 
     // When this node doesn't need update, its children are considered "blocked" and may be skipped.
@@ -703,8 +794,8 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
             const childShouldUpdate = BaseNode._shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
 
             // If child doesn't need update and has cached element, reuse it immediately (no push).
-            if (!childShouldUpdate && childCacheEntry?.cachedElement) {
-              renderedElements.set(child, childCacheEntry.cachedElement)
+            if (!childShouldUpdate && childCacheEntry?.renderedElement) {
+              renderedElements.set(child, childCacheEntry.renderedElement)
               continue
             }
 
@@ -753,10 +844,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
         // Cache the generated element on client-side to speed up future renders.
         if (!BaseNode._isServer) {
-          BaseNode._elementCache.set(node._stableKey, {
+          const newCacheEntry: ElementCacheEntry = {
             prevDeps: node._deps,
-            cachedElement: element,
-          })
+            renderedElement: element,
+            onEvict: () => MountTracker.trackUnmount(node),
+            nodeRef: new WeakRef(node),
+            createdAt: Date.now(),
+            accessCount: 1,
+          }
+          BaseNode._elementCache.set(node._stableKey, newCacheEntry)
         }
 
         // Store the rendered element so parent nodes can reference it.
@@ -768,6 +864,17 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     return renderedElements.get(this) as ReactElement<FinalNodeProps>
   }
 
+  /**
+   * Registers a node instance with the MountTracker for unmount tracking.
+   * This is only executed on the client-side.
+   * @method registerUnmount
+   */
+  public static registerUnmount(node: BaseNode<any>) {
+    if (!BaseNode._isServer) {
+      MountTracker.trackUnmount(node)
+    }
+  }
+
   // --- Portal System ---
 
   /**
@@ -777,32 +884,40 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    */
   private _ensurePortalInfrastructure() {
     if (BaseNode._isServer) return false
-    if (this._portalDOMElement && this._portalReactRoot && this._portalDOMElement.isConnected) return true
 
-    if (this._portalDOMElement && !this._portalDOMElement.isConnected) {
-      if (this._portalReactRoot) {
-        try {
-          this._portalReactRoot.unmount()
-        } catch (error) {
-          if (__DEV__) {
-            console.error('MeoNode: Error unmounting disconnected portal root.', error)
-          }
+    let infra = BaseNode._portalInfrastructure.get(this)
+
+    // Check if infrastructure exists and is still connected
+    if (infra?.domElement?.isConnected) {
+      return true
+    }
+
+    // Clean up disconnected infrastructure
+    if (infra?.domElement && !infra.domElement.isConnected) {
+      try {
+        infra.reactRoot.unmount()
+      } catch (error) {
+        if (__DEV__) {
+          console.error('MeoNode: Error unmounting disconnected portal root.', error)
         }
-        this._portalReactRoot = null
       }
-      this._portalDOMElement = null
+      BaseNode._portalInfrastructure.delete(this)
+      infra = undefined
     }
 
-    if (!this._portalDOMElement) {
-      this._portalDOMElement = document.createElement('div')
-      document.body.appendChild(this._portalDOMElement)
+    // Create new infrastructure
+    const domElement = document.createElement('div')
+    document.body.appendChild(domElement)
+
+    const root = createRoot(domElement)
+    const reactRoot = {
+      render: root.render.bind(root),
+      unmount: root.unmount.bind(root),
+      update: () => {}, // Placeholder, will be overridden
     }
 
-    if (!this._portalReactRoot) {
-      if (!this._portalDOMElement) return false
-      const root = createRoot(this._portalDOMElement)
-      this._portalReactRoot = { render: root.render.bind(root), unmount: root.unmount.bind(root), update: () => {} }
-    }
+    infra = { domElement, reactRoot }
+    BaseNode._portalInfrastructure.set(this, infra)
 
     return true
   }
@@ -813,13 +928,16 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method toPortal
    */
   public toPortal(): NodePortal {
-    if (!this._ensurePortalInfrastructure() || !this._portalReactRoot) {
+    if (!this._ensurePortalInfrastructure()) {
       throw new Error('toPortal() can only be called in a client-side environment where document.body is available.')
     }
 
+    const infra = BaseNode._portalInfrastructure.get(this)!
+    const { domElement, reactRoot } = infra
+
     const renderCurrent = () => {
       try {
-        this._portalReactRoot!.render(this.render())
+        reactRoot.render(this.render())
       } catch (error) {
         if (__DEV__) {
           console.error('MeoNode: Error rendering initial portal content.', error)
@@ -829,14 +947,13 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     renderCurrent()
 
     try {
-      const originalUnmount = this._portalReactRoot.unmount.bind(this._portalReactRoot)
-      const handle = this._portalReactRoot as ReactDOMRoot & { update: (next: NodeElement) => void; unmount: () => void }
+      const originalUnmount = reactRoot.unmount.bind(reactRoot)
 
-      handle.update = (next: NodeElement) => {
+      // Override update method
+      reactRoot.update = (next: NodeElement) => {
         try {
-          if (!this._portalReactRoot) return
           const content = isNodeInstance(next) ? next.render() : (next as ReactNode)
-          this._portalReactRoot.render(content)
+          reactRoot.render(content)
         } catch (error) {
           if (__DEV__) {
             console.error('MeoNode: Error updating portal content.', error)
@@ -844,7 +961,8 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         }
       }
 
-      handle.unmount = () => {
+      // Override unmount method
+      reactRoot.unmount = () => {
         try {
           originalUnmount()
         } catch (error) {
@@ -852,24 +970,25 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
             console.error('MeoNode: Error unmounting portal root.', error)
           }
         }
-        if (this._portalDOMElement) {
+        if (domElement.parentNode) {
           try {
-            if (this._portalDOMElement.parentNode) this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
+            domElement.parentNode.removeChild(domElement)
           } catch (error) {
             if (__DEV__) {
               console.error('MeoNode: Error removing portal DOM element.', error)
             }
           }
-          this._portalDOMElement = null
         }
-        this._portalReactRoot = null
+        // Clean up from WeakMap
+        BaseNode._portalInfrastructure.delete(this)
       }
-      return handle
+
+      return reactRoot
     } catch (error) {
       if (__DEV__) {
         console.error('MeoNode: Error creating portal handle.', error)
       }
-      return this._portalReactRoot
+      return reactRoot
     }
   }
 
@@ -890,13 +1009,32 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
  * It's the simplest way to wrap a component or element.
  * @function Node
  */
-export function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
+function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
   element: E,
   props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
   deps?: DependencyList,
 ): NodeInstance<E> {
   return new BaseNode(element, props as NodeProps<E>, deps)
 }
+
+/**
+ * Static alias on the `Node` factory for clearing all internal caches used by `BaseNode`.
+ *
+ * Use cases include:
+ *   - resetting state between tests,
+ *   - hot-module-replacement (HMR) cycles,
+ *   - manual resets in development,
+ *   - or during SPA navigation to avoid stale cached elements/styles.
+ *
+ * Notes:
+ *   - Clears only internal prop/element caches; does not touch portal infrastructure or external runtime state.
+ *   - Safe to call on the server, but most useful on the client.
+ * @method Node.clearCaches
+ */
+Node.clearCaches = BaseNode.clearCaches
+
+// Export the Node factory as the main export
+export { Node }
 
 /**
  * Creates a curried node factory for a given React element or component type.

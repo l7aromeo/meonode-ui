@@ -15,6 +15,7 @@ import React, {
 import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
 import type { CSSObject, CSSInterpolation } from '@emotion/serialize'
+import { BaseNode } from '@src/core.node.js'
 
 // --- Utility Types ---
 // Utility to get keys of required properties in a type T.
@@ -91,6 +92,10 @@ export interface PropProcessingCache {
 export interface ElementCacheEntry {
   renderedElement: ReactElement<FinalNodeProps>
   prevDeps?: DependencyList
+  onEvict: () => void
+  nodeRef: WeakRef<BaseNode<any>>
+  createdAt: number
+  accessCount: number
 }
 
 /**
@@ -109,6 +114,9 @@ export interface NodeInstance<E extends NodeElement = NodeElement> {
 
   /** The dependency list for memoization */
   readonly dependencies: DependencyList | undefined
+
+  /** Lazily processed and retrieved final, normalized props for the node. */
+  readonly props: FinalNodeProps
 
   /** Converts this node instance into a renderable React element/tree */
   render(): ReactElement

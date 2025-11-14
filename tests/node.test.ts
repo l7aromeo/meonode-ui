@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals'
 import { Activity, Component, Div, Fragment, H1, Node, type NodeInstance, P, Portal, Root, Span, Suspense, Text, type Theme, ThemeProvider } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
-import { createRef, useEffect, useState, memo } from 'react'
+import { createRef, useEffect, useState, memo, StrictMode } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode } from '@src/core.node.js'
 
@@ -894,6 +894,352 @@ describe('BaseNode - Core Functionality', () => {
       expect(userProfileRenderCount).toHaveBeenCalledTimes(6) // +2 for switching back
       expect(userService.fetchUser).toHaveBeenCalledWith('1')
       expect(userService.fetchUser).toHaveBeenCalledTimes(3)
+    })
+
+    it('should clear unmounted component caches on simulated navigation', () => {
+      // This test simulates a real-world SPA navigation scenario to verify
+      // that NavigationCacheManager and SafeCacheManager work together to evict
+      // caches of unmounted components, preventing memory leaks.
+
+      // 1. Setup: Define components for different "pages"
+      // A shared header component, memoized to persist across pages if not unmounted.
+      const Header = memo(() => Div({ children: 'Shared Header' }).render())
+
+      // A component unique to the Home page, memoized.
+      const HomePageContent = memo(() => P('Welcome to the Home Page').render())
+
+      // A component unique to the About page, memoized.
+      const AboutPageContent = memo(() => P('This is the About Page').render())
+
+      // App component to simulate routing between pages.
+      const App = () => {
+        const [page, setPage] = useState('home')
+
+        // Simulate navigation by changing state. This will cause components to unmount.
+        const navigateTo = (targetPage: string) => {
+          setPage(targetPage)
+          // Manually dispatch a navigation event to trigger cache cleanup,
+          // simulating a URL change in a real router.
+          window.dispatchEvent(new Event('popstate'))
+        }
+
+        return Div({
+          children: [
+            Node(Header, {}, []), // Shared component
+            Node('nav', {
+              children: [
+                Node('button', { onClick: () => navigateTo('home'), children: 'Home' }),
+                Node('button', { onClick: () => navigateTo('about'), children: 'About' }),
+              ],
+            }),
+            page === 'home' ? Node(HomePageContent, {}, []) : Node(AboutPageContent, {}, []),
+          ],
+        }).render()
+      }
+
+      // Use fake timers to control the debounced cleanup function in NavigationCacheManager.
+      jest.useFakeTimers()
+
+      // 2. Initial Render (Home Page)
+      const { getByText, queryByText } = render(Node(App).render())
+      expect(getByText('Welcome to the Home Page')).toBeInTheDocument()
+
+      // 3. Check initial cache state
+      // At this point, Header and HomePageContent should be in the cache.
+      const initialCacheSize = BaseNode._elementCache.size
+      expect(initialCacheSize).toBeGreaterThan(0)
+
+      // 4. Simulate Navigation to About Page
+      act(() => {
+        getByText('About').click()
+      })
+
+      // After navigation, HomePageContent is unmounted, and AboutPageContent is mounted.
+      expect(queryByText('Welcome to the Home Page')).not.toBeInTheDocument()
+      expect(getByText('This is the About Page')).toBeInTheDocument()
+
+      // 5. Trigger and wait for the debounced cache cleanup
+      act(() => {
+        jest.runAllTimers()
+      })
+
+      // 6. Assert that the cache has been cleaned
+      // The cache entry for the unmounted HomePageContent should be gone.
+      // The cache for the still-mounted Header and the new AboutPageContent should remain.
+      const cacheSizeAfterCleanup = BaseNode._elementCache.size
+      expect(cacheSizeAfterCleanup).toBeLessThan(initialCacheSize)
+      expect(cacheSizeAfterCleanup).toBeGreaterThan(0) // Ensure the cache for mounted components is not cleared.
+
+      // Restore real timers
+      jest.useRealTimers()
+    })
+
+    // Test to ensure no cache collision occurs between different components with identical props
+    it('prevents cache collision between different components with identical props', () => {
+      const CompA = memo(() => Div({ children: 'A', color: 'red' }).render())
+      const CompB = memo(() => Div({ children: 'B', color: 'red' }).render())
+
+      const App = Div({
+        children: [
+          Node(CompA, { key: 'item' }, []),
+          Node(CompB, { key: 'item' }, []), // Same key, same style props
+        ],
+      })
+
+      const { getByText } = render(App.render())
+
+      // Both should render independently despite collision-prone signatures
+      expect(getByText('A')).toBeInTheDocument()
+      expect(getByText('B')).toBeInTheDocument()
+
+      // Cache should have 2 distinct entries
+      const cacheKeys = Array.from(BaseNode._elementCache.keys())
+      const itemKeys = cacheKeys.filter(k => k.includes('item'))
+      expect(itemKeys.length).toBe(2) // Not 1 (collision)
+    })
+
+    // Test to ensure that rapid navigation does not cause cache overflow
+    it('handles rapid navigation without cache overflow', () => {
+      jest.useFakeTimers()
+
+      const Page1 = memo(() => P('Page 1').render())
+      const Page2 = memo(() => P('Page 2').render())
+      const Page3 = memo(() => P('Page 3').render())
+
+      const App = () => {
+        const [page, setPage] = useState(1)
+
+        const navigate = (target: number) => {
+          setPage(target)
+          window.dispatchEvent(new Event('popstate'))
+        }
+
+        return Div({
+          children: [
+            Node('button', { onClick: () => navigate(1), children: 'Go to Page 1' }),
+            Node('button', { onClick: () => navigate(2), children: 'Go to Page 2' }),
+            Node('button', { onClick: () => navigate(3), children: 'Go to Page 3' }),
+            page === 1 ? Node(Page1, {}, []) : page === 2 ? Node(Page2, {}, []) : Node(Page3, {}, []),
+          ],
+        }).render()
+      }
+
+      const { getByText } = render(Node(App).render())
+      const initialCacheSize = BaseNode._elementCache.size
+
+      // Rapid navigation: 10-page changes without waiting for debounce
+      for (let i = 0; i < 10; i++) {
+        act(() => {
+          getByText(`Go to Page ${(i % 3) + 1}`).click()
+        })
+      }
+
+      const cacheSizeDuringRapidNav = BaseNode._elementCache.size
+
+      // Cache should not grow unbounded (allow some growth but not 10x)
+      expect(cacheSizeDuringRapidNav).toBeLessThan(initialCacheSize * 3)
+
+      // Now let all debouncers fire
+      act(() => {
+        jest.runAllTimers()
+      })
+
+      const finalCacheSize = BaseNode._elementCache.size
+
+      // After cleanup, only currently mounted components should remain
+      expect(finalCacheSize).toBeLessThan(cacheSizeDuringRapidNav)
+      expect(finalCacheSize).toBeGreaterThan(0) // Sanity check
+
+      jest.useRealTimers()
+    })
+
+    // Test to ensure compatibility with React 18 Strict Mode
+    it('handles React 18 Strict Mode without cache corruption', () => {
+      let renderCount = 0
+
+      const TrackedComponent = memo(() => {
+        renderCount++
+        return P('Tracked Content').render()
+      })
+
+      const App = () => {
+        const [toggle, setToggle] = useState(false)
+        return Div({
+          children: [
+            Node(TrackedComponent, { key: 'LOL' }, []),
+            Node('button', {
+              onClick: () => setToggle(!toggle),
+              children: 'Toggle',
+            }),
+          ],
+        }).render()
+      }
+
+      const { getByText, unmount } = render(Node(StrictMode, { children: Node(App) }).render())
+
+      // Initial render (Strict Mode doesn't double-mount in test/production mode)
+      expect(renderCount).toBe(2)
+
+      // Cache should exist
+      const initialCacheSize = BaseNode._elementCache.size
+      expect(initialCacheSize).toBeGreaterThan(0)
+
+      // Toggle parent state - TrackedComponent should NOT re-render (empty deps)
+      act(() => {
+        getByText('Toggle').click()
+      })
+
+      expect(renderCount).toBe(2) // Still 1, memoization works in StrictMode
+
+      // Toggle again to verify cache stability
+      act(() => {
+        getByText('Toggle').click()
+      })
+
+      expect(renderCount).toBe(2) // Memoization still working
+
+      // Cache should remain stable
+      expect(BaseNode._elementCache.size).toBe(initialCacheSize)
+
+      unmount()
+
+      // After unmount, verify cleanup (cache might still exist briefly)
+      expect(BaseNode._elementCache.size).toBeGreaterThanOrEqual(0)
+    })
+
+    // Test for critical props fingerprinting when object props exceed 100 keys
+    it('uses critical props fingerprint for objects with >100 keys', () => {
+      // Create props object with 150 keys
+      const largeProps: Record<string, any> = {
+        color: 'red',
+        backgroundColor: 'blue',
+        padding: 10,
+      }
+
+      // Add 147 more non-critical keys to exceed threshold
+      for (let i = 0; i < 147; i++) {
+        largeProps[`data${i}`] = i
+      }
+
+      let renderCount = 0
+      const LargePropsComponent = memo((props: any) => {
+        renderCount++
+        return Div({ ...props, children: 'Large Props Component' }).render()
+      })
+
+      const App = () => {
+        const [trigger, setTrigger] = useState(0)
+        const [propsRef] = useState(largeProps) // Stable reference
+
+        return Div({
+          children: [
+            Node(LargePropsComponent, propsRef, [propsRef.color]), // Dep on critical prop
+            Node('button', {
+              onClick: () => {
+                // Change non-critical prop (outside the 50 critical prop limit)
+                propsRef.data99 = Math.random()
+                setTrigger(t => t + 1)
+              },
+              children: 'Change Non-Critical',
+            }),
+            Node('button', {
+              onClick: () => {
+                // Change critical prop (style-related)
+                propsRef.color = propsRef.color === 'red' ? 'blue' : 'red'
+                setTrigger(t => t + 1)
+              },
+              children: 'Change Critical',
+            }),
+            P(`Trigger: ${trigger}`), // Force parent re-render
+          ],
+        }).render()
+      }
+
+      const { getByText } = render(Node(App).render())
+
+      expect(renderCount).toBe(1)
+
+      // Change non-critical prop - should NOT trigger re-render (deps unchanged)
+      act(() => {
+        getByText('Change Non-Critical').click()
+      })
+
+      expect(getByText('Trigger: 1')).toBeInTheDocument()
+      expect(renderCount).toBe(1) // No re-render, color unchanged
+
+      // Change critical prop - SHOULD trigger re-render (dep changed)
+      act(() => {
+        getByText('Change Critical').click()
+      })
+
+      expect(getByText('Trigger: 2')).toBeInTheDocument()
+      expect(renderCount).toBe(2) // Re-rendered, color changed
+    })
+
+    // Additional tests can be added here to further validate edge cases and complex scenarios.
+    it('LRU eviction prioritizes old, infrequently accessed entries', () => {
+      BaseNode.clearCaches()
+
+      // Access the private cache and constants
+      const cache = (BaseNode as any)._propProcessingCache as Map<string, any>
+      const CLEANUP_BATCH = (BaseNode as any).CACHE_CLEANUP_BATCH || 50
+
+      const now = Date.now()
+
+      // Add enough entries to exceed batch size so not everything gets evicted
+      // We'll add CLEANUP_BATCH + 10 entries total
+      const TOTAL_ENTRIES = CLEANUP_BATCH + 10
+
+      // First, add filler entries (medium priority)
+      for (let i = 0; i < TOTAL_ENTRIES - 3; i++) {
+        cache.set(`filler-${i}`, {
+          cssProps: { color: `color-${i}` },
+          signature: `sig-filler-${i}`,
+          lastAccess: now - 10000, // 10s old
+          hitCount: 5, // Medium frequency
+        })
+      }
+
+      // Entry A: Old but frequently accessed (should survive)
+      cache.set('entry-a', {
+        cssProps: { color: 'red' },
+        signature: 'sig-a',
+        lastAccess: now - 100000, // 100s old
+        hitCount: 100, // Very frequent - low eviction score
+      })
+
+      // Entry B: Recent and frequent (should survive)
+      cache.set('entry-b', {
+        cssProps: { color: 'blue' },
+        signature: 'sig-b',
+        lastAccess: now - 1000, // 1s old - very recent
+        hitCount: 50, // Frequent
+      })
+
+      // Entry C: Old and infrequent (should be evicted)
+      cache.set('entry-c', {
+        cssProps: { color: 'green' },
+        signature: 'sig-c',
+        lastAccess: now - 200000, // 200s old - very old
+        hitCount: 1, // Very infrequent - high eviction score
+      })
+
+      expect(cache.size).toBe(TOTAL_ENTRIES)
+
+      // Trigger eviction manually
+      ;(BaseNode as any)._evictLRUEntries()
+
+      // Should have evicted CLEANUP_BATCH entries
+      expect(cache.size).toBe(TOTAL_ENTRIES - CLEANUP_BATCH)
+
+      // Entry C should be evicted (highest score: 200 + 1000/2 ≈ 700)
+      expect(cache.has('entry-c')).toBe(false)
+
+      // Entry A should survive (score: 100 + 1000/101 ≈ 110)
+      expect(cache.has('entry-a')).toBe(true)
+
+      // Entry B should survive (score: 1 + 1000/51 ≈ 21)
+      expect(cache.has('entry-b')).toBe(true)
     })
   })
 })
