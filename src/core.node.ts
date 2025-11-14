@@ -55,10 +55,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   private static _propProcessingCache = new Map<string, PropProcessingCache>()
   private static _elementCache = new Map<any, { prevDeps?: DependencyList; cachedElement?: ReactElement<FinalNodeProps> }>()
   private static _isValidElement = isValidElementType
+  private static _isStyleProp = !BaseNode._isServer && typeof document !== 'undefined' ? (k: string) => k in document.body.style : () => false
 
   // Cache configuration
   private static readonly CACHE_SIZE_LIMIT = 500
   private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
+
+  // Cache helpers: retain the previous props reference and its computed signature so
+  // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
   private _lastPropsRef: unknown = null
   private _lastSignature: string = ''
 
@@ -165,13 +169,12 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     const keys = Object.keys(props)
     const keyCount = keys.length
-    const isStyleProp = (k: string) => !BaseNode._isServer && typeof document !== 'undefined' && k in document.body.style
 
     if (keyCount > 100) {
       const criticalProps: Record<string, any> = { _keyCount: keyCount }
 
       for (const k of keys) {
-        if (isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
+        if (BaseNode._isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
           criticalProps[k] = props[k]
         }
       }
@@ -213,7 +216,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       } else {
         elementName = 'Unknown'
       }
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.error('MeoNode: Could not determine element name for signature.', error)
+      }
       // Fallback for Client Components that throw when accessed
       // Use a generic identifier - this is safe because we still have props in the signature
       elementName = 'ClientComponent'
@@ -464,8 +470,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Handle function-as-a-child (render props).
-    if (BaseNode._isFunctionChild(node))
+    if (BaseNode._isFunctionChild(node)) {
       return new BaseNode(BaseNode._functionRenderer as NodeElementType, { props: { render: node, disableEmotion } }, undefined)
+    }
 
     // Handle standard React elements.
     if (isValidElement(node)) {
@@ -483,10 +490,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     }
 
     // Handle component classes and memos.
-    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return new BaseNode(node as ElementType, { disableEmotion }, undefined)
+    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) {
+      return new BaseNode(node as ElementType, { disableEmotion }, undefined)
+    }
 
     // Handle component instances.
-    if (node instanceof React.Component) return BaseNode._processRawNode(node.render(), disableEmotion, stableKey)
+    if (node instanceof React.Component) {
+      return BaseNode._processRawNode(node.render(), disableEmotion, stableKey)
+    }
 
     return node
   }
@@ -500,7 +511,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     if (typeof node !== 'function' || isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return false
     try {
       return !(node.prototype && typeof node.prototype.render === 'function')
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.error('MeoNode: Error checking if a node is a function child.', error)
+      }
       return true
     }
   }
@@ -513,7 +527,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     let result: NodeElement
     try {
       result = render()
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.error('MeoNode: Error executing function-as-a-child.', error)
+      }
       result = null
     }
     if (result === null || result === undefined) return result
@@ -525,7 +542,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       const safeGetKey = (item: any, index: number) => {
         try {
           return `${getElementTypeName(item)}-${index}`
-        } catch {
+        } catch (error) {
+          if (__DEV__) {
+            console.error('MeoNode: Could not determine element type name for key in function-as-a-child.', error)
+          }
           return `item-${index}`
         }
       }
@@ -693,8 +713,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       if (this._portalReactRoot) {
         try {
           this._portalReactRoot.unmount()
-        } catch {
-          /* empty */
+        } catch (error) {
+          if (__DEV__) {
+            console.error('MeoNode: Error unmounting disconnected portal root.', error)
+          }
         }
         this._portalReactRoot = null
       }
@@ -728,8 +750,10 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     const renderCurrent = () => {
       try {
         this._portalReactRoot!.render(this.render())
-      } catch {
-        /* empty */
+      } catch (error) {
+        if (__DEV__) {
+          console.error('MeoNode: Error rendering initial portal content.', error)
+        }
       }
     }
     renderCurrent()
@@ -743,29 +767,38 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
           if (!this._portalReactRoot) return
           const content = isNodeInstance(next) ? next.render() : (next as ReactNode)
           this._portalReactRoot.render(content)
-        } catch {
-          /* empty */
+        } catch (error) {
+          if (__DEV__) {
+            console.error('MeoNode: Error updating portal content.', error)
+          }
         }
       }
 
       handle.unmount = () => {
         try {
           originalUnmount()
-        } catch {
-          /* empty */
+        } catch (error) {
+          if (__DEV__) {
+            console.error('MeoNode: Error unmounting portal root.', error)
+          }
         }
         if (this._portalDOMElement) {
           try {
             if (this._portalDOMElement.parentNode) this._portalDOMElement.parentNode.removeChild(this._portalDOMElement)
-          } catch {
-            /* empty */
+          } catch (error) {
+            if (__DEV__) {
+              console.error('MeoNode: Error removing portal DOM element.', error)
+            }
           }
           this._portalDOMElement = null
         }
         this._portalReactRoot = null
       }
       return handle
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.error('MeoNode: Error creating portal handle.', error)
+      }
       return this._portalReactRoot
     }
   }
