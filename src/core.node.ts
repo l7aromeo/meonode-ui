@@ -669,7 +669,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         if (node.element === Fragment || isFragment(node.element)) {
           element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
         } else {
-          const isStyledComponent = css && !disableEmotion && !hasNoStyleTag(node.element)
+          const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
           if (isStyledComponent) {
             element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
           } else {
