@@ -35,6 +35,7 @@ import StyledRenderer from '@src/components/styled-renderer.client.js'
 import { __DEV__ } from '@src/constants/common.const.js'
 import { MountTracker } from '@src/helper/mount-tracker.helper.js'
 import { NavigationCacheManager } from '@src/helper/navigation-cache-manager.helper.js'
+import { clearThemeCache } from '@src/helper/theme.helper.js'
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -999,6 +1000,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
   public static clearCaches() {
     BaseNode._propProcessingCache.clear()
     BaseNode._elementCache.clear()
+    clearThemeCache()
   }
 }
 

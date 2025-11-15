@@ -2,6 +2,9 @@ import { getValueByPath } from '@src/helper/common.helper.js'
 import type { Theme, ThemeSystem } from '@src/types/node.type.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 
+const CACHE_SIZE_LIMIT = 500
+const CACHE_EVICTION_BATCH_SIZE = 50
+
 /**
  * Cache manager for theme resolution operations.
  */
@@ -29,22 +32,52 @@ class ThemeResolverCache {
 
   getResolution(obj: Record<string, any>, theme: Theme): any | null {
     const key = this._generateCacheKey(obj, theme)
-    return this._resolutionCache.get(key) || null
+    const result = this._resolutionCache.get(key)
+    if (result) {
+      // Move to end to mark as recently used
+      this._resolutionCache.delete(key)
+      this._resolutionCache.set(key, result)
+    }
+    return result || null
   }
 
   setResolution(obj: Record<string, any>, theme: Theme, result: any): void {
     const key = this._generateCacheKey(obj, theme)
     this._resolutionCache.set(key, result)
+    if (this._resolutionCache.size > CACHE_SIZE_LIMIT) {
+      this._evict(this._resolutionCache)
+    }
   }
 
   getPathLookup(theme: ThemeSystem, path: string): any | null {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
-    return this._pathLookupCache.get(pathKey) || null
+    const result = this._pathLookupCache.get(pathKey)
+    if (result) {
+      // Move to end to mark as recently used
+      this._pathLookupCache.delete(pathKey)
+      this._pathLookupCache.set(pathKey, result)
+    }
+    return result || null
   }
 
   setPathLookup(theme: ThemeSystem, path: string, value: any): void {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     this._pathLookupCache.set(pathKey, value)
+    if (this._pathLookupCache.size > CACHE_SIZE_LIMIT) {
+      this._evict(this._pathLookupCache)
+    }
+  }
+
+  private _evict(cache: Map<string, any>) {
+    const keys = cache.keys()
+    for (let i = 0; i < CACHE_EVICTION_BATCH_SIZE; i++) {
+      const key = keys.next().value
+      if (key) {
+        cache.delete(key)
+      } else {
+        break
+      }
+    }
   }
 
   getThemeRegex(): RegExp {
@@ -54,6 +87,11 @@ class ThemeResolverCache {
 
   shouldCache(): boolean {
     return typeof window === 'undefined'
+  }
+
+  public clear() {
+    this._resolutionCache.clear()
+    this._pathLookupCache.clear()
   }
 }
 
@@ -192,4 +230,8 @@ export const resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme
   }
 
   return result
+}
+
+export const clearThemeCache = () => {
+  themeCache.clear()
 }
