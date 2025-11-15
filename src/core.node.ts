@@ -655,7 +655,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       }
       // Map over the array, processing each item and assigning a key.
       return result.map((item, index) =>
-        BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(item, disableEmotion), passedKey: safeGetKey(item, index) }),
+        BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(item, disableEmotion), passedKey: safeGetKey(item, index), disableEmotion }),
       )
     }
     if (result instanceof React.Component) {
