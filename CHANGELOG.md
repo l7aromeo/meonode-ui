@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2025-11-15
+
+### Feat
+- **cache**: implement robust cache management and theme caching ([`c453cb8`](https://github.com/l7aromeo/meonode-ui/commit/c453cb872e96c5ea49ddb39b189c79e53e46082a))
+  Refactor NavigationCacheManager for robustness, add memory monitoring and auto-cleanup.
+  Implement LRU eviction for ThemeResolverCache and integrate with BaseNode cache clearing.
+
+### Refactor
+- **test**: split node.test.ts into smaller, more focused test files ([`930f998`](https://github.com/l7aromeo/meonode-ui/commit/930f998e5f91faef3ff42fcafc6b02fc23f422ff))
+  This commit refactors the test suite by splitting the monolithic `node.test.ts`
+  file into several smaller, more focused test files, each covering a specific
+  aspect of the BaseNode functionality.
+
+  Specifically, `memoization.test.ts` was created to house tests related to
+  dependency tracking and memoization in real-world scenarios. During this
+  refactoring, a `console.error` related to duplicate keys in a memoization
+  test was identified and suppressed to prevent noisy test output while
+  preserving the test's original intent of verifying cache collision prevention.
+
+### Fix
+- **core**: pass disableEmotion flag to _renderProcessedNode for improved processing ([`b68e3d4`](https://github.com/l7aromeo/meonode-ui/commit/b68e3d49a732ee590805a0298f733b800a9b172d))
+
+### Chore
+- **test**: adjust performance test cleanup by removing cache clearing from afterEach ([`77e9fa4`](https://github.com/l7aromeo/meonode-ui/commit/77e9fa4a8731935048ea4bf5c8e8e7169fd88df2))
+
 ## [0.4.4] - 2025-11-15
 
 ### Perf
