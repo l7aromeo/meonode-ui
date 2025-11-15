@@ -28,7 +28,6 @@ import {
   ThemeProvider,
   type Theme,
 } from '@src/main.js'
-import { BaseNode } from '@src/core.node.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -39,7 +38,6 @@ jest.useRealTimers()
 // Clean up DOM between tests to avoid open handles
 afterEach(() => {
   cleanup()
-  BaseNode.clearCaches() // Call clearCaches
 })
 
 const theme: Theme = {
