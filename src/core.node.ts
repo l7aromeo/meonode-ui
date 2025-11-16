@@ -51,12 +51,12 @@ export class BaseNode<E extends NodeElementType> {
 
   private _props?: FinalNodeProps
   private readonly _deps?: DependencyList
-  public stableKey: string = ''
+  public stableKey?: string
 
   // Cache helpers: retain the previous props reference and its computed signature so
   // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
   private _lastPropsRef: unknown = null
-  private _lastSignature: string = ''
+  private _lastSignature?: string
 
   public static elementCache = new Map<string, ElementCacheEntry>()
   public static propProcessingCache = new Map<string, PropProcessingCache>()
@@ -125,8 +125,8 @@ export class BaseNode<E extends NodeElementType> {
    * @param props The props object to create a signature for.
    * @returns A compact string signature suitable for use as a cache key.
    */
-  private _getStableKey({ key, ...props }: Record<string, any>): string {
-    if (NodeUtil.isServer) return ''
+  private _getStableKey({ key, ...props }: Record<string, any>): string | undefined {
+    if (NodeUtil.isServer) return undefined
 
     if (props === this._lastPropsRef) {
       return this._lastSignature
@@ -141,17 +141,7 @@ export class BaseNode<E extends NodeElementType> {
     const keyCount = keys.length
 
     if (keyCount > 100) {
-      const criticalProps: Record<string, any> = { _keyCount: keyCount }
-      let criticalCount = 0
-      const MAX_CRITICAL = 50
-
-      for (const k of keys) {
-        if (criticalCount >= MAX_CRITICAL) break
-        if (NodeUtil.isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
-          criticalProps[k] = props[k as keyof typeof props]
-          criticalCount++
-        }
-      }
+      const criticalProps = NodeUtil.extractCriticalProps(props, keys)
 
       this._lastSignature = NodeUtil.createPropSignature(this.element, criticalProps)
 
@@ -257,12 +247,12 @@ export class BaseNode<E extends NodeElementType> {
    */
   public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
     // Auto-track this node for mount detection
-    if (!NodeUtil.isServer) {
+    if (!NodeUtil.isServer && this.stableKey) {
       MountTrackerUtil.trackMount(this.stableKey)
     }
 
-    // On server we never reuse cached elements because that can cause hydration mismatches.
-    const cacheEntry = NodeUtil.isServer ? undefined : BaseNode.elementCache.get(this.stableKey)
+    // On server, we never reuse cached elements because that can cause hydration mismatches.
+    const cacheEntry = NodeUtil.isServer || !this.stableKey ? undefined : BaseNode.elementCache.get(this.stableKey)
 
     // Decide whether this node (and its subtree) should update given dependency arrays.
     const shouldUpdate = NodeUtil.shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
@@ -300,7 +290,7 @@ export class BaseNode<E extends NodeElementType> {
             const child = childrenToProcess[i]
 
             // Respect server/client differences for child cache lookup.
-            const childCacheEntry = NodeUtil.isServer ? undefined : BaseNode.elementCache.get(child.stableKey)
+            const childCacheEntry = NodeUtil.isServer || !child.stableKey ? undefined : BaseNode.elementCache.get(child.stableKey)
 
             // Determine whether the child should update given its deps and the parent's blocked state.
             const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
@@ -355,7 +345,7 @@ export class BaseNode<E extends NodeElementType> {
         }
 
         // Cache the generated element on client-side to speed up future renders.
-        if (!NodeUtil.isServer) {
+        if (!NodeUtil.isServer && node.stableKey) {
           const existingEntry = BaseNode.elementCache.get(node.stableKey)
 
           if (existingEntry) {
@@ -389,7 +379,7 @@ export class BaseNode<E extends NodeElementType> {
     // Get the final rendered element for the root node of this render cycle.
     const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
-    if (!NodeUtil.isServer) {
+    if (!NodeUtil.isServer && this.stableKey) {
       return createElement(MeoNodeUnmounter, { stableKey: this.stableKey }, rootElement)
     }
 

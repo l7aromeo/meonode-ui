@@ -69,6 +69,9 @@ export class NavigationCacheManagerUtil {
   private _handleNavigation = () => {
     if (this._cleanupTimeout) clearTimeout(this._cleanupTimeout)
 
+    const cacheSize = BaseNode.elementCache.size
+    const debounceMs = cacheSize < 100 ? 50 : cacheSize < 500 ? 100 : 200
+
     this._cleanupTimeout = setTimeout(() => {
       const propsSize = BaseNode.propProcessingCache.size
       let unmountedElementsCleaned = 0
@@ -90,7 +93,7 @@ export class NavigationCacheManagerUtil {
       if (__DEBUG__) {
         console.log(`[MeoNode] Navigation: cleared ${unmountedElementsCleaned} unmounted elements, ${propsSize} props entries`)
       }
-    }, 100)
+    }, debounceMs)
   }
 
   /**

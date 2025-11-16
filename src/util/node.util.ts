@@ -1,4 +1,4 @@
-import React, { type ComponentProps, type ElementType, type ReactNode, createElement, isValidElement, StrictMode } from 'react'
+import React, { type ComponentProps, type ElementType, type ReactNode, createElement, isValidElement } from 'react'
 import type {
   FunctionRendererProps,
   NodeElement,
@@ -26,16 +26,19 @@ import { createRoot } from 'react-dom/client'
 export class NodeUtil {
   private constructor() {}
 
+  // Determines if the current environment is server-side (Node.js) or client-side (browser).
   public static isServer = typeof window === 'undefined'
-  private static _elementIdMap = new WeakMap<any, string>()
-  private static _elementIdCounter = 0
 
   // Unique ID generation for elements
-  private static _functionSignatureCache = new WeakMap<any, string>()
+  private static _functionSignatureCache = new WeakMap<object, string>()
 
   // Cache configuration
   private static readonly CACHE_SIZE_LIMIT = 500
   private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
+
+  // Critical props for signature generation and shallow comparison
+  private static readonly CRITICAL_PROP_PREFIXES = new Set(['on', 'aria', 'data'])
+  private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
 
   // Portal infrastructure using WeakMap for memory-safe management
   public static portalInfrastructure = new WeakMap<
@@ -68,41 +71,32 @@ export class NodeUtil {
     )
   }
 
+  /**
+   * Determines if a given string `k` is a valid CSS style property.
+   * This check is performed only on the client-side by checking if the property exists in `document.body.style`.
+   * On the server-side, it always returns `false`.
+   * @param k The string to check.
+   */
   public static isStyleProp = !NodeUtil.isServer && typeof document !== 'undefined' ? (k: string) => k in document.body.style : () => false
-
-  /**
-   * FNV-1a hash function.
-   * @method fnv1aHash
-   */
-  public static fnv1aHash(str: string): number {
-    let hash = 2166136261 // FNV offset basis
-    for (let i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i)
-      hash = Math.imul(hash, 16777619) // FNV prime
-    }
-    return hash >>> 0 // Convert to unsigned 32-bit integer
-  }
-
-  /**
-   * djb2 hash function.
-   * @method djb2Hash
-   */
-  public static djb2Hash(str: string): number {
-    let hash = 5381
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash * 33) ^ str.charCodeAt(i)
-    }
-    return hash >>> 0 // Convert to unsigned 32-bit integer
-  }
 
   /**
    * Combines FNV-1a and djb2 hash functions for a more robust signature.
    * @method hashString
    */
   public static hashString(str: string): string {
-    const fnvHash = NodeUtil.fnv1aHash(str)
-    const djb2Hash = NodeUtil.djb2Hash(str)
-    return `${fnvHash.toString(36)}_${djb2Hash.toString(36)}` // Combine and convert to base36
+    let h1 = 2166136261 // FNV offset basis
+    let h2 = 5381 // djb2 init
+
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i)
+      // FNV-1a
+      h1 ^= char
+      h1 = Math.imul(h1, 16777619)
+      // djb2
+      h2 = (h2 * 33) ^ char
+    }
+
+    return `${(h1 >>> 0).toString(36)}_${(h2 >>> 0).toString(36)}`
   }
 
   /**
@@ -110,30 +104,19 @@ export class NodeUtil {
    * @method shallowEqual
    */
   public static shallowEqual(a: Record<string, any>, b: Record<string, any>): boolean {
-    const keysA = Object.keys(a)
-    const keysB = Object.keys(b)
-    if (keysA.length !== keysB.length) return false
-    return keysA.every(key => a[key] === b[key])
-  }
+    if (a === b) return true
 
-  /**
-   * Generates a stable identifier for the given element type.
-   * For primitive types (strings), it returns the string itself.
-   * For component types (functions, classes, exotic components), it generates
-   * and caches a unique ID using a WeakMap to ensure stability across calls.
-   * @method getStableElementId
-   */
-  public static getStableElementId(element: NodeElementType): string | undefined {
-    if (NodeUtil.isServer) return undefined
+    let countA = 0
+    let countB = 0
 
-    if (element === StrictMode) return StrictMode.name
-    if (typeof element === 'string') return element
-
-    // Client-side: Use WeakMap to maintain stable IDs across calls
-    if (!NodeUtil._elementIdMap.has(element)) {
-      NodeUtil._elementIdMap.set({ elementName: getElementTypeName(element) }, `Component_${NodeUtil._elementIdCounter++}`)
+    for (const key in a) {
+      if (!(key in b) || a[key] !== b[key]) return false
+      countA++
     }
-    return NodeUtil._elementIdMap.get(element)!
+
+    for (const _key in b) countB++
+
+    return countA === countB
   }
 
   /**
@@ -142,10 +125,10 @@ export class NodeUtil {
    * and handles primitive values in arrays and objects for better caching.
    * @method createPropSignature
    */
-  public static createPropSignature(element: NodeElementType, props: Record<string, any>): string {
-    if (NodeUtil.isServer) return ''
-    // Safe element identification that works with Next.js Client Components
-    const elementId = NodeUtil.getStableElementId(element)
+  public static createPropSignature(element: NodeElementType, props: Record<string, any>): string | undefined {
+    if (NodeUtil.isServer) return undefined
+
+    const elementId = getElementTypeName(element)
 
     const keys = Object.keys(props).sort()
     const signatureParts: string[] = [`${elementId}:`]
@@ -194,6 +177,29 @@ export class NodeUtil {
     }
 
     return NodeUtil.hashString(signatureParts.join(','))
+  }
+
+  /**
+   * Extracts "critical" props from a given set of props. Critical props are those
+   * that are frequently used for styling or event handling, such as `on*` handlers,
+   * `aria-*` attributes, `data-*` attributes, `css`, `className`, and `style`.
+   * This method is used to optimize prop processing by focusing on props that are
+   * most likely to influence rendering or behavior.
+   */
+  public static extractCriticalProps(props: Record<string, any>, keys: string[]): Record<string, any> {
+    const critical: Record<string, any> = { _keyCount: keys.length }
+    let count = 0
+
+    for (const k of keys) {
+      if (count >= 50) break
+
+      if (NodeUtil.CRITICAL_PROPS.has(k) || NodeUtil.isStyleProp(k) || Array.from(NodeUtil.CRITICAL_PROP_PREFIXES).some(prefix => k.startsWith(prefix))) {
+        critical[k] = props[k]
+        count++
+      }
+    }
+
+    return critical
   }
 
   /**
@@ -279,7 +285,7 @@ export class NodeUtil {
    * generates a signature for caching, and assembles the final props object.
    * @method processProps
    */
-  public static processProps(element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey: string): FinalNodeProps {
+  public static processProps(element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey?: string): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
     // --- Fast Path Optimization ---
