@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.7] - 2025-11-17
+
+### Fixes
+- **core/cache:** optimize navigation cache debounce timing and enhance stableKey handling ([`fff6f207`](https://github.com/l7aromeo/meonode-ui/commit/fff6f2070a06cc5ad461a2f992b111fb957fae6f))
+  - Adjust navigation cleanup debounce duration dynamically based on cache size for better performance.
+  - Change stableKey and _lastSignature to be optional to better represent their possible undefined state.
+  - Refactor _getStableKey to return undefined on server instead of empty string.
+  - Optimize critical props extraction by introducing NodeUtil.extractCriticalProps helper.
+  - Improve client-side caching logic to avoid lookups when stableKey is absent.
+  - Remove unused imports and redundant code in node.util.ts; improve shallowEqual implementation.
+  - Update createPropSignature to return undefined on server and use getElementTypeName directly.
+  - Add detailed comments and refine hashString combining FNV-1a and djb2 hashes for robustness.
+
 ## [0.4.6] - 2025-11-17
 
 ### Fixes
