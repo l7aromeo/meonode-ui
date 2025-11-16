@@ -2,8 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.4.6] - 2025-11-17
+
+### Fixes
+- **core/cache:** enhance memoization & caching system to prevent memory leaks and ensure safe lifecycle management ([`253d7d00`](https://github.com/l7aromeo/meonode-ui/commit/253d7d006121dc588a51580d5120c7123a5f8777))
+  This introduces a robust, three-layered cleanup strategy to ensure cache integrity:
+  1. An immediate, lifecycle-driven cleanup via the new `MeoNodeUnmounter` component.
+  2. A debounced, event-driven cleanup for SPA navigations via `NavigationCacheManagerUtil`.
+  3. A final, GC-driven safety net using the `FinalizationRegistry` API.
+
+### Refactor
+- **core:** migrate core logic from `src/helper/` to a new `src/util/` directory for better separation of concerns.
+- **core:** extract internal utility functions from `core.node.ts` into `node.util.ts`.
+- **core:** make internal caches on `BaseNode` public to support the new externalized management architecture.
+
+### Chore
+- **tooling:** enable TypeScript's `strict: true` mode and update codebase to be fully compliant.
+- **tooling:** add CommonJS (`require`) exports to `package.json` for improved module compatibility.
+- **tooling:** add `NODE_OPTIONS='--expose-gc'` to the test script to allow for explicit garbage collection during tests.
+- **tests:** refine test suite by standardizing `afterEach` hooks and updating memoization tests to directly validate internal caching.
 
 ## [0.4.5] - 2025-11-15
 
