@@ -6,9 +6,7 @@ expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 describe('Styling and Theming', () => {
   it('should apply basic CSS properties to a Div', () => {

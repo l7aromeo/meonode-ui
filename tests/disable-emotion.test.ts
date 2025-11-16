@@ -6,9 +6,7 @@ expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 describe('disableEmotion Prop', () => {
   it('should propagate disableEmotion to children and prevent styling', () => {

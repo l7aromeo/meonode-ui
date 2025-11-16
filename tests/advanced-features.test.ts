@@ -7,9 +7,7 @@ expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 describe('Advanced Component Features', () => {
   it('should render content from a function as child with props and context from a Provider', () => {

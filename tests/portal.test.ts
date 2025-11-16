@@ -1,17 +1,9 @@
 import { Button, Div, Node, Portal, Text, type PortalProps, Column } from '@src/main.js'
-import { act, cleanup, render } from '@testing-library/react' // Added waitFor
+import { act, cleanup, render } from '@testing-library/react'
 import { useState } from 'react'
-import { createSerializer, matchers } from '@emotion/jest'
 import { createPortal } from 'react-dom'
-import { BaseNode } from '@src/core.node.js'
 
-expect.extend(matchers)
-expect.addSnapshotSerializer(createSerializer())
-
-afterEach(() => {
-  cleanup()
-  BaseNode.clearCaches()
-})
+afterEach(cleanup)
 
 describe('Portal System', () => {
   it('should handle dynamic portal creation, update, and unmounting', async () => {
@@ -46,7 +38,7 @@ describe('Portal System', () => {
     const openPortalButton = getByText('Open Portal')
     expect(openPortalButton).toBeInTheDocument()
 
-    act(() => {
+    await act(async () => {
       openPortalButton.click()
     })
 
@@ -55,7 +47,7 @@ describe('Portal System', () => {
     const updateButton = getByText('Update Portal (0)')
     expect(updateButton).toBeInTheDocument()
 
-    act(() => {
+    await act(async () => {
       updateButton.click()
     })
 
@@ -64,7 +56,7 @@ describe('Portal System', () => {
     const closeButton = getByText('Close Portal')
     expect(closeButton).toBeInTheDocument()
 
-    act(() => {
+    await act(async () => {
       closeButton.click()
     })
 

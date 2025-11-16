@@ -1,4 +1,4 @@
-import React, {
+import {
   type ComponentProps,
   type ElementType,
   type ExoticComponent,
@@ -8,17 +8,14 @@ import React, {
   createElement,
   isValidElement,
   Fragment,
-  StrictMode,
 } from 'react'
 import type {
   Children,
   FinalNodeProps,
-  FunctionRendererProps,
   HasRequiredProps,
   MergedProps,
   NodeElement,
   NodeElementType,
-  NodeFunction,
   NodeInstance,
   NodePortal,
   NodeProps,
@@ -27,15 +24,15 @@ import type {
   DependencyList,
   ElementCacheEntry,
 } from '@src/types/node.type.js'
-import { isNodeInstance } from '@src/helper/node.helper.js'
-import { isForwardRef, isFragment, isMemo, isReactClassComponent, isValidElementType } from '@src/helper/react-is.helper.js'
-import { createRoot } from 'react-dom/client'
-import { getComponentType, getCSSProps, getDOMProps, getElementTypeName, hasNoStyleTag, omitUndefined } from '@src/helper/common.helper.js'
+import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
+import { getComponentType, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-import { __DEV__ } from '@src/constants/common.const.js'
-import { MountTracker } from '@src/helper/mount-tracker.helper.js'
-import { NavigationCacheManager } from '@src/helper/navigation-cache-manager.helper.js'
-import { clearThemeCache } from '@src/helper/theme.helper.js'
+import { __DEBUG__ } from '@src/constants/common.const.js'
+import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
+import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
+import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
+import { NodeUtil } from '@src/util/node.util.js'
+import { ThemeUtil } from '@src/util/theme.util.js'
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -45,51 +42,34 @@ import { clearThemeCache } from '@src/helper/theme.helper.js'
  * @class BaseNode
  * @template E - The type of React element or component this node represents.
  */
-export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
+export class BaseNode<E extends NodeElementType> {
+  public instanceId: string = Math.random().toString(36).slice(2) + Date.now().toString(36)
+
   public element: E
   public rawProps: Partial<NodeProps<E>> = {}
   public readonly isBaseNode = true
 
   private _props?: FinalNodeProps
   private readonly _deps?: DependencyList
-  public _stableKey: string
-
-  private static _isServer = typeof window === 'undefined'
-  private static _propProcessingCache = new Map<string, PropProcessingCache>()
-  private static _isValidElement = isValidElementType
-  private static _isStyleProp = !BaseNode._isServer && typeof document !== 'undefined' ? (k: string) => k in document.body.style : () => false
-  public static _elementCache = new Map<string, ElementCacheEntry>()
-
-  // Portal infrastructure using WeakMap for memory-safe management
-  private static _portalInfrastructure = new WeakMap<
-    BaseNode<any>,
-    {
-      domElement: HTMLDivElement
-      reactRoot: NodePortal & { render(children: React.ReactNode): void }
-    }
-  >()
-
-  // Cache configuration
-  private static readonly CACHE_SIZE_LIMIT = 500
-  private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
+  public stableKey: string = ''
 
   // Cache helpers: retain the previous props reference and its computed signature so
   // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
   private _lastPropsRef: unknown = null
   private _lastSignature: string = ''
 
-  // Unique ID generation for elements
-  private static _elementIdMap = new WeakMap<any, string>()
-  private static _elementIdCounter = 0
+  public static elementCache = new Map<string, ElementCacheEntry>()
+  public static propProcessingCache = new Map<string, PropProcessingCache>()
 
   // Cleanup scheduling flag
-  private static _scheduledCleanup = false
+  public static scheduledCleanup = false
 
+  // Navigation tracking
   private static _navigationStarted = false
 
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}, deps?: DependencyList) {
     // Element type validation is performed once at construction to prevent invalid nodes from being created.
-    if (!BaseNode._isValidElement(element)) {
+    if (!isValidElementType(element)) {
       const elementType = getComponentType(element)
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
@@ -97,21 +77,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     this.rawProps = rawProps
     this._deps = deps
 
-    // Generate an initial stable key used for internal caching.
-    // Exclude React's `key`, `ref`, and `children` from the signature so positional or ref changes
-    // do not unintentionally affect the component's cache identity.
-    const { key, children, ref, ...propsForSignature } = rawProps
-    this._stableKey = this._getCachedSignature(propsForSignature)
+    // Extract commonly handled props; the remaining `propsForSignature` are used to compute a stable hash.
+    const { ref, children, ...props } = rawProps
 
-    // If a React 'key' prop was explicitly provided by the user, prepend it to our internal stable key.
-    // This ensures that if the user provides a key, it influences our internal cache key,
-    // but our internal key is still unique even if the user's key is not.
-    if (key !== undefined && key !== null) {
-      this._stableKey = `${String(key)}:${this._stableKey}`
-    }
+    // Generate or get cached stable key
+    this.stableKey = this._getStableKey(props)
 
-    if (!BaseNode._isServer && !BaseNode._navigationStarted) {
-      NavigationCacheManager.getInstance().start()
+    if (!NodeUtil.isServer && !BaseNode._navigationStarted) {
+      NavigationCacheManagerUtil.getInstance().start()
       BaseNode._navigationStarted = true
     }
   }
@@ -123,7 +96,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    */
   public get props(): FinalNodeProps {
     if (!this._props) {
-      this._props = this._processProps()
+      this._props = NodeUtil.processProps(this.element, this.rawProps, this.stableKey)
     }
     return this._props
   }
@@ -140,82 +113,6 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
     return this._deps
   }
 
-  // --- Enhanced Prop Caching and Processing ---
-
-  /**
-   * FNV-1a hash function.
-   * @method _fnv1aHash
-   */
-  private static _fnv1aHash(str: string): number {
-    let hash = 2166136261 // FNV offset basis
-    for (let i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i)
-      hash = Math.imul(hash, 16777619) // FNV prime
-    }
-    return hash >>> 0 // Convert to unsigned 32-bit integer
-  }
-
-  /**
-   * djb2 hash function.
-   * @method _djb2Hash
-   */
-  private static _djb2Hash(str: string): number {
-    let hash = 5381
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash * 33) ^ str.charCodeAt(i)
-    }
-    return hash >>> 0 // Convert to unsigned 32-bit integer
-  }
-
-  /**
-   * Combines FNV-1a and djb2 hash functions for a more robust signature.
-   * @method _hashString
-   */
-  private static _hashString(str: string): string {
-    const fnvHash = BaseNode._fnv1aHash(str)
-    const djb2Hash = BaseNode._djb2Hash(str)
-    return `${fnvHash.toString(36)}_${djb2Hash.toString(36)}` // Combine and convert to base36
-  }
-
-  /**
-   * Performs a shallow equality check between two objects.
-   * @method _shallowEqual
-   */
-  private _shallowEqual(a: Record<string, any>, b: Record<string, any>): boolean {
-    const keysA = Object.keys(a)
-    const keysB = Object.keys(b)
-    if (keysA.length !== keysB.length) return false
-    return keysA.every(key => a[key] === b[key])
-  }
-
-  /**
-   * Generates a stable identifier for the given element type.
-   * For primitive types (strings), it returns the string itself.
-   * For component types (functions, classes, exotic components), it generates
-   * and caches a unique ID using a WeakMap to ensure stability across calls.
-   * @method _getStableElementId
-   */
-  private static _getStableElementId(element: NodeElementType): string {
-    if (element === StrictMode) return 'StrictMode'
-    if (typeof element === 'string') return element
-
-    // On server, avoid WeakMap caching. Directly return a stable string identifier.
-    if (BaseNode._isServer) {
-      try {
-        return getElementTypeName(element)
-      } catch {
-        // Fallback for components without a name
-        return `ServerComponentFallback_${BaseNode._elementIdCounter++}`
-      }
-    }
-
-    // Client-side: Use WeakMap to maintain stable IDs across calls
-    if (!BaseNode._elementIdMap.has(element)) {
-      BaseNode._elementIdMap.set(element, `Component_${BaseNode._elementIdCounter++}`)
-    }
-    return BaseNode._elementIdMap.get(element)!
-  }
-
   /**
    * Generates or returns a cached signature representing the props shape and values.
    * The signature is used as a stable key for caching prop-derived computations (e.g. CSS extraction).
@@ -224,19 +121,18 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * containing only style-related keys, event handlers, className/css and a `_keyCount` to avoid
    * expensive serialization of huge objects while still retaining reasonable cache discrimination.
    * - Stores the last props reference and computed signature to speed up repeated calls with the same object.
+   * @param key Key passed for prefix if exist
    * @param props The props object to create a signature for.
    * @returns A compact string signature suitable for use as a cache key.
    */
-  private _getCachedSignature(props: Record<string, any>): string {
-    if (BaseNode._isServer) {
-      return BaseNode._createPropSignature(this.element, props)
-    }
+  private _getStableKey({ key, ...props }: Record<string, any>): string {
+    if (NodeUtil.isServer) return ''
 
     if (props === this._lastPropsRef) {
       return this._lastSignature
     }
 
-    if (this._lastPropsRef && this._shallowEqual(props, this._lastPropsRef)) {
+    if (this._lastPropsRef && NodeUtil.shallowEqual(props, this._lastPropsRef)) {
       this._lastPropsRef = props
       return this._lastSignature
     }
@@ -251,478 +147,97 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
       for (const k of keys) {
         if (criticalCount >= MAX_CRITICAL) break
-        if (BaseNode._isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
-          criticalProps[k] = props[k]
+        if (NodeUtil.isStyleProp(k) || k === 'css' || k === 'className' || k.startsWith('on')) {
+          criticalProps[k] = props[k as keyof typeof props]
           criticalCount++
         }
       }
 
-      this._lastSignature = BaseNode._createPropSignature(this.element, criticalProps)
+      this._lastSignature = NodeUtil.createPropSignature(this.element, criticalProps)
 
-      if (__DEV__ && keyCount > 200) {
+      if (__DEBUG__ && keyCount > 200) {
         console.warn(`MeoNode: Large props (${keyCount} keys) on "${getElementTypeName(this.element)}". Consider splitting.`)
       }
     } else {
-      this._lastSignature = BaseNode._createPropSignature(this.element, props)
+      this._lastSignature = NodeUtil.createPropSignature(this.element, props)
     }
 
     this._lastPropsRef = props
-    return this._lastSignature
+
+    return key !== undefined && key !== null ? `${String(key)}:${this._lastSignature}` : this._lastSignature
   }
 
   /**
-   * Creates a unique, stable signature from the element type and props.
-   * This signature includes the element's type to prevent collisions between different components
-   * and handles primitive values in arrays and objects for better caching.
-   * @method _createPropSignature
-   */
-  private static _createPropSignature(element: NodeElementType, props: Record<string, any>): string {
-    // Safe element identification that works with Next.js Client Components
-    let elementName: string
-
-    if (BaseNode._isServer) {
-      elementName = BaseNode._getStableElementId(element)
-    } else {
-      try {
-        elementName = getElementTypeName(element)
-      } catch (error) {
-        if (__DEV__) {
-          console.error('MeoNode: Could not determine element name for signature.', error)
-        }
-        // Fallback to stable ID if name cannot be determined
-        elementName = BaseNode._getStableElementId(element)
-      }
-    }
-
-    const keys = Object.keys(props).sort()
-    let signatureStr = `${elementName}:`
-
-    for (const key of keys) {
-      const val = props[key]
-      let valStr: string
-
-      const valType = typeof val
-      if (valType === 'string' || valType === 'number' || valType === 'boolean') {
-        valStr = `${key}:${val};`
-      } else if (val === null) {
-        valStr = `${key}:null;`
-      } else if (val === undefined) {
-        valStr = `${key}:undefined;`
-      } else if (Array.isArray(val)) {
-        // Hash primitive values in arrays for better cache hits
-        const primitives = val.filter(v => {
-          const t = typeof v
-          return t === 'string' || t === 'number' || t === 'boolean' || v === null
-        })
-        if (primitives.length === val.length) {
-          // All primitives - use actual values
-          valStr = `${key}:[${primitives.join(',')}];`
-        } else {
-          // Mixed or all non-primitives - use structure only
-          valStr = `${key}:[${val.length}];`
-        }
-      } else {
-        // Include sorted keys for object structure signature
-        const objKeys = Object.keys(val).sort()
-        valStr = `${key}:{${objKeys.join(',')}};`
-      }
-      signatureStr += valStr
-    }
-
-    return BaseNode._hashString(signatureStr)
-  }
-
-  /**
-   * Retrieves computed CSS props from the cache with LRU tracking.
-   * Access time and hit count are tracked for smarter eviction.
-   * @method _getCachedCssProps
-   */
-  private static _getCachedCssProps(cacheableProps: Record<string, any>, signature: string): { cssProps: Record<string, any> } {
-    if (BaseNode._isServer) return { cssProps: getCSSProps(cacheableProps) }
-
-    const cached = BaseNode._propProcessingCache.get(signature)
-
-    if (cached) {
-      // Update LRU metadata
-      cached.lastAccess = Date.now()
-      cached.hitCount++
-      return { cssProps: cached.cssProps }
-    }
-
-    const cssProps = getCSSProps(cacheableProps)
-    BaseNode._propProcessingCache.set(signature, {
-      cssProps,
-      signature,
-      lastAccess: Date.now(),
-      hitCount: 1,
-    })
-
-    // Batch cleanup for better performance
-    if (BaseNode._propProcessingCache.size > BaseNode.CACHE_SIZE_LIMIT && !BaseNode._scheduledCleanup) {
-      BaseNode._scheduledCleanup = true
-
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(
-          () => {
-            BaseNode._evictLRUEntries()
-            BaseNode._scheduledCleanup = false
-          },
-          { timeout: 2000 },
-        )
-      } else {
-        setTimeout(() => {
-          BaseNode._evictLRUEntries()
-          BaseNode._scheduledCleanup = false
-        }, 100)
-      }
-    }
-
-    return { cssProps }
-  }
-
-  /**
-   * Implements an LRU eviction strategy that removes multiple entries at once.
-   * It uses a scoring system where older and less frequently used entries have a higher eviction priority.
-   * @method _evictLRUEntries
-   */
-  private static _evictLRUEntries(): void {
-    const now = Date.now()
-    const entries: Array<{ key: string; score: number }> = []
-
-    // Calculate eviction scores for all entries
-    for (const [key, value] of BaseNode._propProcessingCache.entries()) {
-      const age = now - value.lastAccess
-      const frequency = value.hitCount
-
-      // Score: older age + lower frequency = higher score (more likely to evict)
-      // Normalize: age in seconds, frequency as inverse
-      const score = age / 1000 + 1000 / (frequency + 1)
-      entries.push({ key, score })
-    }
-
-    // Sort by score (highest = most evictable)
-    entries.sort((a, b) => b.score - a.score)
-
-    // Remove top N entries
-    const toRemove = Math.min(BaseNode.CACHE_CLEANUP_BATCH, entries.length)
-    for (let i = 0; i < toRemove; i++) {
-      BaseNode._propProcessingCache.delete(entries[i].key)
-    }
-  }
-
-  /**
-   * The main prop processing pipeline, which now passes the element type for improved caching.
-   * @method _processProps
-   */
-  private _processProps(): FinalNodeProps {
-    const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = this.rawProps
-
-    // --- Fast Path Optimization ---
-    if (Object.keys(restRawProps).length === 0 && !css) {
-      return omitUndefined({
-        ref,
-        key,
-        disableEmotion,
-        nativeProps: omitUndefined(nativeProps),
-        children: this._processChildren(children, disableEmotion),
-      })
-    }
-
-    // --- Hybrid Caching Strategy ---
-    const cacheableProps: Record<string, any> = {}
-    const nonCacheableProps: Record<string, any> = {}
-
-    // 1. Categorize props into cacheable (primitives) and non-cacheable (objects/functions).
-    for (const key in restRawProps) {
-      if (Object.prototype.hasOwnProperty.call(restRawProps, key)) {
-        const value = (restRawProps as Record<string, unknown>)[key]
-        const type = typeof value
-        if (type === 'string' || type === 'number' || type === 'boolean') {
-          cacheableProps[key] = value
-        } else {
-          nonCacheableProps[key] = value
-        }
-      }
-    }
-
-    // 2. Pass element type to signature generation
-    const signature = BaseNode._createPropSignature(this.element, cacheableProps)
-    const { cssProps: cachedCssProps } = BaseNode._getCachedCssProps(cacheableProps, signature)
-
-    // 3. Process non-cacheable props on every render to ensure correctness for functions and objects.
-    const nonCachedCssProps = getCSSProps(nonCacheableProps)
-    const domProps = getDOMProps(restRawProps) // DOM props are always processed fresh.
-
-    // 4. Assemble the final CSS object.
-    const finalCssProps = { ...cachedCssProps, ...nonCachedCssProps, ...css }
-
-    // --- Child Normalization ---
-    const normalizedChildren = this._processChildren(children, disableEmotion, this._stableKey)
-
-    // --- Final Assembly ---
-    return omitUndefined({
-      ref,
-      key,
-      css: finalCssProps,
-      ...domProps,
-      disableEmotion,
-      nativeProps: omitUndefined(nativeProps),
-      children: normalizedChildren,
-    })
-  }
-
-  /**
-   * Determines if a node should update based on its dependency array.
-   * Uses a shallow comparison, similar to React's `useMemo` and `useCallback`.
-   * @method _shouldNodeUpdate
-   */
-  private static _shouldNodeUpdate(prevDeps: DependencyList | undefined, newDeps: DependencyList | undefined, parentBlocked: boolean): boolean {
-    // SSR has no concept of re-renders, so deps system doesn't apply
-    if (BaseNode._isServer) {
-      return true
-    }
-
-    if (parentBlocked) {
-      return false
-    }
-    // No deps array means always update.
-    if (newDeps === undefined) {
-      return true
-    }
-    // First render for this keyed component, or no previous deps.
-    if (prevDeps === undefined) {
-      return true
-    }
-    // Length change means update.
-    if (newDeps.length !== prevDeps.length) {
-      return true
-    }
-    // Shallow compare deps. If any have changed, update.
-    if (newDeps.some((dep, i) => !Object.is(dep, prevDeps[i]))) {
-      return true
-    }
-
-    // Deps are the same, no update needed.
-    return false
-  }
-
-  // --- Child Processing ---
-
-  /**
-   * Processes the `children` prop of a node. It handles single children, arrays of children,
-   * and function-as-a-child render props, passing them to `_processRawNode` for normalization.
-   * @method _processChildren
-   */
-  private _processChildren(children: Children, disableEmotion?: boolean, parentStableKey?: string): Children {
-    if (!children) return undefined
-    if (typeof children === 'function') return children
-    return Array.isArray(children)
-      ? children.map((child, index) => BaseNode._processRawNode(child, disableEmotion, `${parentStableKey}_${index}`))
-      : BaseNode._processRawNode(children, disableEmotion, parentStableKey)
-  }
-
-  /**
-   * The core normalization function for a single child. It takes any valid `NodeElement`
-   * (primitive, React element, function, `BaseNode` instance) and converts it into a standardized `BaseNode`
-   * instance if it isn't one already. This ensures a consistent structure for the iterative renderer.
-   * @method _processRawNode
-   */
-  private static _processRawNode(node: NodeElement, disableEmotion?: boolean, stableKey?: string): NodeElement {
-    // Primitives and null/undefined are returned as-is.
-    if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return node
-
-    // If it's already a BaseNode, clone it with a positional key if available.
-    if (isNodeInstance(node)) {
-      const needsCloning = stableKey || (disableEmotion && !node.rawProps.disableEmotion)
-      if (needsCloning) {
-        // Create a new BaseNode instance.
-        const newNode = new BaseNode(node.element, node.rawProps, node.dependencies)
-
-        // Augment the internal _stableKey with positional information.
-        // This is purely for BaseNode's internal caching, not for React's 'key' prop.
-        newNode._stableKey = `${stableKey}:${newNode._stableKey}`
-
-        if (disableEmotion && !newNode.rawProps.disableEmotion) {
-          newNode.rawProps.disableEmotion = true
-        }
-        return newNode
-      }
-      return node
-    }
-
-    // Handle function-as-a-child (render props).
-    if (BaseNode._isFunctionChild(node)) {
-      return new BaseNode(BaseNode._functionRenderer as NodeElementType, { props: { render: node, disableEmotion } }, undefined)
-    }
-
-    // Handle standard React elements.
-    if (isValidElement(node)) {
-      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
-      const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
-      return new BaseNode(
-        node.type as ElementType,
-        {
-          ...combinedProps,
-          ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
-          disableEmotion,
-        },
-        undefined,
-      )
-    }
-
-    // Handle component classes and memos.
-    if (isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) {
-      return new BaseNode(node as ElementType, { disableEmotion }, undefined)
-    }
-
-    // Handle component instances.
-    if (node instanceof React.Component) {
-      return BaseNode._processRawNode(node.render(), disableEmotion, stableKey)
-    }
-
-    return node
-  }
-
-  /**
-   * A helper to reliably identify if a given function is a "function-as-a-child" (render prop)
-   * rather than a standard Function Component.
-   * @method _isFunctionChild
-   */
-  private static _isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
-    if (typeof node !== 'function' || isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return false
-    try {
-      return !(node.prototype && typeof node.prototype.render === 'function')
-    } catch (error) {
-      if (__DEV__) {
-        console.error('MeoNode: Error checking if a node is a function child.', error)
-      }
-      return true
-    }
-  }
-
-  /**
-   * A special internal React component used to render "function-as-a-child" (render prop) patterns.
-   * When a `BaseNode` receives a function as its `children` prop, it wraps that function
-   * inside this `_functionRenderer` component. This component then executes the render function
-   * and processes its return value, normalizing it into a renderable ReactNode.
+   * FinalizationRegistry for cleaning up `elementCache` entries when the associated `BaseNode` instance
+   * is garbage-collected. This helps prevent memory leaks by ensuring that cache entries for
+   * unreferenced nodes are eventually removed.
    *
-   * This allows `BaseNode` to support render props while maintaining its internal processing
-   * and normalization logic for the dynamically generated content.
-   * @method _functionRenderer
-   * @param {Object} props The properties passed to the renderer.
-   * @param {Function} props.render The function-as-a-child to execute.
-   * @param {boolean} [props.disableEmotion] Inherited flag to disable Emotion styling for children.
-   * @returns {ReactNode | null | undefined} The processed and rendered output of the render function.
+   * The held value must include `cacheKey` which is used to identify and delete the corresponding
+   * entry from `BaseNode.elementCache`.
+   * @public
    */
-  private static _functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>): ReactNode | null | undefined {
-    let result: NodeElement
-    try {
-      // Execute the render prop function to get its output.
-      result = render()
-    } catch (error) {
-      if (__DEV__) {
-        console.error('MeoNode: Error executing function-as-a-child.', error)
-      }
-      // If the render function throws, treat its output as null to prevent crashes.
-      result = null
+  public static cacheCleanupRegistry = new FinalizationRegistry<{
+    cacheKey: string
+    instanceId: string
+  }>(heldValue => {
+    const { cacheKey, instanceId } = heldValue
+    const cacheEntry = BaseNode.elementCache.get(cacheKey)
+
+    if (MountTrackerUtil.mountedNodes.has(cacheKey) && cacheEntry?.instanceId === instanceId) {
+      BaseNode.elementCache.delete(cacheKey)
+      MountTrackerUtil.untrackMount(cacheKey)
     }
-
-    // Handle null or undefined results directly, as they are valid React render outputs.
-    if (result === null || result === undefined) return result as never
-
-    // If the result is already a BaseNode instance, process it.
-    if (isNodeInstance(result)) {
-      // If emotion is disabled for the parent and not explicitly re-enabled on the child,
-      // create a new BaseNode with emotion disabled and render it.
-      if (disableEmotion && !result.rawProps.disableEmotion) return new BaseNode(result.element, { ...result.rawProps, disableEmotion: true }).render()
-      // Otherwise, render the existing BaseNode directly.
-      return result.render()
-    }
-
-    // If the result is an array, it likely contains multiple children.
-    if (Array.isArray(result)) {
-      // Helper to generate a stable key for array items, crucial for React's reconciliation.
-      const safeGetKey = (item: any, index: number) => {
-        try {
-          // Attempt to get a meaningful name for the element type.
-          return `${getElementTypeName(item)}-${index}`
-        } catch (error) {
-          if (__DEV__) {
-            console.error('MeoNode: Could not determine element type name for key in function-as-a-child.', error)
-          }
-          // Fallback to a generic key if type name cannot be determined.
-          return `item-${index}`
-        }
-      }
-      // Map over the array, processing each item and assigning a key.
-      return result.map((item, index) =>
-        BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(item, disableEmotion), passedKey: safeGetKey(item, index), disableEmotion }),
-      )
-    }
-    if (result instanceof React.Component) {
-      return BaseNode._renderProcessedNode({ processedElement: BaseNode._processRawNode(result.render(), disableEmotion), disableEmotion })
-    }
-
-    // Handle primitive types directly, as they are valid React children.
-    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result
-
-    // For any other non-primitive, non-array result, process it as a single NodeElement.
-    const processedResult = BaseNode._processRawNode(result as NodeElement, disableEmotion)
-    // If processing yields a valid element, render it.
-    if (processedResult) return BaseNode._renderProcessedNode({ processedElement: processedResult, disableEmotion })
-    // Fallback: return the original result if it couldn't be processed into a renderable node.
-    return result as ReactNode
-  }
+  })
 
   /**
-   * Renders a processed `NodeElement` into a ReactNode.
-   * This helper is primarily used by `_functionRenderer` to handle the output of render props,
-   * ensuring that `BaseNode` instances are correctly rendered and other React elements or primitives
-   * are passed through. It also applies `disableEmotion` and `key` props as needed.
+   * FinalizationRegistry for cleaning up portal DOM containers and their associated React roots
+   * when the owning `BaseNode` instance is garbage-collected.
    *
-   * This method is part of the child processing pipeline, converting internal `NodeElement` representations
-   * into actual React elements that can be rendered by React.
-   * @method _renderProcessedNode
+   * The held value must include:
+   * - `domElement`: the container `HTMLDivElement` appended to `document.body`.
+   * - `reactRoot`: an object with an `unmount()` method to unmount the React root.
+   *
+   * On cleanup the registry handler will attempt to:
+   * 1. Unmount the React root (errors are swallowed in non-production builds with logging).
+   * 2. Remove the `domElement` from the DOM if it is still connected.
+   *
+   * This prevents detached portal containers from leaking memory in long-running client apps.
+   * @private
    */
-  private static _renderProcessedNode({
-    processedElement,
-    passedKey,
-    disableEmotion,
-  }: {
-    processedElement: NodeElement
-    passedKey?: string
-    disableEmotion?: boolean
-  }) {
-    // Initialize an object to hold common props that might be applied to the new BaseNode.
-    const commonBaseNodeProps: Partial<NodeProps<any>> = {}
-    // If a `passedKey` is provided, add it to `commonBaseNodeProps`.
-    // This key is typically used for React's reconciliation process.
-    if (passedKey !== undefined) commonBaseNodeProps.key = passedKey
+  public static portalCleanupRegistry = new FinalizationRegistry<{
+    domElement: HTMLDivElement
+    reactRoot: { unmount(): void }
+  }>(heldValue => {
+    const { domElement, reactRoot } = heldValue
 
-    // If the processed element is already a BaseNode instance.
-    if (isNodeInstance(processedElement)) {
-      // Get the existing key from the raw props of the BaseNode.
-      const existingKey = processedElement.rawProps?.key
-      // Apply the `disableEmotion` flag to the raw props of the BaseNode.
-      processedElement.rawProps.disableEmotion = disableEmotion
-      // If the existing key is the same as the passed key, render the existing BaseNode directly.
-      // This avoids unnecessary re-creation of the BaseNode instance.
-      if (existingKey === passedKey) return processedElement.render()
-      // Otherwise, create a new BaseNode instance, merging existing raw props with common props, then render it.
-      return new BaseNode(processedElement.element, { ...processedElement.rawProps, ...commonBaseNodeProps }).render()
+    if (__DEBUG__) {
+      console.log('[MeoNode] FinalizationRegistry auto-cleaning portal')
     }
-    // If the processed element is a React class component (e.g., `class MyComponent extends React.Component`).
-    // Create a new BaseNode for it, applying common props and `disableEmotion`, then render.
-    if (isReactClassComponent(processedElement)) return new BaseNode(processedElement, { ...commonBaseNodeProps, disableEmotion }).render()
-    // If the processed element is an instance of a React component (e.g., `new MyComponent()`).
-    // Directly call its `render` method.
-    if (processedElement instanceof React.Component) return processedElement.render()
-    // If the processed element is a function (likely a functional component or a render prop that returned a component type).
-    // Create a React element directly using `createElement`, passing the `passedKey`.
-    if (typeof processedElement === 'function') return createElement(processedElement as ElementType, { key: passedKey })
-    // For any other type (primitives, null, undefined, etc.), return it as a ReactNode.
-    return processedElement as ReactNode
-  }
+
+    // Guard: Check if already unmounted
+    try {
+      // Only unmount if root still exists
+      if (reactRoot && typeof reactRoot.unmount === 'function') {
+        reactRoot.unmount()
+      }
+    } catch (error) {
+      // Swallow errors if already unmounted
+      if (__DEBUG__) {
+        console.error('[MeoNode] Portal auto-cleanup unmount error:', error)
+      }
+    }
+
+    // Guard: Check if DOM element still connected
+    try {
+      if (domElement?.isConnected) {
+        domElement.remove()
+      }
+    } catch (error) {
+      if (__DEBUG__) {
+        console.error('[MeoNode] Portal auto-cleanup DOM removal error:', error)
+      }
+    }
+  })
 
   // --- Iterative Renderer with Deps Support ---
 
@@ -742,18 +257,15 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    */
   public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
     // Auto-track this node for mount detection
-    if (!BaseNode._isServer) {
-      MountTracker.trackMount(this)
+    if (!NodeUtil.isServer) {
+      MountTrackerUtil.trackMount(this.stableKey)
     }
 
-    // A stable cache key derived from the element + important props signature.
-    const cacheKey = this._stableKey
-
     // On server we never reuse cached elements because that can cause hydration mismatches.
-    const cacheEntry = BaseNode._isServer ? undefined : BaseNode._elementCache.get(cacheKey)
+    const cacheEntry = NodeUtil.isServer ? undefined : BaseNode.elementCache.get(this.stableKey)
 
     // Decide whether this node (and its subtree) should update given dependency arrays.
-    const shouldUpdate = BaseNode._shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
+    const shouldUpdate = NodeUtil.shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
 
     // Fast return: if nothing should update and we have a cached element, reuse it.
     if (!shouldUpdate && cacheEntry?.renderedElement) {
@@ -766,9 +278,9 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
     // Work stack for iterative, non-recursive traversal.
     // Each entry tracks the BaseNode, whether its children were pushed (isProcessed) and whether it is blocked.
-    const workStack: { node: BaseNode<any>; isProcessed: boolean; blocked: boolean }[] = [{ node: this, isProcessed: false, blocked: childrenBlocked }]
+    const workStack: { node: NodeInstance; isProcessed: boolean; blocked: boolean }[] = [{ node: this, isProcessed: false, blocked: childrenBlocked }]
     // Map to collect rendered React elements for processed BaseNode instances.
-    const renderedElements = new Map<BaseNode<any>, ReactElement>()
+    const renderedElements = new Map<NodeInstance, ReactElement>()
 
     // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
     while (workStack.length > 0) {
@@ -782,17 +294,16 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
 
         if (children) {
           // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
-          const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(isNodeInstance)
+          const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
 
           for (let i = childrenToProcess.length - 1; i >= 0; i--) {
             const child = childrenToProcess[i]
-            const childCacheKey = child._stableKey
 
             // Respect server/client differences for child cache lookup.
-            const childCacheEntry = BaseNode._isServer ? undefined : BaseNode._elementCache.get(childCacheKey)
+            const childCacheEntry = NodeUtil.isServer ? undefined : BaseNode.elementCache.get(child.stableKey)
 
             // Determine whether the child should update given its deps and the parent's blocked state.
-            const childShouldUpdate = BaseNode._shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
+            const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
 
             // If child doesn't need update and has cached element, reuse it immediately (no push).
             if (!childShouldUpdate && childCacheEntry?.renderedElement) {
@@ -819,7 +330,7 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
           // - If it's already a React element, use it directly.
           // - Otherwise treat as primitive ReactNode.
           finalChildren = (Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]).map(child => {
-            if (isNodeInstance(child)) return renderedElements.get(child)!
+            if (NodeUtil.isNodeInstance(child)) return renderedElements.get(child)!
             if (isValidElement(child)) return child
             return child as ReactNode
           })
@@ -844,16 +355,30 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
         }
 
         // Cache the generated element on client-side to speed up future renders.
-        if (!BaseNode._isServer) {
-          const newCacheEntry: ElementCacheEntry = {
-            prevDeps: node._deps,
-            renderedElement: element,
-            onEvict: () => MountTracker.trackUnmount(node),
-            nodeRef: new WeakRef(node),
-            createdAt: Date.now(),
-            accessCount: 1,
+        if (!NodeUtil.isServer) {
+          const existingEntry = BaseNode.elementCache.get(node.stableKey)
+
+          if (existingEntry) {
+            // Update existing cache entry (avoid re-registration)
+            existingEntry.prevDeps = node._deps
+            existingEntry.renderedElement = element
+            existingEntry.accessCount += 1
+          } else {
+            // Create new cache entry and register for cleanup
+            const newCacheEntry: ElementCacheEntry = {
+              prevDeps: node._deps,
+              renderedElement: element,
+              nodeRef: new WeakRef(node),
+              createdAt: Date.now(),
+              accessCount: 1,
+              instanceId: node.instanceId,
+            }
+
+            BaseNode.elementCache.set(node.stableKey, newCacheEntry)
+
+            // Register for automatic cleanup when node is GC'd
+            BaseNode.cacheCleanupRegistry.register(node, { cacheKey: node.stableKey, instanceId: node.instanceId }, node)
           }
-          BaseNode._elementCache.set(node._stableKey, newCacheEntry)
         }
 
         // Store the rendered element so parent nodes can reference it.
@@ -861,66 +386,14 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
       }
     }
 
-    // Return the ReactElement corresponding to the root node (this).
-    return renderedElements.get(this) as ReactElement<FinalNodeProps>
-  }
+    // Get the final rendered element for the root node of this render cycle.
+    const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
-  /**
-   * Registers a node instance with the MountTracker for unmount tracking.
-   * This is only executed on the client-side.
-   * @method registerUnmount
-   */
-  public static registerUnmount(node: BaseNode<any>) {
-    if (!BaseNode._isServer) {
-      MountTracker.trackUnmount(node)
-    }
-  }
-
-  // --- Portal System ---
-
-  /**
-   * Ensures that the necessary DOM element and React root are available for portal rendering.
-   * This is only executed on the client-side.
-   * @method _ensurePortalInfrastructure
-   */
-  private _ensurePortalInfrastructure() {
-    if (BaseNode._isServer) return false
-
-    let infra = BaseNode._portalInfrastructure.get(this)
-
-    // Check if infrastructure exists and is still connected
-    if (infra?.domElement?.isConnected) {
-      return true
+    if (!NodeUtil.isServer) {
+      return createElement(MeoNodeUnmounter, { stableKey: this.stableKey }, rootElement)
     }
 
-    // Clean up disconnected infrastructure
-    if (infra?.domElement && !infra.domElement.isConnected) {
-      try {
-        infra.reactRoot.unmount()
-      } catch (error) {
-        if (__DEV__) {
-          console.error('MeoNode: Error unmounting disconnected portal root.', error)
-        }
-      }
-      BaseNode._portalInfrastructure.delete(this)
-      infra = undefined
-    }
-
-    // Create new infrastructure
-    const domElement = document.createElement('div')
-    document.body.appendChild(domElement)
-
-    const root = createRoot(domElement)
-    const reactRoot = {
-      render: root.render.bind(root),
-      unmount: root.unmount.bind(root),
-      update: () => {}, // Placeholder, will be overridden
-    }
-
-    infra = { domElement, reactRoot }
-    BaseNode._portalInfrastructure.set(this, infra)
-
-    return true
+    return rootElement
   }
 
   /**
@@ -929,79 +402,147 @@ export class BaseNode<E extends NodeElementType> implements NodeInstance<E> {
    * @method toPortal
    */
   public toPortal(): NodePortal {
-    if (!this._ensurePortalInfrastructure()) {
-      throw new Error('toPortal() can only be called in a client-side environment where document.body is available.')
+    if (!NodeUtil.ensurePortalInfrastructure(this)) {
+      throw new Error('toPortal() can only be called in a client-side environment')
     }
 
-    const infra = BaseNode._portalInfrastructure.get(this)!
+    const infra = NodeUtil.portalInfrastructure.get(this)!
     const { domElement, reactRoot } = infra
 
     const renderCurrent = () => {
       try {
         reactRoot.render(this.render())
       } catch (error) {
-        if (__DEV__) {
-          console.error('MeoNode: Error rendering initial portal content.', error)
+        if (__DEBUG__) {
+          console.error('[MeoNode] Portal render error:', error)
         }
       }
     }
+
     renderCurrent()
 
-    try {
-      const originalUnmount = reactRoot.unmount.bind(reactRoot)
+    // Track if already unmounted to make unmount idempotent
+    let isUnmounted = false
+    const originalUnmount = reactRoot.unmount.bind(reactRoot)
 
-      // Override update method
-      reactRoot.update = (next: NodeElement) => {
-        try {
-          const content = isNodeInstance(next) ? next.render() : (next as ReactNode)
-          reactRoot.render(content)
-        } catch (error) {
-          if (__DEV__) {
-            console.error('MeoNode: Error updating portal content.', error)
-          }
+    reactRoot.update = (next: NodeElement) => {
+      if (isUnmounted) {
+        if (__DEBUG__) {
+          console.warn('[MeoNode] Attempt to update already-unmounted portal')
         }
+        return
       }
 
-      // Override unmount method
-      reactRoot.unmount = () => {
-        try {
-          originalUnmount()
-        } catch (error) {
-          if (__DEV__) {
-            console.error('MeoNode: Error unmounting portal root.', error)
-          }
+      try {
+        const content = NodeUtil.isNodeInstance(next) ? next.render() : (next as ReactNode)
+        reactRoot.render(content)
+      } catch (error) {
+        if (__DEBUG__) {
+          console.error('[MeoNode] Portal update error:', error)
         }
-        if (domElement.parentNode) {
-          try {
-            domElement.parentNode.removeChild(domElement)
-          } catch (error) {
-            if (__DEV__) {
-              console.error('MeoNode: Error removing portal DOM element.', error)
-            }
-          }
-        }
-        // Clean up from WeakMap
-        BaseNode._portalInfrastructure.delete(this)
       }
-
-      return reactRoot
-    } catch (error) {
-      if (__DEV__) {
-        console.error('MeoNode: Error creating portal handle.', error)
-      }
-      return reactRoot
     }
+
+    reactRoot.unmount = () => {
+      // Idempotent guard
+      if (isUnmounted) {
+        if (__DEBUG__) {
+          console.warn('[MeoNode] Portal already unmounted')
+        }
+        return
+      }
+
+      isUnmounted = true
+
+      // Unregister FIRST to prevent FinalizationRegistry from firing
+      try {
+        BaseNode.portalCleanupRegistry.unregister(this)
+      } catch (error) {
+        // May fail if already unregistered, that's fine
+        if (__DEBUG__) {
+          console.warn('[MeoNode] Portal unregister warning:', error)
+        }
+      }
+
+      // Remove from WeakMap
+      NodeUtil.portalInfrastructure.delete(this)
+
+      // Now do the actual cleanup
+      try {
+        // If the portal's container is still in the DOM, we need to tell React to unmount the component tree from it.
+        if (domElement?.isConnected) {
+          originalUnmount()
+        }
+      } catch (error) {
+        if (__DEBUG__) {
+          console.error('[MeoNode] Portal unmount error:', error)
+        }
+      }
+
+      try {
+        if (domElement?.isConnected) {
+          domElement.remove()
+        }
+      } catch (error) {
+        if (__DEBUG__) {
+          console.error('[MeoNode] Portal DOM cleanup error:', error)
+        }
+      }
+    }
+
+    return reactRoot
   }
 
   /**
    * A static method to clear all internal caches.
+   *
+   * This method performs manual cleanup of all cache entries, calling their
+   * `onEvict` callbacks before clearing. Note that FinalizationRegistry entries
+   * are not manually cleared as they will be garbage collected naturally when
+   * the associated nodes are collected.
    * @method clearCaches
    */
   public static clearCaches() {
-    BaseNode._propProcessingCache.clear()
-    BaseNode._elementCache.clear()
-    clearThemeCache()
+    // Collect all cache keys first
+    const allKeys = Array.from(BaseNode.elementCache.keys())
+
+    if (__DEBUG__) {
+      console.log(`[MeoNode] clearCaches: Clearing ${allKeys.length} entries`)
+    }
+
+    // Call onEvict for all entries (idempotent)
+    for (const key of allKeys) {
+      const entry = BaseNode.elementCache.get(key)
+      if (entry) {
+        // Try to unregister from FinalizationRegistry
+        const node = entry.nodeRef?.deref()
+        if (node) {
+          try {
+            BaseNode.cacheCleanupRegistry.unregister(node)
+          } catch {
+            // Unregister might fail if already unregistered, that's fine
+            if (__DEBUG__) {
+              console.warn(`[MeoNode] Could not unregister ${key} from FinalizationRegistry`)
+            }
+          }
+        }
+      }
+    }
+
+    // Clear all caches
+    BaseNode.propProcessingCache.clear()
+    BaseNode.elementCache.clear()
+    ThemeUtil.clearThemeCache()
+
+    // Clear mount tracking
+    MountTrackerUtil.cleanup()
+
+    if (__DEBUG__) {
+      console.log('[MeoNode] All caches cleared')
+    }
   }
+
+  // --- Utilities ---
 }
 
 // --- Factory Functions ---

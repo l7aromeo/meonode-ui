@@ -36,9 +36,7 @@ expect.addSnapshotSerializer(createSerializer())
 jest.useRealTimers()
 
 // Clean up DOM between tests to avoid open handles
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 const theme: Theme = {
   mode: 'light',

@@ -1,17 +1,20 @@
 import { jest } from '@jest/globals'
 import { Div, H1, Node, P, Span } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
-import { useEffect, useState, memo, StrictMode } from 'react'
+import { useEffect, useState, StrictMode } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode } from '@src/core.node.js'
-import { NavigationCacheManager } from '@src/helper/navigation-cache-manager.helper.js'
+import { NodeUtil } from '@src/util/node.util.js'
+import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
+import { setDebugMode } from '@src/main.js'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
+afterEach(cleanup)
+beforeEach(() => {
+  setDebugMode(true)
 })
 
 describe('Dependency and Memoization in a Real-World Scenario', () => {
@@ -30,7 +33,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
   // A reusable UserProfile component that fetches and displays user data.
   // It is designed to be memoized based on the userId.
   let userProfileRenderCount: jest.Mock
-  const UserProfile = memo(({ userId }: { userId: keyof typeof mockUsers }) => {
+  const UserProfile = ({ userId }: { userId: keyof typeof mockUsers }) => {
     userProfileRenderCount()
     const [user, setUser] = useState<{ name: string; email: string } | null>(null)
 
@@ -46,7 +49,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
       'data-testid': `profile-${userId}`,
       children: [H1(user.name), P(user.email)],
     }).render()
-  })
+  }
 
   // The main App component that controls which user profile is displayed
   // and has an unrelated state variable (theme) to test memoization.
@@ -255,18 +258,18 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
   it('should clear unmounted component caches on simulated navigation', () => {
     // This test simulates a real-world SPA navigation scenario to verify
-    // that NavigationCacheManager and SafeCacheManager work together to evict
+    // that NavigationCacheManagerUtil and SafeCacheManager work together to evict
     // caches of unmounted components, preventing memory leaks.
 
     // 1. Setup: Define components for different "pages"
     // A shared header component, memoized to persist across pages if not unmounted.
-    const Header = memo(() => Div({ children: 'Shared Header' }).render())
+    const Header = () => Div({ children: 'Shared Header' }).render()
 
     // A component unique to the Home page, memoized.
-    const HomePageContent = memo(() => P('Welcome to the Home Page').render())
+    const HomePageContent = () => P('Welcome to the Home Page').render()
 
     // A component unique to the About page, memoized.
-    const AboutPageContent = memo(() => P('This is the About Page').render())
+    const AboutPageContent = () => P('This is the About Page').render()
 
     // App component to simulate routing between pages.
     const App = () => {
@@ -294,7 +297,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
       }).render()
     }
 
-    // Use fake timers to control the debounced cleanup function in NavigationCacheManager.
+    // Use fake timers to control the debounced cleanup function in NavigationCacheManagerUtil.
     jest.useFakeTimers()
 
     // 2. Initial Render (Home Page)
@@ -303,7 +306,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
     // 3. Check initial cache state
     // At this point, Header and HomePageContent should be in the cache.
-    const initialCacheSize = BaseNode._elementCache.size
+    const initialCacheSize = BaseNode.elementCache.size
     expect(initialCacheSize).toBeGreaterThan(0)
 
     // 4. Simulate Navigation to About Page
@@ -323,7 +326,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     // 6. Assert that the cache has been cleaned
     // The cache entry for the unmounted HomePageContent should be gone.
     // The cache for the still-mounted Header and the new AboutPageContent should remain.
-    const cacheSizeAfterCleanup = BaseNode._elementCache.size
+    const cacheSizeAfterCleanup = BaseNode.elementCache.size
     expect(cacheSizeAfterCleanup).toBeLessThan(initialCacheSize)
     expect(cacheSizeAfterCleanup).toBeGreaterThan(0) // Ensure the cache for mounted components is not cleared.
 
@@ -334,8 +337,8 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
   // Test to ensure no cache collision occurs between different components with identical props
   it('prevents cache collision between different components with identical props', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const CompA = memo(() => Div({ children: 'A', color: 'red' }).render())
-    const CompB = memo(() => Div({ children: 'B', color: 'red' }).render())
+    const CompA = () => Div({ children: 'A', color: 'red' }).render()
+    const CompB = () => Div({ children: 'B', color: 'red' }).render()
 
     const App = Div({
       children: [
@@ -351,7 +354,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(getByText('B')).toBeInTheDocument()
 
     // Cache should have 2 distinct entries
-    const cacheKeys = Array.from(BaseNode._elementCache.keys())
+    const cacheKeys = Array.from(BaseNode.elementCache.keys())
     const itemKeys = cacheKeys.filter(k => k.includes('item'))
     expect(itemKeys.length).toBe(2) // Not 1 (collision)
     consoleErrorSpy.mockRestore()
@@ -361,9 +364,9 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
   it('handles rapid navigation without cache overflow', () => {
     jest.useFakeTimers()
 
-    const Page1 = memo(() => P('Page 1').render())
-    const Page2 = memo(() => P('Page 2').render())
-    const Page3 = memo(() => P('Page 3').render())
+    const Page1 = () => P('Page 1').render()
+    const Page2 = () => P('Page 2').render()
+    const Page3 = () => P('Page 3').render()
 
     const App = () => {
       const [page, setPage] = useState(1)
@@ -384,7 +387,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     }
 
     const { getByText } = render(Node(App).render())
-    const initialCacheSize = BaseNode._elementCache.size
+    const initialCacheSize = BaseNode.elementCache.size
 
     // Rapid navigation: 10-page changes without waiting for debounce
     for (let i = 0; i < 10; i++) {
@@ -393,7 +396,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
       })
     }
 
-    const cacheSizeDuringRapidNav = BaseNode._elementCache.size
+    const cacheSizeDuringRapidNav = BaseNode.elementCache.size
 
     // Cache should not grow unbounded (allow some growth but not 10x)
     expect(cacheSizeDuringRapidNav).toBeLessThan(initialCacheSize * 3)
@@ -403,7 +406,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
       jest.runAllTimers()
     })
 
-    const finalCacheSize = BaseNode._elementCache.size
+    const finalCacheSize = BaseNode.elementCache.size
 
     // After cleanup, only currently mounted components should remain
     expect(finalCacheSize).toBeLessThan(cacheSizeDuringRapidNav)
@@ -416,10 +419,10 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
   it('handles React 18 Strict Mode without cache corruption', () => {
     let renderCount = 0
 
-    const TrackedComponent = memo(() => {
+    const TrackedComponent = () => {
       renderCount++
       return P('Tracked Content').render()
-    })
+    }
 
     const App = () => {
       const [toggle, setToggle] = useState(false)
@@ -440,7 +443,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(renderCount).toBe(2)
 
     // Cache should exist
-    const initialCacheSize = BaseNode._elementCache.size
+    const initialCacheSize = BaseNode.elementCache.size
     expect(initialCacheSize).toBeGreaterThan(0)
 
     // Toggle parent state - TrackedComponent should NOT re-render (empty deps)
@@ -458,12 +461,12 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(renderCount).toBe(2) // Memoization still working
 
     // Cache should remain stable
-    expect(BaseNode._elementCache.size).toBe(initialCacheSize)
+    expect(BaseNode.elementCache.size).toBe(initialCacheSize)
 
     unmount()
 
     // After unmount, verify cleanup (cache might still exist briefly)
-    expect(BaseNode._elementCache.size).toBeGreaterThanOrEqual(0)
+    expect(BaseNode.elementCache.size).toBeGreaterThanOrEqual(0)
   })
 
   // Test for critical props fingerprinting when object props exceed 100 keys
@@ -481,10 +484,10 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     }
 
     let renderCount = 0
-    const LargePropsComponent = memo((props: any) => {
+    const LargePropsComponent = (props: any) => {
       renderCount++
       return Div({ ...props, children: 'Large Props Component' }).render()
-    })
+    }
 
     const App = () => {
       const [trigger, setTrigger] = useState(0)
@@ -540,7 +543,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     BaseNode.clearCaches()
 
     // Access the private cache and constants
-    const cache = (BaseNode as any)._propProcessingCache as Map<string, any>
+    const cache = BaseNode.propProcessingCache
     const CLEANUP_BATCH = (BaseNode as any).CACHE_CLEANUP_BATCH || 50
 
     const now = Date.now()
@@ -586,7 +589,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(cache.size).toBe(TOTAL_ENTRIES)
 
     // Trigger eviction manually
-    ;(BaseNode as any)._evictLRUEntries()
+    ;(NodeUtil as any)._evictLRUEntries()
 
     // Should have evicted CLEANUP_BATCH entries
     expect(cache.size).toBe(TOTAL_ENTRIES - CLEANUP_BATCH)
@@ -605,7 +608,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     BaseNode.clearCaches()
 
     let renderCount = 0
-    const ExpensiveComponent = memo(({ id }: { id: number }) => {
+    const ExpensiveComponent = ({ id }: { id: number }) => {
       renderCount++
       return Div({
         color: 'red',
@@ -613,7 +616,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
         padding: 20,
         children: `Expensive ${id}`,
       }).render()
-    })
+    }
 
     const App = () => {
       const [show, setShow] = useState(true)
@@ -644,7 +647,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     // Initial mount
     expect(renderCount).toBe(1)
     expect(getByText('Expensive 1')).toBeInTheDocument()
-    const initialCacheSize = BaseNode._elementCache.size
+    const initialCacheSize = BaseNode.elementCache.size
 
     // Unmount component
     act(() => {
@@ -693,7 +696,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(renderCount).toBe(4)
 
     // Cache should be stable across lifecycle
-    expect(BaseNode._elementCache.size).toBeGreaterThanOrEqual(initialCacheSize)
+    expect(BaseNode.elementCache.size).toBeGreaterThanOrEqual(initialCacheSize)
   })
 
   it('registers automatic cleanup listeners only once', () => {
@@ -701,7 +704,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     delete (window as any).__MEONODE_CLEANUP_REGISTERED
 
     // Reset the singleton to ensure fresh start
-    ;(NavigationCacheManager as any)._instance = null
+    ;(NavigationCacheManagerUtil as any)._instance = null
 
     // Mock document for visibility API
     Object.defineProperty(document, 'hidden', {
@@ -711,16 +714,16 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     })
 
     // Start multiple times
-    NavigationCacheManager.getInstance().start()
-    NavigationCacheManager.getInstance().start()
-    NavigationCacheManager.getInstance().start()
+    NavigationCacheManagerUtil.getInstance().start()
+    NavigationCacheManagerUtil.getInstance().start()
+    NavigationCacheManagerUtil.getInstance().start()
 
     // Should only register once
     expect((window as any).__MEONODE_CLEANUP_REGISTERED).toBe(true)
 
     // Verify beforeunload listener works
     const clearSpy = jest.spyOn(BaseNode, 'clearCaches')
-    const stopSpy = jest.spyOn(NavigationCacheManager.getInstance() as any, '_stop')
+    const stopSpy = jest.spyOn(NavigationCacheManagerUtil.getInstance() as any, '_stop')
 
     window.dispatchEvent(new Event('beforeunload'))
 
@@ -733,17 +736,17 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
   it('handles cleanup correctly across multiple navigation events', () => {
     delete (window as any).__MEONODE_CLEANUP_REGISTERED
-    ;(NavigationCacheManager as any)._instance = null
+    ;(NavigationCacheManagerUtil as any)._instance = null
 
     jest.useFakeTimers()
 
     // Start manager first
-    NavigationCacheManager.getInstance().start()
+    NavigationCacheManagerUtil.getInstance().start()
 
     // Populate cache with components
     const { unmount } = render(Div({ children: [P('Content 1'), P('Content 2'), P('Content 3')] }).render())
 
-    const initialCacheSize = BaseNode._elementCache.size
+    const initialCacheSize = BaseNode.elementCache.size
     expect(initialCacheSize).toBeGreaterThan(0)
 
     // Unmount components (they become eligible for cleanup)
@@ -756,7 +759,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     jest.advanceTimersByTime(150)
 
     // Cache should be cleaned (unmounted entries removed)
-    expect(BaseNode._elementCache.size).toBeLessThan(initialCacheSize)
+    expect(BaseNode.elementCache.size).toBeLessThan(initialCacheSize)
 
     jest.useRealTimers()
   })

@@ -1,11 +1,9 @@
 'use client'
-
 import { type JSX, type ReactNode, useContext } from 'react'
 import { jsx } from '@emotion/react'
 import type { CssProp, NodeElement } from '@src/types/node.type.js'
-import { resolveObjWithTheme } from '@src/helper/theme.helper.js'
 import { ThemeContext } from '@src/components/theme-provider.client.js'
-import { resolveDefaultStyle } from '@src/helper/node.helper.js'
+import { ThemeUtil } from '@src/util/theme.util.js'
 
 export interface StyledRendererProps<E extends NodeElement> {
   element: E
@@ -38,13 +36,13 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   if (theme) {
     // Process `css` prop in "aggressive" mode, allowing functions
-    finalCss = resolveObjWithTheme(css, theme, { processFunctions: true })
+    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true })
 
     // Process all other props in "safe" mode, ignoring functions
-    finalOtherProps = resolveObjWithTheme(otherProps, theme, { processFunctions: false })
+    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false })
   }
 
-  const cssForEmotion = resolveDefaultStyle(finalCss)
+  const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)
 
   return jsx(element as keyof JSX.IntrinsicElements, { ...finalOtherProps, css: cssForEmotion }, children)
 }

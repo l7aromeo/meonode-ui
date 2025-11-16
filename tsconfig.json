@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["jest", "@testing-library/jest-dom"],
+    "types": ["jest", "@testing-library/jest-dom", "@types/node"],
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "nodenext",
@@ -12,7 +12,8 @@
     },
     "outDir": "dist",
     "importHelpers": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "strict": true
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules"]

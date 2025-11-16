@@ -92,10 +92,10 @@ export interface PropProcessingCache {
 export interface ElementCacheEntry {
   renderedElement: ReactElement<FinalNodeProps>
   prevDeps?: DependencyList
-  onEvict: () => void
-  nodeRef: WeakRef<BaseNode<any>>
+  nodeRef: WeakRef<NodeInstance>
   createdAt: number
   accessCount: number
+  instanceId: string
 }
 
 /**
@@ -103,27 +103,7 @@ export interface ElementCacheEntry {
  * Defines the core structure and capabilities of a BaseNode instance.
  * @template E - The type of React element/component that this node represents
  */
-export interface NodeInstance<E extends NodeElement = NodeElement> {
-  /** The underlying React element or component type that this node will render */
-  readonly element: E
-
-  /** Original props passed during node construction, preserved for cloning/recreation */
-  readonly rawProps: Partial<NodeProps<E>>
-
-  readonly isBaseNode: true
-
-  /** The dependency list for memoization */
-  readonly dependencies: DependencyList | undefined
-
-  /** Lazily processed and retrieved final, normalized props for the node. */
-  readonly props: FinalNodeProps
-
-  /** Converts this node instance into a renderable React element/tree */
-  render(): ReactElement
-
-  /** Creates Portal-compatible React elements for rendering outside the DOM tree */
-  toPortal(): NodePortal
-}
+export type NodeInstance<E extends NodeElementType = NodeElementType> = BaseNode<E>
 
 /**
  * Infers the props type for a given NodeElement.

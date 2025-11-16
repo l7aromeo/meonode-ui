@@ -6,9 +6,7 @@ expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 describe('Portal System', () => {
   it('should render content in a portal and unmount it', () => {

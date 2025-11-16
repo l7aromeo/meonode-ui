@@ -8,14 +8,17 @@
   "exports": {
     ".": {
       "import": "./dist/main.js",
+      "require": "./dist/main.js",
       "types": "./dist/main.d.ts"
     },
     "./client": {
       "import": "./dist/client.js",
+      "require": "./dist/client.js",
       "types": "./dist/client.d.ts"
     },
     "./nextjs-registry": {
       "import": "./dist/nextjs-registry/index.js",
+      "require": "./dist/nextjs-registry/index.js",
       "types": "./dist/nextjs-registry/index.d.ts"
     }
   },
@@ -28,7 +31,7 @@
   "scripts": {
     "watch:build": "yarn dlx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
-    "test": "node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci --verbose",
+    "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci --verbose",
     "prebuild": "yarn lint && yarn test",
     "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",

@@ -6,9 +6,7 @@ expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
 // Clean up DOM and caches between tests
-afterEach(() => {
-  cleanup()
-})
+afterEach(cleanup)
 
 describe('Basic Rendering', () => {
   // Verifies that a `Div` component renders correctly in the DOM even without any explicit props, ensuring its basic existence.
