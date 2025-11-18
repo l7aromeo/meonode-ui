@@ -1,16 +1,18 @@
 import {
   type ComponentProps,
+  createElement,
   type ElementType,
   type ExoticComponent,
+  Fragment,
   type FragmentProps,
+  isValidElement,
   type ReactElement,
   type ReactNode,
-  createElement,
-  isValidElement,
-  Fragment,
 } from 'react'
 import type {
   Children,
+  DependencyList,
+  ElementCacheEntry,
   FinalNodeProps,
   HasRequiredProps,
   MergedProps,
@@ -21,8 +23,7 @@ import type {
   NodeProps,
   PropProcessingCache,
   PropsOf,
-  DependencyList,
-  ElementCacheEntry,
+  WorkItem,
 } from '@src/types/node.type.js'
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
 import { getComponentType, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
@@ -42,7 +43,7 @@ import { ThemeUtil } from '@src/util/theme.util.js'
  * @class BaseNode
  * @template E - The type of React element or component this node represents.
  */
-export class BaseNode<E extends NodeElementType> {
+export class BaseNode<E extends NodeElementType = NodeElementType> {
   public instanceId: string = Math.random().toString(36).slice(2) + Date.now().toString(36)
 
   public element: E
@@ -55,8 +56,8 @@ export class BaseNode<E extends NodeElementType> {
 
   // Cache helpers: retain the previous props reference and its computed signature so
   // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
-  private _lastPropsRef: unknown = null
-  private _lastSignature?: string
+  lastPropsRef: unknown = null
+  lastSignature?: string
 
   public static elementCache = new Map<string, ElementCacheEntry>()
   public static propProcessingCache = new Map<string, PropProcessingCache>()
@@ -125,16 +126,16 @@ export class BaseNode<E extends NodeElementType> {
    * @param props The props object to create a signature for.
    * @returns A compact string signature suitable for use as a cache key.
    */
-  private _getStableKey({ key, ...props }: Record<string, any>): string | undefined {
+  private _getStableKey({ key, ...props }: Record<string, unknown>): string | undefined {
     if (NodeUtil.isServer) return undefined
 
-    if (props === this._lastPropsRef) {
-      return this._lastSignature
+    if (props === this.lastPropsRef) {
+      return this.lastSignature
     }
 
-    if (this._lastPropsRef && NodeUtil.shallowEqual(props, this._lastPropsRef)) {
-      this._lastPropsRef = props
-      return this._lastSignature
+    if (this.lastPropsRef && NodeUtil.shallowEqual(props as Record<string, unknown>, this.lastPropsRef as Record<string, unknown>)) {
+      this.lastPropsRef = props
+      return this.lastSignature
     }
 
     const keys = Object.keys(props)
@@ -143,18 +144,18 @@ export class BaseNode<E extends NodeElementType> {
     if (keyCount > 100) {
       const criticalProps = NodeUtil.extractCriticalProps(props, keys)
 
-      this._lastSignature = NodeUtil.createPropSignature(this.element, criticalProps)
+      this.lastSignature = NodeUtil.createPropSignature(this.element, criticalProps)
 
       if (__DEBUG__ && keyCount > 200) {
         console.warn(`MeoNode: Large props (${keyCount} keys) on "${getElementTypeName(this.element)}". Consider splitting.`)
       }
     } else {
-      this._lastSignature = NodeUtil.createPropSignature(this.element, props)
+      this.lastSignature = NodeUtil.createPropSignature(this.element, props)
     }
 
-    this._lastPropsRef = props
+    this.lastPropsRef = props
 
-    return key !== undefined && key !== null ? `${String(key)}:${this._lastSignature}` : this._lastSignature
+    return key !== undefined && key !== null ? `${String(key)}:${this.lastSignature}` : this.lastSignature
   }
 
   /**
@@ -266,15 +267,28 @@ export class BaseNode<E extends NodeElementType> {
     // When this node doesn't need update, its children are considered "blocked" and may be skipped.
     const childrenBlocked = !shouldUpdate
 
-    // Work stack for iterative, non-recursive traversal.
-    // Each entry tracks the BaseNode, whether its children were pushed (isProcessed) and whether it is blocked.
-    const workStack: { node: NodeInstance; isProcessed: boolean; blocked: boolean }[] = [{ node: this, isProcessed: false, blocked: childrenBlocked }]
+    // Initial capacity based on heuristics
+    const INITIAL_CAPACITY = 64
+    const workStack: WorkItem[] = new Array(INITIAL_CAPACITY)
+    let stackPointer = 0
+
+    // Push initial work item
+    workStack[stackPointer++] = {
+      node: this,
+      isProcessed: false,
+      blocked: childrenBlocked,
+    }
+
     // Map to collect rendered React elements for processed BaseNode instances.
     const renderedElements = new Map<NodeInstance, ReactElement>()
 
     // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
-    while (workStack.length > 0) {
-      const currentWork = workStack[workStack.length - 1]
+    while (stackPointer > 0) {
+      const currentWork = workStack[stackPointer - 1]
+      if (!currentWork) {
+        stackPointer--
+        continue
+      }
       const { node, isProcessed, blocked } = currentWork
 
       if (!isProcessed) {
@@ -285,6 +299,13 @@ export class BaseNode<E extends NodeElementType> {
         if (children) {
           // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
           const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
+
+          // Ensure capacity before pushing children
+          const requiredCapacity = stackPointer + childrenToProcess.length
+          if (requiredCapacity > workStack.length) {
+            // Grow array by 1.5x or exact requirement, whichever is larger
+            workStack.length = Math.max(Math.ceil(workStack.length * 1.5), requiredCapacity)
+          }
 
           for (let i = childrenToProcess.length - 1; i >= 0; i--) {
             const child = childrenToProcess[i]
@@ -303,12 +324,16 @@ export class BaseNode<E extends NodeElementType> {
 
             // Otherwise push child for processing; childBlocked inherits parent's blocked state.
             const childBlocked = blocked || !childShouldUpdate
-            workStack.push({ node: child, isProcessed: false, blocked: childBlocked })
+            workStack[stackPointer++] = {
+              node: child,
+              isProcessed: false,
+              blocked: childBlocked,
+            }
           }
         }
       } else {
-        // Complete phase: all descendants have been processed; build this node's React element.
-        workStack.pop()
+        // Complete phase
+        stackPointer--
 
         // Extract node props. Non-present props default to undefined via destructuring.
         const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
@@ -376,11 +401,14 @@ export class BaseNode<E extends NodeElementType> {
       }
     }
 
+    // Clear references for GC unconditionally
+    workStack.length = 0
+
     // Get the final rendered element for the root node of this render cycle.
     const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
     if (!NodeUtil.isServer && this.stableKey) {
-      return createElement(MeoNodeUnmounter, { stableKey: this.stableKey }, rootElement)
+      return createElement(MeoNodeUnmounter, { node: this }, rootElement)
     }
 
     return rootElement
@@ -542,7 +570,7 @@ export class BaseNode<E extends NodeElementType> {
  * It's the simplest way to wrap a component or element.
  * @function Node
  */
-function Node<AdditionalProps extends Record<string, any>, E extends NodeElementType>(
+function Node<AdditionalProps extends Record<string, unknown>, E extends NodeElementType>(
   element: E,
   props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
   deps?: DependencyList,
@@ -574,18 +602,26 @@ export { Node }
  * This is useful for creating reusable, specialized factory functions (e.g., `const Div = createNode('div')`).
  * @function createNode
  */
-export function createNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
+export function createNode<AdditionalInitialProps extends Record<string, unknown>, E extends NodeElementType>(
   element: E,
   initialProps?: MergedProps<E, AdditionalInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(props: MergedProps<E, AdditionalProps>, deps?: DependencyList) => NodeInstance<E>) & {
+  ? (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+      props: MergedProps<E, AdditionalProps>,
+      deps?: DependencyList,
+    ) => NodeInstance<E>) & {
       element: E
     }
-  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>, deps?: DependencyList) => NodeInstance<E>) & {
+  : (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+      props?: MergedProps<E, AdditionalProps>,
+      deps?: DependencyList,
+    ) => NodeInstance<E>) & {
       element: E
     } {
-  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(props?: MergedProps<E, AdditionalProps>, deps?: DependencyList) =>
-    Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps, deps)
+  const Instance = <AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+    props?: MergedProps<E, AdditionalProps>,
+    deps?: DependencyList,
+  ) => Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps, deps)
   Instance.element = element
   return Instance as any
 }
@@ -595,21 +631,21 @@ export function createNode<AdditionalInitialProps extends Record<string, any>, E
  * This provides a more ergonomic API for components that primarily wrap content (e.g., `P('Some text')`).
  * @function createChildrenFirstNode
  */
-export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, any>, E extends NodeElementType>(
+export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, unknown>, E extends NodeElementType>(
   element: E,
   initialProps?: Omit<NodeProps<E>, keyof AdditionalInitialProps | 'children'> & AdditionalInitialProps,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps extends Record<string, any> = Record<string, any>>(
+  ? (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
       children: Children,
       props: Omit<MergedProps<E, AdditionalProps>, 'children'>,
       deps?: DependencyList,
     ) => NodeInstance<E>) & { element: E }
-  : (<AdditionalProps extends Record<string, any> = Record<string, any>>(
+  : (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
       children?: Children,
       props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
       deps?: DependencyList,
     ) => NodeInstance<E>) & { element: E } {
-  const Instance = <AdditionalProps extends Record<string, any> = Record<string, any>>(
+  const Instance = <AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
     children?: Children,
     props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
     deps?: DependencyList,

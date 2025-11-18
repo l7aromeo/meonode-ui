@@ -7,15 +7,15 @@ import type {
   NodeInstance,
   NodeProps,
   DependencyList,
-  NodePortal,
   FinalNodeProps,
   Children,
+  NodePortal,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
 import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined } from '@src/helper/common.helper.js'
 import { __DEBUG__ } from '@src/constants/common.const.js'
 import { BaseNode } from '@src/core.node.js'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 
 /**
  * NodeUtil provides a collection of static utility methods and properties
@@ -37,7 +37,6 @@ export class NodeUtil {
   private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
 
   // Critical props for signature generation and shallow comparison
-  private static readonly CRITICAL_PROP_PREFIXES = new Set(['on', 'aria', 'data'])
   private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
 
   // Portal infrastructure using WeakMap for memory-safe management
@@ -65,8 +64,8 @@ export class NodeUtil {
       typeof obj === 'object' &&
       obj !== null &&
       'element' in obj &&
-      typeof (obj as NodeInstance<any>).render === 'function' &&
-      typeof (obj as NodeInstance<any>).toPortal === 'function' &&
+      typeof (obj as NodeInstance).render === 'function' &&
+      typeof (obj as NodeInstance).toPortal === 'function' &&
       'isBaseNode' in obj
     )
   }
@@ -103,7 +102,7 @@ export class NodeUtil {
    * Performs a shallow equality check between two objects.
    * @method shallowEqual
    */
-  public static shallowEqual(a: Record<string, any>, b: Record<string, any>): boolean {
+  public static shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
     if (a === b) return true
 
     let countA = 0
@@ -125,7 +124,7 @@ export class NodeUtil {
    * and handles primitive values in arrays and objects for better caching.
    * @method createPropSignature
    */
-  public static createPropSignature(element: NodeElementType, props: Record<string, any>): string | undefined {
+  public static createPropSignature(element: NodeElementType, props: Record<string, unknown>): string | undefined {
     if (NodeUtil.isServer) return undefined
 
     const elementId = getElementTypeName(element)
@@ -166,11 +165,11 @@ export class NodeUtil {
           // Mixed or all non-primitives - use structure only
           valStr = `${key}:[${val.length}];`
         }
-      } else if (val && val.isBaseNode) {
+      } else if (val && (val as NodeInstance).isBaseNode) {
         valStr = `${key}:${(val as NodeInstance).stableKey};`
       } else {
         // Include sorted keys for object structure signature
-        const objKeys = Object.keys(val).sort()
+        const objKeys = Object.keys(val as Record<string, unknown>).sort()
         valStr = `${key}:{${objKeys.join(',')}};`
       }
       signatureParts.push(valStr)
@@ -186,14 +185,46 @@ export class NodeUtil {
    * This method is used to optimize prop processing by focusing on props that are
    * most likely to influence rendering or behavior.
    */
-  public static extractCriticalProps(props: Record<string, any>, keys: string[]): Record<string, any> {
-    const critical: Record<string, any> = { _keyCount: keys.length }
+  public static extractCriticalProps(props: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+    const critical: Record<string, unknown> = { _keyCount: keys.length }
     let count = 0
 
     for (const k of keys) {
       if (count >= 50) break
 
-      if (NodeUtil.CRITICAL_PROPS.has(k) || NodeUtil.isStyleProp(k) || Array.from(NodeUtil.CRITICAL_PROP_PREFIXES).some(prefix => k.startsWith(prefix))) {
+      // Fast path: direct Set check first (O(1))
+      if (NodeUtil.CRITICAL_PROPS.has(k)) {
+        critical[k] = props[k]
+        count++
+        continue
+      }
+
+      // Inline prefix checks using charCode (faster than startsWith for short prefixes)
+      const firstChar = k.charCodeAt(0)
+
+      // Check 'on' prefix (111 = 'o', 110 = 'n')
+      if (firstChar === 111 && k.charCodeAt(1) === 110) {
+        critical[k] = props[k]
+        count++
+        continue
+      }
+
+      // Check 'aria' prefix (97 = 'a', 114 = 'r', 105 = 'i')
+      if (firstChar === 97 && k.charCodeAt(1) === 114 && k.charCodeAt(2) === 105 && k.charCodeAt(3) === 97) {
+        critical[k] = props[k]
+        count++
+        continue
+      }
+
+      // Check 'data' prefix (100 = 'd', 97 = 'a', 116 = 't')
+      if (firstChar === 100 && k.charCodeAt(1) === 97 && k.charCodeAt(2) === 116 && k.charCodeAt(3) === 97) {
+        critical[k] = props[k]
+        count++
+        continue
+      }
+
+      // Style prop check last (most expensive), only for smaller objects
+      if (keys.length <= 100 && NodeUtil.isStyleProp(k)) {
         critical[k] = props[k]
         count++
       }
@@ -207,7 +238,7 @@ export class NodeUtil {
    * Access time and hit count are tracked for smarter eviction.
    * @method getCachedCssProps
    */
-  public static getCachedCssProps(cacheableProps: Record<string, any>, signature?: string): { cssProps: Record<string, any> } {
+  public static getCachedCssProps(cacheableProps: Record<string, unknown>, signature?: string): { cssProps: Record<string, unknown> } {
     if (NodeUtil.isServer || !signature) return { cssProps: getCSSProps(cacheableProps) }
 
     const cached = BaseNode.propProcessingCache.get(signature)
@@ -300,8 +331,8 @@ export class NodeUtil {
     }
 
     // --- Hybrid Caching Strategy ---
-    const cacheableProps: Record<string, any> = {}
-    const nonCacheableProps: Record<string, any> = {}
+    const cacheableProps: Record<string, unknown> = {}
+    const nonCacheableProps: Record<string, unknown> = {}
 
     // 1. Categorize props into cacheable (primitives) and non-cacheable (objects/functions).
     for (const key in restRawProps) {
@@ -428,7 +459,7 @@ export class NodeUtil {
 
     // Handle standard React elements.
     if (isValidElement(node)) {
-      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<any>
+      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<ElementType>
       const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
       return new BaseNode(
         node.type as ElementType,
@@ -513,7 +544,7 @@ export class NodeUtil {
     // If the result is an array, it likely contains multiple children.
     if (Array.isArray(result)) {
       // Helper to generate a stable key for array items, crucial for React's reconciliation.
-      const safeGetKey = (item: any, index: number) => {
+      const safeGetKey = (item: unknown, index: number) => {
         try {
           // Attempt to get a meaningful name for the element type.
           return `${getElementTypeName(item)}-${index}`
@@ -530,6 +561,8 @@ export class NodeUtil {
         NodeUtil.renderProcessedNode({ processedElement: NodeUtil.processRawNode(item, disableEmotion), passedKey: safeGetKey(item, index), disableEmotion }),
       )
     }
+
+    // If the result is a React component instance (e.g., `new MyClassComponent()`).
     if (result instanceof React.Component) {
       return NodeUtil.renderProcessedNode({ processedElement: NodeUtil.processRawNode(result.render(), disableEmotion), disableEmotion })
     }
@@ -565,7 +598,7 @@ export class NodeUtil {
     disableEmotion?: boolean
   }) {
     // Initialize an object to hold common props that might be applied to the new BaseNode.
-    const commonBaseNodeProps: Partial<NodeProps<any>> = {}
+    const commonBaseNodeProps: Partial<NodeProps<ElementType>> = {}
     // If a `passedKey` is provided, add it to `commonBaseNodeProps`.
     // This key is typically used for React's reconciliation process.
     if (passedKey !== undefined) commonBaseNodeProps.key = passedKey
@@ -644,7 +677,7 @@ export class NodeUtil {
     return true
   }
 
-  public static cleanupPortalInfra(infra: { domElement: HTMLDivElement; reactRoot: any }) {
+  public static cleanupPortalInfra(infra: { domElement: HTMLDivElement; reactRoot: Root }) {
     try {
       if (infra.reactRoot?.unmount) {
         infra.reactRoot.unmount()

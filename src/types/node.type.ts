@@ -324,3 +324,9 @@ export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = (
  */
 export type MergedProps<E extends NodeElement, AdditionalProps extends Record<string, any>> = Omit<NodeProps<E> & AdditionalProps, keyof AdditionalProps> &
   AdditionalProps
+
+export interface WorkItem {
+  node: NodeInstance
+  isProcessed: boolean
+  blocked: boolean
+}
