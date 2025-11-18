@@ -1,5 +1,5 @@
-import type { CSSInterpolation, CSSProperties } from '@emotion/serialize'
-import type { Theme, ThemeSystem } from '@src/types/node.type.js'
+import type { CSSProperties } from '@emotion/serialize'
+import type { CssProp, Theme, ThemeSystem } from '@src/types/node.type.js'
 import { ObjHelper } from '@src/helper/obj.helper.js'
 import { getValueByPath } from '@src/helper/common.helper.js'
 
@@ -12,8 +12,8 @@ class ThemeResolverCache {
 
   private static _instance: ThemeResolverCache | null = null
 
-  private readonly _resolutionCache = new Map<string, any>()
-  private readonly _pathLookupCache = new Map<string, any>()
+  private readonly _resolutionCache = new Map<string, Record<string, unknown>>()
+  private readonly _pathLookupCache = new Map<string, Record<string, unknown> | string | null>()
   private readonly _themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
 
   static getInstance(): ThemeResolverCache {
@@ -31,9 +31,9 @@ class ThemeResolverCache {
     return `${ObjHelper.stringify(obj)}_${theme.mode}_${ObjHelper.stringify(theme.system)}`
   }
 
-  getResolution(obj: Record<string, any>, theme: Theme): any | null {
+  getResolution<O extends Record<string, unknown>>(obj: O, theme: Theme) {
     const key = this._generateCacheKey(obj, theme)
-    const result = this._resolutionCache.get(key)
+    const result = this._resolutionCache.get(key) as O
     if (result) {
       // Move to end to mark as recently used
       this._resolutionCache.delete(key)
@@ -42,7 +42,7 @@ class ThemeResolverCache {
     return result || null
   }
 
-  setResolution(obj: Record<string, any>, theme: Theme, result: any): void {
+  setResolution(obj: Record<string, any>, theme: Theme, result: Record<string, any>): void {
     const key = this._generateCacheKey(obj, theme)
     this._resolutionCache.set(key, result)
     if (this._resolutionCache.size > this.CACHE_SIZE_LIMIT) {
@@ -50,7 +50,7 @@ class ThemeResolverCache {
     }
   }
 
-  getPathLookup(theme: ThemeSystem, path: string): any | null {
+  getPathLookup(theme: ThemeSystem, path: string): Record<string, unknown> | string | null {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     const result = this._pathLookupCache.get(pathKey)
     if (result) {
@@ -58,10 +58,10 @@ class ThemeResolverCache {
       this._pathLookupCache.delete(pathKey)
       this._pathLookupCache.set(pathKey, result)
     }
-    return result || null
+    return result ?? null
   }
 
-  setPathLookup(theme: ThemeSystem, path: string, value: any): void {
+  setPathLookup(theme: ThemeSystem, path: string, value: Record<string, unknown> | string | null): void {
     const pathKey = `${ObjHelper.stringify(theme)}_${path}`
     this._pathLookupCache.set(pathKey, value)
     if (this._pathLookupCache.size > this.CACHE_SIZE_LIMIT) {
@@ -69,7 +69,7 @@ class ThemeResolverCache {
     }
   }
 
-  private _evict(cache: Map<string, any>) {
+  private _evict(cache: Map<string, unknown>) {
     const keys = cache.keys()
     for (let i = 0; i < this.CACHE_EVICTION_BATCH_SIZE; i++) {
       const key = keys.next().value
@@ -160,7 +160,7 @@ export class ThemeUtil {
     }
   }
 
-  public static isPlainObject = (value: any): boolean => {
+  public static isPlainObject = (value: unknown): value is Record<string, unknown> => {
     if (typeof value !== 'object' || value === null) {
       return false
     }
@@ -177,10 +177,10 @@ export class ThemeUtil {
    * object references for unchanged parts of the tree, which is critical for
    * React's reconciliation and memoization.
    */
-  public static resolveObjWithTheme = (obj: Record<string, any> = {}, theme?: Theme, options: { processFunctions?: boolean } = {}) => {
+  public static resolveObjWithTheme = <O extends Record<string, unknown>>(obj: O, theme?: Theme, options: { processFunctions?: boolean } = {}): O => {
     const { processFunctions = false } = options
 
-    if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || Object.keys(obj).length === 0) {
+    if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || !obj || Object.keys(obj).length === 0) {
       return obj
     }
 
@@ -193,14 +193,14 @@ export class ThemeUtil {
       }
     }
 
-    const workStack: { value: any; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
-    const resolvedValues = new Map<any, any>()
-    const path = new Set<any>() // Used for cycle detection within the current traversal path.
+    const workStack: { value: unknown; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
+    const resolvedValues = new Map<unknown, unknown>()
+    const path = new Set<unknown>() // Used for cycle detection within the current traversal path.
 
     const processThemeString = (value: string) => {
       const regex = ThemeUtil.themeCache.getThemeRegex()
       let hasChanged = false
-      const resolved = value.replace(regex, (match, path) => {
+      const resolved = value.replace(regex, (match, path: string) => {
         let themeValue = ThemeUtil.themeCache.getPathLookup(themeSystem, path)
         if (themeValue === null) {
           themeValue = getValueByPath(themeSystem, path)
@@ -208,7 +208,13 @@ export class ThemeUtil {
         }
         if (themeValue !== undefined && themeValue !== null) {
           hasChanged = true
-          return typeof themeValue === 'object' && !Array.isArray(themeValue) && 'default' in themeValue ? themeValue.default : themeValue
+          if (typeof themeValue === 'object') {
+            if (!Array.isArray(themeValue) && 'default' in themeValue) {
+              return themeValue.default as string
+            }
+            throw new Error('The provided theme path is invalid!')
+          }
+          return themeValue
         }
         return match
       })
@@ -250,25 +256,25 @@ export class ThemeUtil {
         let finalValue = currentValue
 
         if (Array.isArray(currentValue)) {
-          let newArray: any[] | null = null
+          let newArray: unknown[] | null = null
           for (let i = 0; i < currentValue.length; i++) {
             const item = currentValue[i]
             const resolvedItem = resolvedValues.get(item) ?? item
             if (resolvedItem !== item) {
               if (newArray === null) newArray = [...currentValue] // Copy-on-write
-              newArray![i] = resolvedItem
+              newArray[i] = resolvedItem
             }
           }
           if (newArray !== null) finalValue = newArray
         } else {
-          let newObj: Record<string, any> | null = null
+          let newObj: Record<string, unknown> | null = null
           for (const key in currentValue) {
             if (Object.prototype.hasOwnProperty.call(currentValue, key)) {
               const value = currentValue[key]
               let newValue = resolvedValues.get(value) ?? value
 
               if (typeof newValue === 'function' && processFunctions) {
-                const funcResult = newValue(theme)
+                const funcResult = (newValue as (theme: Theme) => unknown)(theme)
                 newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult) : funcResult
               } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
                 newValue = processThemeString(newValue)
@@ -276,7 +282,7 @@ export class ThemeUtil {
 
               if (newValue !== value) {
                 if (newObj === null) newObj = { ...currentValue } // Copy-on-write
-                newObj![key] = newValue
+                newObj[key] = newValue
               }
             }
           }
@@ -292,7 +298,7 @@ export class ThemeUtil {
       ThemeUtil.themeCache.setResolution(obj, theme, result)
     }
 
-    return result
+    return result as O
   }
 
   public static clearThemeCache = () => {
@@ -353,7 +359,7 @@ export class ThemeUtil {
    * })
    * // → { display: 'flex', flexWrap: 'wrap', minHeight: 0, minWidth: 0 }
    */
-  public static resolveDefaultStyle = (style: CSSInterpolation) => {
+  public static resolveDefaultStyle = (style: CssProp) => {
     if (style === null || style === undefined || typeof style === 'string' || typeof style === 'number' || typeof style === 'boolean') return {}
 
     // === STEP 1: EXTRACT FLEX PROPERTY ===
@@ -378,7 +384,7 @@ export class ThemeUtil {
     const explicitFlexComponents = flex ? ThemeUtil.parseFlexShorthand(flex) : null
 
     // === STEP 4: DETERMINE FLEX SHRINK BEHAVIOR ===
-    let flexShrink = undefined
+    let flexShrink: number | undefined = undefined
 
     // Only set flexShrink if user hasn't explicitly provided it
     if (!hasExplicitFlexShrink) {

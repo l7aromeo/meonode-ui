@@ -31,8 +31,8 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   const { css, ...otherProps } = props
 
-  let finalCss = css
-  let finalOtherProps = otherProps
+  let finalCss: CssProp = css
+  let finalOtherProps: Record<string, unknown> = otherProps
 
   if (theme) {
     // Process `css` prop in "aggressive" mode, allowing functions
