@@ -2,6 +2,12 @@ import { __DEBUG__ } from '@src/constants/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 
+declare global {
+  interface Window {
+    __MEONODE_CLEANUP_REGISTERED?: boolean
+  }
+}
+
 /**
  * Lightweight navigation handler that clears cache on SPA navigation.
  */
@@ -14,7 +20,7 @@ export class NavigationCacheManagerUtil {
   private static _isPatched = false
 
   private _isListening = false
-  private _cleanupTimeout: any = null
+  private _cleanupTimeout: NodeJS.Timeout | null = null
 
   public static getInstance(): NavigationCacheManagerUtil {
     if (!this._instance) {
@@ -124,13 +130,13 @@ export class NavigationCacheManagerUtil {
    */
   private _setupAutoCleanup() {
     // Only set up once
-    if ((window as any).__MEONODE_CLEANUP_REGISTERED) return
+    if (window.__MEONODE_CLEANUP_REGISTERED) return
 
     // Handle page unload (navigation away, refresh, close)
     window.addEventListener('beforeunload', () => {
       this._stop()
       BaseNode.clearCaches()
     })
-    ;(window as any).__MEONODE_CLEANUP_REGISTERED = true
+    window.__MEONODE_CLEANUP_REGISTERED = true
   }
 }
