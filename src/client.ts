@@ -1,4 +1,4 @@
-import type { NodeInstance } from '@src/types/node.type.js'
+import type { NodeElementType, NodeInstance } from '@src/types/node.type.js'
 import { createRoot } from 'react-dom/client'
 
 /**
@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client'
  * @param container The DOM element to mount the content into.
  * @returns The React root instance.
  */
-export function render(node: NodeInstance<any>, container: Element) {
+export function render<E extends NodeElementType>(node: NodeInstance<E>, container: Element) {
   const root = createRoot(container)
   root.render(node.render())
   return root
