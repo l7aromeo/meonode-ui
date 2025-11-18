@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.8] - 2025-11-18
+
+### Feat
+- **client**: add generic type parameter to render function for stronger type safety ([`90a770e`](https://github.com/l7aromeo/meonode-ui/commit/90a770e))
+- **core**: improve BaseNode rendering with iterative traversal and memory optimizations ([`1d5330a`](https://github.com/l7aromeo/meonode-ui/commit/1d5330a))
+  - Introduce WorkItem interface to represent nodes in the iterative work stack during BaseNode rendering.
+  - Replace recursive render traversal with an iterative depth-first approach using a preallocated workStack array for better performance and reduced call stack usage.
+  - Implement dynamic resizing of workStack array to handle arbitrary tree sizes efficiently.
+  - Update BaseNode’s internal caching fields (`lastPropsRef` and `lastSignature`) to be public and consistently used for stable key generation.
+  - Modify MeoNodeUnmounter component to accept BaseNode instance and clear its `lastPropsRef` and `lastSignature` on unmount to prevent memory leaks.
+  - Refine type annotations across node utilities and factory functions for stronger type safety (`Record<string, unknown>` instead of `any`).
+  - Optimize critical prop extraction logic by replacing Set and startsWith checks with faster inline charCode comparisons.
+  - Clean up and clarify utility methods related to prop signature creation, shallow equality, and portal management.
+  - Improve node.util.ts by adjusting caching strategies, prop categorization, and React element handling for better robustness and maintainability.
+
+### Fixes
+- **navigation-cache-manager**: add proper typing and global window declaration for cleanup flag ([`6180d40`](https://github.com/l7aromeo/meonode-ui/commit/6180d40))
+
+### Refactor
+- improve typings and type safety in theme util and styled renderer ([`dbe1f33`](https://github.com/l7aromeo/meonode-ui/commit/dbe1f33))
+  - Added explicit TypeScript types (e.g., CssProp, Record<string, unknown>) for variables and function signatures in `styled-renderer.client.ts` and `theme.util.ts`.
+  - Updated cache maps to use more precise generic types for better type inference and safety.
+  - Enhanced `resolveObjWithTheme` and related theme resolution logic with stronger typing and nullish coalescing.
+  - Improved error handling for invalid theme path values.
+  - Applied copy-on-write pattern with properly typed arrays and objects during theme resolution.
+  - Strengthened type guards, e.g., `isPlainObject` type predicate.
+  - Minor fixes to variable declarations with explicit types for clarity and consistency.
+
+### Chore
+- **babel**: update preset-env targets and expand plugin exclusions ([`f38cd24`](https://github.com/l7aromeo/meonode-ui/commit/f38cd24))
+  - Set preset-env targets to support ES modules
+  - Enable bugfixes option
+  - Add multiple plugins to exclude list for better optimization
+  - Clean up formatting of root, alias, extensions, and exclude fields
+
+### Test
+- **performance**: add comprehensive performance tests and metrics reporting ([`c3d7a81`](https://github.com/l7aromeo/meonode-ui/commit/c3d7a81))
+  - Add detailed performance tests measuring render times for realistic layouts, 10,000 flat nodes, and 10,000 deeply nested nodes.
+  - Introduce a heavy state changes test to detect memory leaks and ensure responsiveness under frequent updates.
+  - Collect and log performance metrics including median render times and memory usage for analysis.
+  - Add tests for stableKey generation performance with identical, shallowly equal, unique, large, and complex CSS props.
+  - Enhance test suite with CSS styling for better visualization and interaction during tests.
+  - Improve cleanup and reporting to avoid resource leaks and provide clearer performance insights.
+
 ## [0.4.7] - 2025-11-17
 
 ### Fixes
