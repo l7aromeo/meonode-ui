@@ -4,11 +4,24 @@
       "@babel/preset-env",
       {
         "modules": false,
+        "targets": {
+          "esmodules": true
+        },
+        "bugfixes": true,
         "exclude": [
           "@babel/plugin-transform-classes",
-          "@babel/plugin-transform-spread"
-        ],
-        "bugfixes": true
+          "@babel/plugin-transform-spread",
+          "@babel/plugin-transform-arrow-functions",
+          "@babel/plugin-transform-block-scoping",
+          "@babel/plugin-transform-destructuring",
+          "@babel/plugin-transform-parameters",
+          "@babel/plugin-transform-shorthand-properties",
+          "@babel/plugin-transform-template-literals",
+          "@babel/plugin-transform-async-to-generator",
+          "@babel/plugin-transform-exponentiation-operator",
+          "@babel/plugin-transform-nullish-coalescing-operator",
+          "@babel/plugin-transform-optional-chaining"
+        ]
       }
     ],
     "@babel/preset-typescript",
@@ -24,24 +37,16 @@
     [
       "module-resolver",
       {
-        "root": [
-          "./"
-        ],
+        "root": ["./"],
         "alias": {
           "@src": "./src"
         },
-        "extensions": [
-          ".js",
-          ".ts",
-          ".json"
-        ]
+        "extensions": [".js", ".ts", ".json"]
       }
     ]
   ],
   "generatorOpts": {
     "importAttributesKeyword": "with"
   },
-  "exclude": [
-    "**/node_modules/**"
-  ]
+  "exclude": ["**/node_modules/**"]
 }
