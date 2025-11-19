@@ -12,7 +12,7 @@ import React, {
   type SuspenseProps,
   type ActivityProps,
 } from 'react'
-import type { NO_STYLE_TAGS } from '@src/constants/common.const.js'
+import type { NO_STYLE_TAGS } from '@src/constant/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
 import type { CSSObject, CSSInterpolation } from '@emotion/serialize'
 import { BaseNode } from '@src/core.node.js'

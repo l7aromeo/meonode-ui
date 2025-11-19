@@ -14,9 +14,9 @@ import {
   isSuspenseList,
 } from '@src/helper/react-is.helper.js'
 import type { FinalNodeProps, NodeElement, NodeInstance } from '@src/types/node.type.js'
-import cssProperties from '@src/constants/css-properties.const.js'
+import cssProperties from '@src/constant/css-properties.const.js'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
-import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constants/common.const.js'
+import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constant/common.const.js'
 
 /**
  * Retrieves a deeply nested value from an object using a dot-separated string path.

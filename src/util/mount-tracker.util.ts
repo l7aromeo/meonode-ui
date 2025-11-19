@@ -1,4 +1,4 @@
-import { __DEBUG__ } from '@src/constants/common.const.js'
+import { __DEBUG__ } from '@src/constant/common.const.js'
 
 /**
  * MountTrackerUtil keeps track of which BaseNode instances are currently mounted in the DOM.

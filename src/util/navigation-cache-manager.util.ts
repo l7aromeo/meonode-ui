@@ -1,4 +1,4 @@
-import { __DEBUG__ } from '@src/constants/common.const.js'
+import { __DEBUG__ } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 

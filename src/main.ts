@@ -1,5 +1,5 @@
 // Common
-export { setDebugMode } from '@src/constants/common.const.js'
+export { setDebugMode } from '@src/constant/common.const.js'
 
 // Core
 export { Node, createNode, createChildrenFirstNode } from '@src/core.node.js'
