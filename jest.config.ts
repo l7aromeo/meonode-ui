@@ -7,6 +7,8 @@ const config: Config = {
   moduleNameMapper: {
     '^@src/(.*)\\.js$': '<rootDir>/src/$1.ts',
     '^@src/(.*)$': '<rootDir>/src/$1',
+    '^@tests/(.*)\\.js$': '<rootDir>/tests/$1.ts',
+    '^@tests/(.*)$': '<rootDir>/tests/$1',
   },
   extensionsToTreatAsEsm: ['.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],

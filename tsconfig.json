@@ -8,13 +8,14 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@tests/*": ["tests/*"]
     },
     "outDir": "dist",
     "importHelpers": true,
     "isolatedModules": true,
     "strict": true
   },
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["dist", "node_modules"]
 }
