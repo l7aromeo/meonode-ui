@@ -594,13 +594,13 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     // Should have evicted CLEANUP_BATCH entries
     expect(cache.size).toBe(TOTAL_ENTRIES - CLEANUP_BATCH)
 
-    // Entry C should be evicted (highest score: 200 + 1000/2 ≈ 700)
+    // Entry C should be evicted (highest score: (200*0.3) + (1000/2)*0.7 = 60 + 350 = 410)
     expect(cache.has('entry-c')).toBe(false)
 
-    // Entry A should survive (score: 100 + 1000/101 ≈ 110)
+    // Entry A should survive (score: (100*0.3) + (1000/101)*0.7 ≈ 30 + 6.93 ≈ 36.93)
     expect(cache.has('entry-a')).toBe(true)
 
-    // Entry B should survive (score: 1 + 1000/51 ≈ 21)
+    // Entry B should survive (score: (1*0.3) + (1000/51)*0.7 ≈ 0.3 + 13.73 ≈ 14.03)
     expect(cache.has('entry-b')).toBe(true)
   })
 
