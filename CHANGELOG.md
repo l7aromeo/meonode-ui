@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.9] - 2025-11-19
+
+### Feat
+- **build**: add support for @tests alias and include tests folder in build and test configs ([`4dfd165`](https://github.com/l7aromeo/meonode-ui/commit/4dfd165fa52f93fe63ac7338344b91dfa5622c4b))
+
+### Perf
+- **core**: optimize rendering, caching, and memory management ([`4f599be`](https://github.com/l7aromeo/meonode-ui/commit/4f599be44458fef208a30849545606b060c4ec6b))
+  - Reworks the core rendering loop to use a more efficient, manually-managed work stack with exponential growth, reducing reallocations and improving performance for deep and wide node trees.
+  - Optimizes stable key generation by removing expensive shallow equality checks in favor of strict reference equality, significantly speeding up prop processing for cached components.
+  - Implements a high-performance MinHeap-based LRU cache eviction strategy for prop processing, replacing a slower sort-based method. This ensures that the most relevant props are kept in the cache with minimal overhead.
+  - Introduces CSS object hashing to accelerate prop signature generation, avoiding costly serialization of large style objects.
+  - Fixes several memory leaks by ensuring proper cleanup of node properties (lastSignature, lastPropsObj) and unregistering nodes from the cache cleanup registry upon eviction.
+  - Decouples element cache deletion from mount tracking to prevent race conditions and ensure reliable cleanup during component unmounting.
+
+### Refactor
+- **build**: rename constants directory from constants to constant and update imports accordingly ([`9531947`](https://github.com/l7aromeo/meonode-ui/commit/9531947af9b304c11c0865e8deafa1a633220753))
+
+### Test
+- **perf**: overhaul performance test suite ([`e3bd6ac`](https://github.com/l7aromeo/meonode-ui/commit/e3bd6ac6ceca474f935da644ff0c23b2f1de7692))
+  - Introduces a new, structured performance reporting system using cli-table3 for clear, grouped metrics.
+  - Refactors the entire performance test suite into logical groups: Layout Rendering, Memory Management, and Prop Processing.
+  - Adds comprehensive memory leak detection tests for heavy state changes and repeated mount/unmount cycles, using forced garbage collection for more accurate heap analysis.
+  - Extracts the large, complex CSS object into a dedicated test constant for better separation of concerns.
+  - Updates memoization tests to align with the new, weighted LRU cache eviction scoring.
+
+### Chore
+- **deps**: update dependencies including typescript-eslint to 8.47.0 and add cli-table3 0.6.5 ([`6064555`](https://github.com/l7aromeo/meonode-ui/commit/6064555f0108ed47f9b31e98c4758f7449a67ff2))
+
 ## [0.4.8] - 2025-11-18
 
 ### Feat
