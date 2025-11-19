@@ -28,7 +28,7 @@ import type {
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
 import { getComponentType, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-import { __DEBUG__ } from '@src/constants/common.const.js'
+import { __DEBUG__ } from '@src/constant/common.const.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
@@ -54,9 +54,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   private readonly _deps?: DependencyList
   public stableKey?: string
 
-  // Cache helpers: retain the previous props reference and its computed signature so
-  // repeated processing can quickly detect unchanged props and avoid expensive recomputation.
-  lastPropsRef: unknown = null
+  // Cached reference to the previous props object for cheap identity checks.
+  lastPropsObj?: Record<string, unknown>
+  // The last computed signature for the props object.
   lastSignature?: string
 
   public static elementCache = new Map<string, ElementCacheEntry>()
@@ -129,14 +129,11 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   private _getStableKey({ key, ...props }: Record<string, unknown>): string | undefined {
     if (NodeUtil.isServer) return undefined
 
-    if (props === this.lastPropsRef) {
+    if (this.lastPropsObj === props) {
       return this.lastSignature
     }
 
-    if (this.lastPropsRef && NodeUtil.shallowEqual(props as Record<string, unknown>, this.lastPropsRef as Record<string, unknown>)) {
-      this.lastPropsRef = props
-      return this.lastSignature
-    }
+    this.lastPropsObj = props
 
     const keys = Object.keys(props)
     const keyCount = keys.length
@@ -152,8 +149,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     } else {
       this.lastSignature = NodeUtil.createPropSignature(this.element, props)
     }
-
-    this.lastPropsRef = props
 
     return key !== undefined && key !== null ? `${String(key)}:${this.lastSignature}` : this.lastSignature
   }
@@ -174,8 +169,11 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     const { cacheKey, instanceId } = heldValue
     const cacheEntry = BaseNode.elementCache.get(cacheKey)
 
-    if (MountTrackerUtil.mountedNodes.has(cacheKey) && cacheEntry?.instanceId === instanceId) {
+    if (cacheEntry?.instanceId === instanceId) {
       BaseNode.elementCache.delete(cacheKey)
+    }
+
+    if (MountTrackerUtil.mountedNodes.has(cacheKey)) {
       MountTrackerUtil.untrackMount(cacheKey)
     }
   })
@@ -230,8 +228,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     }
   })
 
-  // --- Iterative Renderer with Deps Support ---
-
   /**
    * Renders the `BaseNode` and its entire subtree into a ReactElement, with support for opt-in reactivity
    * via dependency arrays and inherited blocking.
@@ -267,10 +263,25 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // When this node doesn't need update, its children are considered "blocked" and may be skipped.
     const childrenBlocked = !shouldUpdate
 
-    // Initial capacity based on heuristics
-    const INITIAL_CAPACITY = 64
-    const workStack: WorkItem[] = new Array(INITIAL_CAPACITY)
+    // Start with aggressive initial capacity to minimize reallocations
+    let workStack: WorkItem[] = new Array(512)
     let stackPointer = 0
+
+    // Fast capacity check with exponential growth
+    const ensureCapacity = (required: number) => {
+      if (required > workStack.length) {
+        // Double capacity or use exact requirement (whichever is larger)
+        const newCapacity = Math.max(required, workStack.length << 1)
+        const newStack = new Array(newCapacity)
+
+        // Manual copy is faster than Array methods for primitive/object arrays
+        for (let i = 0; i < stackPointer; i++) {
+          newStack[i] = workStack[i]
+        }
+
+        workStack = newStack
+      }
+    }
 
     // Push initial work item
     workStack[stackPointer++] = {
@@ -280,7 +291,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     }
 
     // Map to collect rendered React elements for processed BaseNode instances.
-    const renderedElements = new Map<NodeInstance, ReactElement>()
+    const renderedElements = new Map<BaseNode, ReactElement>()
 
     // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
     while (stackPointer > 0) {
@@ -300,12 +311,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
           const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
 
-          // Ensure capacity before pushing children
+          // --- Check capacity ONCE before loop ---
           const requiredCapacity = stackPointer + childrenToProcess.length
-          if (requiredCapacity > workStack.length) {
-            // Grow array by 1.5x or exact requirement, whichever is larger
-            workStack.length = Math.max(Math.ceil(workStack.length * 1.5), requiredCapacity)
-          }
+          ensureCapacity(requiredCapacity)
 
           for (let i = childrenToProcess.length - 1; i >= 0; i--) {
             const child = childrenToProcess[i]
@@ -389,6 +397,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               instanceId: node.instanceId,
             }
 
+            // Set new cache entry
             BaseNode.elementCache.set(node.stableKey, newCacheEntry)
 
             // Register for automatic cleanup when node is GC'd
@@ -528,7 +537,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       console.log(`[MeoNode] clearCaches: Clearing ${allKeys.length} entries`)
     }
 
-    // Call onEvict for all entries (idempotent)
+    // Call onEvict for all entries (idempotent) and clear node properties
     for (const key of allKeys) {
       const entry = BaseNode.elementCache.get(key)
       if (entry) {
@@ -537,6 +546,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
         if (node) {
           try {
             BaseNode.cacheCleanupRegistry.unregister(node)
+            // Clear the node's signature properties to ensure clean state
+            node.lastSignature = undefined
+            node.lastPropsObj = undefined
           } catch {
             // Unregister might fail if already unregistered, that's fine
             if (__DEBUG__) {

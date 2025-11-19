@@ -21,13 +21,15 @@ import type { NodeInstance } from '@src/types/node.type.js'
  */
 export default function MeoNodeUnmounter({ node, children }: { node: NodeInstance; children?: ReactNode }): ReactNode {
   const onUnmount = useEffectEvent(() => {
-    if (node.stableKey && MountTrackerUtil.mountedNodes.has(node.stableKey)) {
+    if (node.stableKey) {
       BaseNode.elementCache.delete(node.stableKey)
-      MountTrackerUtil.untrackMount(node.stableKey)
+
+      if (MountTrackerUtil.mountedNodes.has(node.stableKey)) {
+        MountTrackerUtil.untrackMount(node.stableKey)
+      }
     }
-    // Explicitly clear lastPropsRef and lastSignature to prevent memory leaks
-    // from retained prop objects, even if the BaseNode instance is not immediately GC'd.
-    node.lastPropsRef = null
+
+    // Clear lastSignature to prevent memory leaks from retained prop objects
     node.lastSignature = undefined
   })
 

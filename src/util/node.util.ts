@@ -10,10 +10,11 @@ import type {
   FinalNodeProps,
   Children,
   NodePortal,
+  PropProcessingCache,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
 import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined } from '@src/helper/common.helper.js'
-import { __DEBUG__ } from '@src/constants/common.const.js'
+import { __DEBUG__ } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 import { createRoot, type Root } from 'react-dom/client'
 
@@ -35,6 +36,11 @@ export class NodeUtil {
   // Cache configuration
   private static readonly CACHE_SIZE_LIMIT = 500
   private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
+
+  // Caching css
+  private static _cssCache = new WeakMap<object, string>()
+
+  // Cache performance optimizations
 
   // Critical props for signature generation and shallow comparison
   private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
@@ -98,24 +104,30 @@ export class NodeUtil {
     return `${(h1 >>> 0).toString(36)}_${(h2 >>> 0).toString(36)}`
   }
 
-  /**
-   * Performs a shallow equality check between two objects.
-   * @method shallowEqual
-   */
-  public static shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-    if (a === b) return true
+  private static hashCSS(css: Record<string, unknown>): string {
+    const cached = this._cssCache.get(css)
+    if (cached) return cached
 
-    let countA = 0
-    let countB = 0
+    // Fast structural hash without full serialization
+    const keys = Object.keys(css)
+    let hash = keys.length
 
-    for (const key in a) {
-      if (!(key in b) || a[key] !== b[key]) return false
-      countA++
+    for (let i = 0; i < Math.min(keys.length, 10); i++) {
+      // Sample first 10
+      const key = keys[i]
+      const val = css[key]
+      const charCode = key.charCodeAt(0)
+      hash = (hash << 5) - hash + charCode
+      hash = hash & hash // Convert to 32bit int
+
+      if (typeof val === 'string') {
+        hash = (hash << 5) - hash + val.length
+      }
     }
 
-    for (const _key in b) countB++
-
-    return countA === countB
+    const result = hash.toString(36)
+    this._cssCache.set(css, result)
+    return result
   }
 
   /**
@@ -152,6 +164,8 @@ export class NodeUtil {
         valStr = `${key}:null;`
       } else if (val === undefined) {
         valStr = `${key}:undefined;`
+      } else if (key === 'css' && typeof val === 'object') {
+        valStr = `css:${this.hashCSS(val as Record<string, unknown>)};`
       } else if (Array.isArray(val)) {
         // Hash primitive values in arrays for better cache hits
         const primitives = val.filter(v => {
@@ -288,27 +302,36 @@ export class NodeUtil {
    */
   private static _evictLRUEntries(): void {
     const now = Date.now()
-    const entries: Array<{ key: string; score: number }> = []
 
-    // Calculate eviction scores for all entries
+    // Create max-heap (using min-heap with inverted comparison) to get highest scores first
+    const evictionHeap = new MinHeap<{ key: string; score: number }>((a, b) => b.score - a.score)
     for (const [key, value] of BaseNode.propProcessingCache.entries()) {
-      const age = now - value.lastAccess
-      const frequency = value.hitCount
-
-      // Score: older age + lower frequency = higher score (more likely to evict)
-      // Normalize: age in seconds, frequency as inverse
-      const score = age / 1000 + 1000 / (frequency + 1)
-      entries.push({ key, score })
+      const score = this._calculateEvictionScore(value, now)
+      evictionHeap.push({ key, score })
     }
 
-    // Sort by score (highest = most evictable)
-    entries.sort((a, b) => b.score - a.score)
-
-    // Remove top N entries
-    const toRemove = Math.min(NodeUtil.CACHE_CLEANUP_BATCH, entries.length)
-    for (let i = 0; i < toRemove; i++) {
-      BaseNode.propProcessingCache.delete(entries[i].key)
+    // O(log n) eviction of top N entries
+    for (let i = 0; i < NodeUtil.CACHE_CLEANUP_BATCH; i++) {
+      const item = evictionHeap.pop()
+      if (item) {
+        BaseNode.propProcessingCache.delete(item.key)
+      } else {
+        // No more items to evict
+        break
+      }
     }
+  }
+
+  /**
+   * Calculates an eviction score based on age and frequency of access.
+   * Higher scores mean more likelihood to be evicted.
+   * @method _calculateEvictionScore
+   */
+  private static _calculateEvictionScore(value: PropProcessingCache, now: number): number {
+    const age = now - value.lastAccess
+    const frequency = value.hitCount
+    // Weighted scoring: recency 30%, frequency 70% - favors frequently accessed items
+    return (age / 1000) * 0.3 + (1000 / (frequency + 1)) * 0.7
   }
 
   /**
@@ -693,5 +716,87 @@ export class NodeUtil {
     } catch (error) {
       if (__DEBUG__) console.error('DOM removal error:', error)
     }
+  }
+}
+
+/**
+ * A min-heap implementation for efficient priority queue operations.
+ * Used for O(log n) eviction in the LRU cache system.
+ */
+class MinHeap<T> {
+  private heap: T[] = []
+  private comparator: (a: T, b: T) => number
+
+  constructor(comparator: (a: T, b: T) => number) {
+    this.comparator = comparator
+  }
+
+  public size(): number {
+    return this.heap.length
+  }
+
+  public isEmpty(): boolean {
+    return this.size() === 0
+  }
+
+  public push(value: T): void {
+    this.heap.push(value)
+    this.bubbleUp()
+  }
+
+  public pop(): T | undefined {
+    if (this.isEmpty()) {
+      return undefined
+    }
+
+    this.swap(0, this.size() - 1)
+    const value = this.heap.pop()
+    this.bubbleDown()
+
+    return value
+  }
+
+  public peek(): T | undefined {
+    return this.isEmpty() ? undefined : this.heap[0]
+  }
+
+  private bubbleUp(index = this.size() - 1): void {
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2)
+      if (this.comparator(this.heap[parentIndex], this.heap[index]) <= 0) {
+        break
+      }
+      this.swap(parentIndex, index)
+      index = parentIndex
+    }
+  }
+
+  private bubbleDown(index = 0): void {
+    const lastIndex = this.size() - 1
+
+    while (true) {
+      const leftChildIndex = 2 * index + 1
+      const rightChildIndex = 2 * index + 2
+      let smallestIndex = index
+
+      if (leftChildIndex <= lastIndex && this.comparator(this.heap[leftChildIndex], this.heap[smallestIndex]) < 0) {
+        smallestIndex = leftChildIndex
+      }
+
+      if (rightChildIndex <= lastIndex && this.comparator(this.heap[rightChildIndex], this.heap[smallestIndex]) < 0) {
+        smallestIndex = rightChildIndex
+      }
+
+      if (smallestIndex === index) {
+        break
+      }
+
+      this.swap(index, smallestIndex)
+      index = smallestIndex
+    }
+  }
+
+  private swap(i: number, j: number): void {
+    ;[this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]]
   }
 }
