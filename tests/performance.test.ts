@@ -103,11 +103,13 @@ function recordGroupMetric(groupName: string, groupDescription: string, testName
 // 3. Updated afterAll to display grouped metrics structure
 afterAll(() => {
   const table = new Table({
-    head: ['Group/Test/Metric', 'Value', 'Description'],
     colWidths: [60, 30, 60],
     wordWrap: true,
-    style: { head: ['cyan', 'bold'], border: ['grey'] },
   })
+
+  // Add main title as first row
+  table.push([{ content: 'MeoNode Performance Metrics Report', colSpan: 3, hAlign: 'center' }])
+  table.push(['Group/Test/Metric', 'Value', 'Description'])
 
   Object.entries(performanceMetrics).forEach(([groupName, groupData], groupIndex) => {
     // Add a blank row between groups (except for the first group)
@@ -115,11 +117,11 @@ afterAll(() => {
       table.push([{ colSpan: 3, content: '' }])
     }
 
-    // Add the group heading (no value, only description)
-    table.push([
-      { content: groupName, colSpan: 2, hAlign: 'left' },
-      { content: groupData.description, vAlign: 'center' },
-    ])
+    // Add a header row for the group with a single spanned column
+    table.push([{ content: groupName, colSpan: 3, hAlign: 'center' }])
+
+    // Add a row with the group description spanning all columns
+    table.push([{ content: groupData.description, colSpan: 3, hAlign: 'center' }])
 
     // Add each test within the group
     groupData.tests.forEach(test => {
@@ -127,15 +129,15 @@ afterAll(() => {
 
       // Add first metric row with test name and description
       if (test.metrics.length > 0) {
-        table.push([`${test.name}`, test.metrics[0].value, { rowSpan: metricCount, content: test.description, vAlign: 'center' }])
+        table.push([test.name, test.metrics[0].value, { rowSpan: metricCount, content: test.description, vAlign: 'center' }])
 
         // Add additional metrics for this test
         test.metrics.slice(1).forEach(metric => {
-          table.push([`${metric.name}`, metric.value])
+          table.push([{ content: metric.name, style: { 'padding-left': 4 } }, metric.value])
         })
       } else {
         // If the test has no metrics, show just the test name with its description
-        table.push([`${test.name}`, 'No metrics', test.description])
+        table.push([test.name, 'No metrics', test.description])
       }
     })
   })
@@ -513,7 +515,7 @@ describe('Performance Testing', () => {
       const { median } = await measureRender(element, { iterations: 3, warmups: 1 })
 
       recordGroupMetric(group, groupDescription, testName, testDescription, `Median Render Time for ${NUM_NODES} Flat Nodes (ms)`, `${median.toFixed(2)} ms`)
-      expect(median).toBeLessThan(1500)
+      expect(median).toBeLessThan(500)
     })
 
     it('should render 10000 deeply nested nodes without stack overflow', async () => {
@@ -534,7 +536,7 @@ describe('Performance Testing', () => {
       const { median } = await measureRender(element, { iterations: 3, warmups: 1 })
 
       recordGroupMetric(group, groupDescription, testName, testDescription, `Median Render Time for ${NUM_NODES} Nested Nodes (ms)`, `${median.toFixed(2)} ms`)
-      expect(median).toBeLessThan(2000)
+      expect(median).toBeLessThan(1800)
     })
 
     describe('Memory Management', () => {
