@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.10
+
+### Fix
+- **unmounter**: prevent redundant FinalizationRegistry callbacks ([`59f5adf`](https://github.com/l7aromeo/meonode-ui/commit/59f5adf2f553aa49a88d1b44366b004d829ca107))
+  - Explicitly unregister node from cacheCleanupRegistry on unmount
+  - Prevents double cleanup when node is both unmounted and GC'd
+  - Improves cleanup efficiency and reduces unnecessary registry callbacks
+
+### Perf
+- **util**: optimize prop processing and child handling ([`be26488`](https://github.com/l7aromeo/meonode-ui/commit/be26488e304629dd13851dfcaa7fedf43ad8b5c3))
+  - Conditional sort: only sort keys if length > 1 (eliminates unnecessary sorts)
+  - Replace for...in with Object.keys() iteration for better performance and safety
+  - Add fast path for single child processing (non-array or 1-element array)
+  - Avoid unnecessary array operations for common single-child case
+  - Performance impact:
+    - Reduced CPU overhead for small prop objects
+    - Faster iteration with Object.keys() vs for...in
+    - Eliminates array map() call for single child components
+
+- **core**: add exception safety and optimize render method ([`5aad000`](https://github.com/l7aromeo/meonode-ui/commit/5aad000335ff29f078a9d40192d5a70fe9b61d12))
+  - Wrap render logic in try-finally to ensure renderContext is always released
+  - Null out workStack slots before releasing to help GC
+  - Pre-allocate finalChildren array to avoid resizing during iteration
+  - Replace non-null assertion with explicit error handling for better debugging
+  - Add object pooling for workStack and renderedElements (reduces GC pressure)
+  - Pool capped at 50 contexts with 2048-item limit to prevent memory issues
+  - Exception safety ensures cleanup even if rendering throws
+
+### Test
+- **perf**: add React comparison tests with memory tracking ([`bc66d54`](https://github.com/l7aromeo/meonode-ui/commit/bc66d540c4ffa4ad083322dbdbc201f652ea5314))
+  - Add comprehensive performance comparison between React.createElement and MeoNode
+  - Test both flat (10k nodes) and nested (5k nodes) structures
+  - Include memory usage measurements (initial + after 100 updates)
+  - Reduce nested nodes from 10k to 5k to prevent stack overflow with StyledRenderer
+  - Add table output with time and memory columns for clear comparison
+  - Add GC availability warning for accurate measurements
+  - Provides detailed performance and memory behavior insights during re-renders
+  - Avoids stack overflow in deeply nested test scenarios
+
+- **performance**: enhance performance metrics report formatting and adjust thresholds ([`6f3abe4`](https://github.com/l7aromeo/meonode-ui/commit/6f3abe4442938aa6cd414341fdf2aba25a9ece58))
+  - Improve table formatting for performance metrics
+  - Adjust test thresholds based on optimization results
+  - Enhanced reporting for better visibility into performance characteristics
+
 ## [0.4.9] - 2025-11-19
 
 ### Feat
