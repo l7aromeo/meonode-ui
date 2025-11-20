@@ -27,6 +27,9 @@ export default function MeoNodeUnmounter({ node, children }: { node: NodeInstanc
       if (MountTrackerUtil.mountedNodes.has(node.stableKey)) {
         MountTrackerUtil.untrackMount(node.stableKey)
       }
+
+      // Unregister from FinalizationRegistry to prevent redundant callback execution
+      BaseNode.cacheCleanupRegistry.unregister(node)
     }
 
     // Clear lastSignature to prevent memory leaks from retained prop objects
