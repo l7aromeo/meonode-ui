@@ -68,6 +68,34 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   // Navigation tracking
   private static _navigationStarted = false
 
+  // Render Context Pooling
+  private static renderContextPool: { workStack: WorkItem[]; renderedElements: Map<BaseNode, ReactElement> }[] = []
+
+  private static acquireRenderContext() {
+    const pool = BaseNode.renderContextPool
+    if (pool.length > 0) {
+      return pool.pop()!
+    }
+    return {
+      workStack: new Array(512),
+      renderedElements: new Map<BaseNode, ReactElement>(),
+    }
+  }
+
+  private static releaseRenderContext(ctx: { workStack: WorkItem[]; renderedElements: Map<BaseNode, ReactElement> }) {
+    // Limit pool size to prevent memory hoarding
+    if (BaseNode.renderContextPool.length < 50) {
+      // Only recycle if the stack capacity is not excessively large (e.g., < 2048 items)
+      // This prevents the pool from holding onto massive arrays from deep renders,
+      // which could lead to memory fragmentation or high memory usage.
+      if (ctx.workStack.length < 2048) {
+        ctx.workStack.length = 0
+        ctx.renderedElements.clear()
+        BaseNode.renderContextPool.push(ctx)
+      }
+    }
+  }
+
   constructor(element: E, rawProps: Partial<NodeProps<E>> = {}, deps?: DependencyList) {
     // Element type validation is performed once at construction to prevent invalid nodes from being created.
     if (!isValidElementType(element)) {
@@ -263,164 +291,180 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // When this node doesn't need update, its children are considered "blocked" and may be skipped.
     const childrenBlocked = !shouldUpdate
 
-    // Start with aggressive initial capacity to minimize reallocations
-    let workStack: WorkItem[] = new Array(512)
+    // Acquire context from pool to reduce allocation pressure
+    const ctx = BaseNode.acquireRenderContext()
+    let { workStack } = ctx
+    const { renderedElements } = ctx
     let stackPointer = 0
 
-    // Fast capacity check with exponential growth
-    const ensureCapacity = (required: number) => {
-      if (required > workStack.length) {
-        // Double capacity or use exact requirement (whichever is larger)
-        const newCapacity = Math.max(required, workStack.length << 1)
-        const newStack = new Array(newCapacity)
+    try {
+      // Fast capacity check with exponential growth
+      const ensureCapacity = (required: number) => {
+        if (required > workStack.length) {
+          // Double capacity or use exact requirement (whichever is larger)
+          const newCapacity = Math.max(required, workStack.length << 1)
+          const newStack = new Array(newCapacity)
 
-        // Manual copy is faster than Array methods for primitive/object arrays
-        for (let i = 0; i < stackPointer; i++) {
-          newStack[i] = workStack[i]
+          // Manual copy is faster than Array methods for primitive/object arrays
+          for (let i = 0; i < stackPointer; i++) {
+            newStack[i] = workStack[i]
+          }
+
+          workStack = newStack
         }
-
-        workStack = newStack
       }
-    }
 
-    // Push initial work item
-    workStack[stackPointer++] = {
-      node: this,
-      isProcessed: false,
-      blocked: childrenBlocked,
-    }
-
-    // Map to collect rendered React elements for processed BaseNode instances.
-    const renderedElements = new Map<BaseNode, ReactElement>()
-
-    // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
-    while (stackPointer > 0) {
-      const currentWork = workStack[stackPointer - 1]
-      if (!currentWork) {
-        stackPointer--
-        continue
+      // Push initial work item
+      workStack[stackPointer++] = {
+        node: this,
+        isProcessed: false,
+        blocked: childrenBlocked,
       }
-      const { node, isProcessed, blocked } = currentWork
 
-      if (!isProcessed) {
-        // Begin phase: mark processed and push child BaseNodes onto the stack (in reverse order)
-        currentWork.isProcessed = true
-        const children = node.props.children
+      // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
+      while (stackPointer > 0) {
+        const currentWork = workStack[stackPointer - 1]
+        if (!currentWork) {
+          stackPointer--
+          continue
+        }
+        const { node, isProcessed, blocked } = currentWork
 
-        if (children) {
-          // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
-          const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
+        if (!isProcessed) {
+          // Begin phase: mark processed and push child BaseNodes onto the stack (in reverse order)
+          currentWork.isProcessed = true
+          const children = node.props.children
 
-          // --- Check capacity ONCE before loop ---
-          const requiredCapacity = stackPointer + childrenToProcess.length
-          ensureCapacity(requiredCapacity)
+          if (children) {
+            // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
+            const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
 
-          for (let i = childrenToProcess.length - 1; i >= 0; i--) {
-            const child = childrenToProcess[i]
+            // --- Check capacity ONCE before loop ---
+            const requiredCapacity = stackPointer + childrenToProcess.length
+            ensureCapacity(requiredCapacity)
 
-            // Respect server/client differences for child cache lookup.
-            const childCacheEntry = NodeUtil.isServer || !child.stableKey ? undefined : BaseNode.elementCache.get(child.stableKey)
+            for (let i = childrenToProcess.length - 1; i >= 0; i--) {
+              const child = childrenToProcess[i]
 
-            // Determine whether the child should update given its deps and the parent's blocked state.
-            const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
+              // Respect server/client differences for child cache lookup.
+              const childCacheEntry = NodeUtil.isServer || !child.stableKey ? undefined : BaseNode.elementCache.get(child.stableKey)
 
-            // If child doesn't need update and has cached element, reuse it immediately (no push).
-            if (!childShouldUpdate && childCacheEntry?.renderedElement) {
-              renderedElements.set(child, childCacheEntry.renderedElement)
-              continue
-            }
+              // Determine whether the child should update given its deps and the parent's blocked state.
+              const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
 
-            // Otherwise push child for processing; childBlocked inherits parent's blocked state.
-            const childBlocked = blocked || !childShouldUpdate
-            workStack[stackPointer++] = {
-              node: child,
-              isProcessed: false,
-              blocked: childBlocked,
+              // If child doesn't need update and has cached element, reuse it immediately (no push).
+              if (!childShouldUpdate && childCacheEntry?.renderedElement) {
+                renderedElements.set(child, childCacheEntry.renderedElement)
+                continue
+              }
+
+              // Otherwise push child for processing; childBlocked inherits parent's blocked state.
+              const childBlocked = blocked || !childShouldUpdate
+              workStack[stackPointer++] = {
+                node: child,
+                isProcessed: false,
+                blocked: childBlocked,
+              }
             }
           }
-        }
-      } else {
-        // Complete phase
-        stackPointer--
-
-        // Extract node props. Non-present props default to undefined via destructuring.
-        const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
-        let finalChildren: ReactNode[] = []
-
-        if (childrenInProps) {
-          // Convert child placeholders into concrete React nodes:
-          // - If it's a BaseNode, lookup its rendered ReactElement from the map.
-          // - If it's already a React element, use it directly.
-          // - Otherwise treat as primitive ReactNode.
-          finalChildren = (Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]).map(child => {
-            if (NodeUtil.isNodeInstance(child)) return renderedElements.get(child)!
-            if (isValidElement(child)) return child
-            return child as ReactNode
-          })
-        }
-
-        // Merge element props: explicit other props + DOM native props + React key.
-        const elementProps = { ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps }
-        let element: ReactElement<FinalNodeProps>
-
-        // Handle fragments specially: create fragment element with key and children.
-        if (node.element === Fragment || isFragment(node.element)) {
-          element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
         } else {
-          // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
-          // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
-          const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
-          if (isStyledComponent) {
-            element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
-          } else {
-            element = createElement(node.element as ElementType, elementProps, ...finalChildren)
-          }
-        }
+          // Complete phase
+          stackPointer--
 
-        // Cache the generated element on client-side to speed up future renders.
-        if (!NodeUtil.isServer && node.stableKey) {
-          const existingEntry = BaseNode.elementCache.get(node.stableKey)
+          // Extract node props. Non-present props default to undefined via destructuring.
+          const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
+          let finalChildren: ReactNode[] = []
 
-          if (existingEntry) {
-            // Update existing cache entry (avoid re-registration)
-            existingEntry.prevDeps = node._deps
-            existingEntry.renderedElement = element
-            existingEntry.accessCount += 1
-          } else {
-            // Create new cache entry and register for cleanup
-            const newCacheEntry: ElementCacheEntry = {
-              prevDeps: node._deps,
-              renderedElement: element,
-              nodeRef: new WeakRef(node),
-              createdAt: Date.now(),
-              accessCount: 1,
-              instanceId: node.instanceId,
+          if (childrenInProps) {
+            // Convert child placeholders into concrete React nodes:
+            // - If it's a BaseNode, lookup its rendered ReactElement from the map.
+            // - If it's already a React element, use it directly.
+            // - Otherwise treat as primitive ReactNode.
+            const childArray = Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]
+            const childCount = childArray.length
+            // Pre-allocate array to avoid resizing during iteration
+            finalChildren = new Array(childCount)
+
+            for (let i = 0; i < childCount; i++) {
+              const child = childArray[i]
+              if (NodeUtil.isNodeInstance(child)) {
+                const rendered = renderedElements.get(child)
+                if (!rendered) {
+                  throw new Error(`[MeoNode] Missing rendered element for child node: ${child.stableKey}`)
+                }
+                finalChildren[i] = rendered
+              } else if (isValidElement(child)) {
+                finalChildren[i] = child
+              } else {
+                finalChildren[i] = child as ReactNode
+              }
             }
-
-            // Set new cache entry
-            BaseNode.elementCache.set(node.stableKey, newCacheEntry)
-
-            // Register for automatic cleanup when node is GC'd
-            BaseNode.cacheCleanupRegistry.register(node, { cacheKey: node.stableKey, instanceId: node.instanceId }, node)
           }
+
+          // Merge element props: explicit other props + DOM native props + React key.
+          const elementProps = { ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps }
+          let element: ReactElement<FinalNodeProps>
+
+          // Handle fragments specially: create fragment element with key and children.
+          if (node.element === Fragment || isFragment(node.element)) {
+            element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
+          } else {
+            // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
+            // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
+            const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
+
+            if (isStyledComponent) {
+              element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
+            } else {
+              element = createElement(node.element as ElementType, elementProps, ...finalChildren)
+            }
+          }
+
+          // Cache the generated element on client-side to speed up future renders.
+          if (!NodeUtil.isServer && node.stableKey) {
+            const existingEntry = BaseNode.elementCache.get(node.stableKey)
+
+            if (existingEntry) {
+              // Update existing cache entry (avoid re-registration)
+              existingEntry.prevDeps = node._deps
+              existingEntry.renderedElement = element
+              existingEntry.accessCount += 1
+            } else {
+              // Create new cache entry and register for cleanup
+              const newCacheEntry: ElementCacheEntry = {
+                prevDeps: node._deps,
+                renderedElement: element,
+                nodeRef: new WeakRef(node),
+                createdAt: Date.now(),
+                accessCount: 1,
+                instanceId: node.instanceId,
+              }
+
+              // Set new cache entry
+              BaseNode.elementCache.set(node.stableKey, newCacheEntry)
+
+              // Register for automatic cleanup when node is GC'd
+              BaseNode.cacheCleanupRegistry.register(node, { cacheKey: node.stableKey, instanceId: node.instanceId }, node)
+            }
+          }
+
+          // Store the rendered element so parent nodes can reference it.
+          renderedElements.set(node, element)
         }
-
-        // Store the rendered element so parent nodes can reference it.
-        renderedElements.set(node, element)
       }
+
+      // Get the final rendered element for the root node of this render cycle.
+      const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
+
+      return !NodeUtil.isServer && this.stableKey ? createElement(MeoNodeUnmounter, { node: this }, rootElement) : rootElement
+    } finally {
+      // Always release context back to pool, even if an exception occurred
+      // Null out workStack slots to help GC before releasing
+      for (let i = 0; i < stackPointer; i++) {
+        workStack[i] = null as any
+      }
+      BaseNode.releaseRenderContext({ workStack, renderedElements })
     }
-
-    // Clear references for GC unconditionally
-    workStack.length = 0
-
-    // Get the final rendered element for the root node of this render cycle.
-    const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
-
-    if (!NodeUtil.isServer && this.stableKey) {
-      return createElement(MeoNodeUnmounter, { node: this }, rootElement)
-    }
-
-    return rootElement
   }
 
   /**
