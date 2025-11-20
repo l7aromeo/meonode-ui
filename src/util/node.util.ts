@@ -141,7 +141,11 @@ export class NodeUtil {
 
     const elementId = getElementTypeName(element)
 
-    const keys = Object.keys(props).sort()
+    const keys = Object.keys(props)
+    // Optimization: Only sort if there's more than one key to ensure stability
+    if (keys.length > 1) {
+      keys.sort()
+    }
     const signatureParts: string[] = [`${elementId}:`]
 
     if (typeof element === 'function') {
@@ -358,15 +362,16 @@ export class NodeUtil {
     const nonCacheableProps: Record<string, unknown> = {}
 
     // 1. Categorize props into cacheable (primitives) and non-cacheable (objects/functions).
-    for (const key in restRawProps) {
-      if (Object.prototype.hasOwnProperty.call(restRawProps, key)) {
-        const value = (restRawProps as Record<string, unknown>)[key]
-        const type = typeof value
-        if (type === 'string' || type === 'number' || type === 'boolean') {
-          cacheableProps[key] = value
-        } else {
-          nonCacheableProps[key] = value
-        }
+    // Optimization: Use Object.keys loop instead of for..in for better performance and safety
+    const keys = Object.keys(restRawProps)
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      const value = (restRawProps as Record<string, unknown>)[key]
+      const type = typeof value
+      if (type === 'string' || type === 'number' || type === 'boolean') {
+        cacheableProps[key] = value
+      } else {
+        nonCacheableProps[key] = value
       }
     }
 
@@ -406,9 +411,19 @@ export class NodeUtil {
   private static _processChildren(children: Children, disableEmotion?: boolean, parentStableKey?: string): Children {
     if (!children) return undefined
     if (typeof children === 'function') return children
-    return Array.isArray(children)
-      ? children.map((child, index) => NodeUtil.processRawNode(child, disableEmotion, `${parentStableKey}_${index}`))
-      : NodeUtil.processRawNode(children, disableEmotion, parentStableKey)
+
+    // Fast path for non-array (single child)
+    if (!Array.isArray(children)) {
+      return NodeUtil.processRawNode(children, disableEmotion, parentStableKey)
+    }
+
+    // Fast path for single element array
+    if (children.length === 1) {
+      return NodeUtil.processRawNode(children[0], disableEmotion, `${parentStableKey}_0`)
+    }
+
+    // General case: multiple children
+    return children.map((child, index) => NodeUtil.processRawNode(child, disableEmotion, `${parentStableKey}_${index}`))
   }
 
   /**
