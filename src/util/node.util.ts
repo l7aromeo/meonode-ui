@@ -81,12 +81,15 @@ export class NodeUtil {
    * This check is performed only on the client-side by checking if the property exists in `document.body.style`.
    * On the server-side, it always returns `false`.
    * @param k The string to check.
+   * @returns True if the string is a valid CSS style property, false otherwise.
    */
   public static isStyleProp = !NodeUtil.isServer && typeof document !== 'undefined' ? (k: string) => k in document.body.style : () => false
 
   /**
    * Combines FNV-1a and djb2 hash functions for a more robust signature.
-   * @method hashString
+   * This hybrid approach provides better distribution than either algorithm alone.
+   * @param str The string to hash.
+   * @returns A combined hash string in base-36 format.
    */
   public static hashString(str: string): string {
     let h1 = 2166136261 // FNV offset basis
@@ -104,6 +107,12 @@ export class NodeUtil {
     return `${(h1 >>> 0).toString(36)}_${(h2 >>> 0).toString(36)}`
   }
 
+  /**
+   * Generates a fast structural hash for CSS objects without full serialization.
+   * This is an optimized hashing method that samples the first 10 keys for performance.
+   * @param css The CSS object to hash.
+   * @returns A hash string representing the CSS object structure.
+   */
   private static hashCSS(css: Record<string, unknown>): string {
     const cached = this._cssCache.get(css)
     if (cached) return cached
@@ -134,7 +143,10 @@ export class NodeUtil {
    * Creates a unique, stable signature from the element type and props.
    * This signature includes the element's type to prevent collisions between different components
    * and handles primitive values in arrays and objects for better caching.
-   * @method createPropSignature
+   * On server environments, returns undefined as signatures are not needed for server-side rendering.
+   * @param element The element type to include in the signature.
+   * @param props The props object to include in the signature.
+   * @returns A unique signature string or undefined on the server.
    */
   public static createPropSignature(element: NodeElementType, props: Record<string, unknown>): string | undefined {
     if (NodeUtil.isServer) return undefined
@@ -202,6 +214,9 @@ export class NodeUtil {
    * `aria-*` attributes, `data-*` attributes, `css`, `className`, and `style`.
    * This method is used to optimize prop processing by focusing on props that are
    * most likely to influence rendering or behavior.
+   * @param props The original props object.
+   * @param keys The keys to process from the props object.
+   * @returns An object containing only the critical props with an added count property.
    */
   public static extractCriticalProps(props: Record<string, unknown>, keys: string[]): Record<string, unknown> {
     const critical: Record<string, unknown> = { _keyCount: keys.length }
@@ -254,7 +269,10 @@ export class NodeUtil {
   /**
    * Retrieves computed CSS props from the cache with LRU tracking.
    * Access time and hit count are tracked for smarter eviction.
-   * @method getCachedCssProps
+   * Falls back to direct computation if no signature is provided or running on server.
+   * @param cacheableProps The props to compute CSS properties from.
+   * @param signature The cache signature to use for lookup.
+   * @returns An object containing the CSS props.
    */
   public static getCachedCssProps(cacheableProps: Record<string, unknown>, signature?: string): { cssProps: Record<string, unknown> } {
     if (NodeUtil.isServer || !signature) return { cssProps: getCSSProps(cacheableProps) }
@@ -302,7 +320,7 @@ export class NodeUtil {
   /**
    * Implements an LRU eviction strategy that removes multiple entries at once.
    * It uses a scoring system where older and less frequently used entries have a higher eviction priority.
-   * @method _evictLRUEntries
+   * This batch eviction approach improves performance by avoiding frequent cache cleanup operations.
    */
   private static _evictLRUEntries(): void {
     const now = Date.now()
@@ -329,7 +347,10 @@ export class NodeUtil {
   /**
    * Calculates an eviction score based on age and frequency of access.
    * Higher scores mean more likelihood to be evicted.
-   * @method _calculateEvictionScore
+   * The scoring system uses weighted factors: 30% recency and 70% frequency.
+   * @param value The cache entry to score.
+   * @param now The current timestamp for calculating age.
+   * @returns A numeric score representing how likely the entry should be evicted.
    */
   private static _calculateEvictionScore(value: PropProcessingCache, now: number): number {
     const age = now - value.lastAccess
@@ -341,7 +362,11 @@ export class NodeUtil {
   /**
    * The main prop processing pipeline. It separates cacheable and non-cacheable props,
    * generates a signature for caching, and assembles the final props object.
-   * @method processProps
+   * This method applies optimizations like fast-path for simple props and hybrid caching strategy.
+   * @param element The element type for which props are being processed.
+   * @param rawProps The original props to process.
+   * @param stableKey The stable key used for child normalization (optional).
+   * @returns The processed props object ready for rendering.
    */
   public static processProps(element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey?: string): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
@@ -404,9 +429,11 @@ export class NodeUtil {
   /**
    * Processes and normalizes children of the node.
    * Converts raw children (React elements, primitives, or other BaseNodes) into a consistent format.
+   * Applies optimizations for single and multiple children scenarios.
    * @param children The raw children to process.
    * @param disableEmotion If true, emotion styling will be disabled for these children.
    * @param parentStableKey The stable key of the parent node, used for generating unique keys for children.
+   * @returns The processed children in normalized format.
    */
   private static _processChildren(children: Children, disableEmotion?: boolean, parentStableKey?: string): Children {
     if (!children) return undefined
@@ -429,7 +456,11 @@ export class NodeUtil {
   /**
    * Determines if a node should update based on its dependency array.
    * Uses a shallow comparison, similar to React's `useMemo` and `useCallback`.
-   * @method shouldNodeUpdate
+   * On server environments, always returns true since SSR has no concept of re-renders.
+   * @param prevDeps Previous dependency array to compare.
+   * @param newDeps New dependency array to compare.
+   * @param parentBlocked Flag indicating if the parent is blocked from updating.
+   * @returns True if the node should update, false otherwise.
    */
   public static shouldNodeUpdate(prevDeps: DependencyList | undefined, newDeps: DependencyList | undefined, parentBlocked: boolean): boolean {
     // SSR has no concept of re-renders, so deps system doesn't apply
@@ -465,7 +496,12 @@ export class NodeUtil {
    * The core normalization function for a single child. It takes any valid `NodeElement`
    * (primitive, React element, function, `BaseNode` instance) and converts it into a standardized `BaseNode`
    * instance if it isn't one already. This ensures a consistent structure for the iterative renderer.
-   * @method processRawNode
+   * Handles various node types including primitives, BaseNode instances, function-as-children, React elements,
+   * component classes, and component instances.
+   * @param node The node element to process and normalize.
+   * @param disableEmotion If true, emotion styling will be disabled for this node.
+   * @param stableKey The stable key for positional information in parent-child relationships.
+   * @returns The normalized node element in BaseNode format.
    */
   public static processRawNode(node: NodeElement, disableEmotion?: boolean, stableKey?: string): NodeElement {
     // Primitives and null/undefined are returned as-is.
@@ -526,7 +562,9 @@ export class NodeUtil {
   /**
    * A helper to reliably identify if a given function is a "function-as-a-child" (render prop)
    * rather than a standard Function Component.
-   * @method isFunctionChild
+   * Distinguishes between render prop functions and component functions by checking for React component signatures.
+   * @param node The node to check.
+   * @returns True if the node is a function-as-a-child, false otherwise.
    */
   public static isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
     if (typeof node !== 'function' || isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return false
@@ -548,11 +586,9 @@ export class NodeUtil {
    *
    * This allows `BaseNode` to support render props while maintaining its internal processing
    * and normalization logic for the dynamically generated content.
-   * @method functionRenderer
-   * @param {Object} props The properties passed to the renderer.
-   * @param {Function} props.render The function-as-a-child to execute.
-   * @param {boolean} [props.disableEmotion] Inherited flag to disable Emotion styling for children.
-   * @returns {ReactNode | null | undefined} The processed and rendered output of the render function.
+   * @param render The function-as-a-child to execute.
+   * @param disableEmotion Inherited flag to disable Emotion styling for children.
+   * @returns The processed and rendered output of the render function, or null if an error occurs.
    */
   public static functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>): ReactNode | null | undefined {
     let result: NodeElement
@@ -624,7 +660,10 @@ export class NodeUtil {
    *
    * This method is part of the child processing pipeline, converting internal `NodeElement` representations
    * into actual React elements that can be rendered by React.
-   * @method renderProcessedNode
+   * @param processedElement The processed node element to render.
+   * @param passedKey Optional key to apply to the rendered element.
+   * @param disableEmotion Flag to disable emotion styling if needed.
+   * @returns The rendered ReactNode.
    */
   public static renderProcessedNode({
     processedElement,
@@ -669,7 +708,9 @@ export class NodeUtil {
   /**
    * Ensures that the necessary DOM element and React root are available for portal rendering.
    * This is only executed on the client-side.
-   * @method ensurePortalInfrastructure
+   * Handles cleanup of stale infrastructure and creates new infrastructure as needed.
+   * @param node The node instance that requires portal infrastructure.
+   * @returns True if portal infrastructure is ready, false on server or if setup fails.
    */
   public static ensurePortalInfrastructure(node: NodeInstance) {
     if (NodeUtil.isServer) return false
@@ -715,6 +756,11 @@ export class NodeUtil {
     return true
   }
 
+  /**
+   * Cleans up portal infrastructure by unmounting the React root and removing the DOM element.
+   * This ensures proper memory cleanup and prevents memory leaks.
+   * @param infra The infrastructure object containing the DOM element and React root to clean up.
+   */
   public static cleanupPortalInfra(infra: { domElement: HTMLDivElement; reactRoot: Root }) {
     try {
       if (infra.reactRoot?.unmount) {
@@ -742,23 +788,45 @@ class MinHeap<T> {
   private heap: T[] = []
   private comparator: (a: T, b: T) => number
 
+  /**
+   * Constructs a new MinHeap with the provided comparator function.
+   * @param comparator A function that compares two elements and returns a negative value if the first is smaller,
+   * zero if they are equal, or a positive value if the first is larger.
+   */
   constructor(comparator: (a: T, b: T) => number) {
     this.comparator = comparator
   }
 
+  /**
+   * Returns the number of elements in the heap.
+   * @returns The current size of the heap.
+   */
   public size(): number {
     return this.heap.length
   }
 
+  /**
+   * Checks if the heap is empty.
+   * @returns True if the heap has no elements, false otherwise.
+   */
   public isEmpty(): boolean {
     return this.size() === 0
   }
 
+  /**
+   * Adds a new value to the heap and maintains the heap property by bubbling it up to the correct position.
+   * @param value The value to add to the heap.
+   */
   public push(value: T): void {
     this.heap.push(value)
     this.bubbleUp()
   }
 
+  /**
+   * Removes and returns the smallest element from the heap (the root).
+   * After removal, it maintains the heap property by bubbling down the new root.
+   * @returns The smallest element in the heap, or undefined if the heap is empty.
+   */
   public pop(): T | undefined {
     if (this.isEmpty()) {
       return undefined
@@ -771,10 +839,11 @@ class MinHeap<T> {
     return value
   }
 
-  public peek(): T | undefined {
-    return this.isEmpty() ? undefined : this.heap[0]
-  }
-
+  /**
+   * Moves the element at the specified index up the heap until the heap property is restored.
+   * This is used after inserting a new element to maintain the heap structure.
+   * @param index The index of the element to bubble up. Defaults to the last element in the heap.
+   */
   private bubbleUp(index = this.size() - 1): void {
     while (index > 0) {
       const parentIndex = Math.floor((index - 1) / 2)
@@ -786,6 +855,11 @@ class MinHeap<T> {
     }
   }
 
+  /**
+   * Moves the element at the specified index down the heap until the heap property is restored.
+   * This is used after removing the root element to maintain the heap structure.
+   * @param index The index of the element to bubble down. Defaults to the root element (index 0).
+   */
   private bubbleDown(index = 0): void {
     const lastIndex = this.size() - 1
 
@@ -811,6 +885,11 @@ class MinHeap<T> {
     }
   }
 
+  /**
+   * Swaps the elements at the two specified indices in the heap array.
+   * @param i The index of the first element to swap.
+   * @param j The index of the second element to swap.
+   */
   private swap(i: number, j: number): void {
     ;[this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]]
   }
