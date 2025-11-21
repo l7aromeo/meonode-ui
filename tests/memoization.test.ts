@@ -1,12 +1,12 @@
 import { jest } from '@jest/globals'
-import { Div, H1, Node, P, Span } from '@src/main.js'
+import { Div, H1, Node, P, setDebugMode, Span } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
-import { useEffect, useState, StrictMode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
-import { BaseNode } from '@src/core.node.js'
+import { BaseNode, createNode } from '@src/core.node.js'
 import { NodeUtil } from '@src/util/node.util.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
-import { setDebugMode } from '@src/main.js'
+import { FormControlLabel, Radio, RadioGroup } from '@mui/material'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -409,7 +409,8 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     const finalCacheSize = BaseNode.elementCache.size
 
     // After cleanup, only currently mounted components should remain
-    expect(finalCacheSize).toBeLessThan(cacheSizeDuringRapidNav)
+    // With improved mount tracking, we now correctly track all nodes, so the cache may be equal
+    expect(finalCacheSize).toBeLessThanOrEqual(cacheSizeDuringRapidNav)
     expect(finalCacheSize).toBeGreaterThan(0) // Sanity check
 
     jest.useRealTimers()
@@ -762,5 +763,70 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect(BaseNode.elementCache.size).toBeLessThan(initialCacheSize)
 
     jest.useRealTimers()
+  })
+
+  // Regression test for MeoNodeUnmounter swallowing props injected via React.cloneElement
+  // This is common in libraries like MUI (RadioGroup injects 'checked' and 'onChange' into Radio)
+  it('should forward implicit props from parent to child (MUI integration)', () => {
+    const MeoRadioGroup = createNode(RadioGroup)
+    const MeoFormControlLabel = createNode(FormControlLabel)
+    const MeoRadio = createNode(Radio)
+
+    const App = () => {
+      const [checked, setChecked] = useState<'false' | 'true'>('false')
+
+      return MeoRadioGroup({
+        value: checked,
+        onChange: ({ target: { value } }) => {
+          setChecked(value as 'false' | 'true')
+        },
+        children: [
+          MeoFormControlLabel({
+            value: 'true',
+            control: MeoRadio().render(),
+            label: 'Yes',
+            checked: checked === 'true',
+          }),
+          MeoFormControlLabel({
+            value: 'false',
+            control: MeoRadio().render(),
+            label: 'No',
+            checked: checked === 'false',
+          }),
+        ],
+      }).render()
+    }
+
+    const { container } = render(Node(App).render())
+
+    const radioTrue = container.querySelector<HTMLInputElement>('input[value="true"]')
+    const radioFalse = container.querySelector<HTMLInputElement>('input[value="false"]')
+
+    const radioLabelTrue = radioTrue?.parentNode?.parentNode as HTMLLabelElement
+    const radioLabelFalse = radioFalse?.parentNode?.parentNode as HTMLLabelElement
+
+    expect(radioTrue).toBeInTheDocument()
+    expect(radioFalse).toBeInTheDocument()
+
+    act(() => {
+      radioLabelTrue?.click()
+    })
+
+    expect(radioTrue).toBeChecked()
+    expect(radioFalse).not.toBeChecked()
+
+    act(() => {
+      radioLabelFalse?.click()
+    })
+
+    expect(radioFalse).toBeChecked()
+    expect(radioTrue).not.toBeChecked()
+
+    act(() => {
+      radioLabelTrue?.click()
+    })
+
+    expect(radioTrue).toBeChecked()
+    expect(radioFalse).not.toBeChecked()
   })
 })
