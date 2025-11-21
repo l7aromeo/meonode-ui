@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.4.11
+## [0.4.12] - 2025-11-21
+
+### Feat
+- **build**: migrate from Babel to Rollup with ESM and CJS support ([`70326a1`](https://github.com/l7aromeo/meonode-ui/commit/70326a107259c095d571b838dda15ffbf845af1d))
+  - Replace Babel build system with Rollup configuration to prevent output legacy javascript code
+  - Add support for both ESM and CJS output formats
+  - Update package.json exports to point to new build outputs
+  - Add Rollup plugins for TypeScript, commonjs, minification, and preserve directives
+  - Remove Babel-related dependencies and configuration files
+  - Update tsconfig.json to use 'preserve' module setting and bundler resolution
+  - Configure build to output to separate ESM and CJS directories
+
+## [0.4.11] - 2025-11-21
 
 ### Fix
 - **core**: enhance MeoNodeUnmounter cleanup logic and support additional props cloning ([`02c17f7`](https://github.com/l7aromeo/meonode-ui/commit/02c17f7))
@@ -44,7 +56,7 @@ All notable changes to this project will be documented in this file.
 ### Docs
 - **CONTRIBUTING**: improve formatting and readability of contribution guidelines ([`a7462ed`](https://github.com/l7aromeo/meonode-ui/commit/a7462ed))
 
-## 0.4.10
+## [0.4.10] - 2025-11-20
 
 ### Fix
 - **unmounter**: prevent redundant FinalizationRegistry callbacks ([`59f5adf`](https://github.com/l7aromeo/meonode-ui/commit/59f5adf2f553aa49a88d1b44366b004d829ca107))
