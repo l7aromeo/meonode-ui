@@ -55,7 +55,7 @@ async function measureMemoryOnUpdate(element: React.ReactElement, options?: { st
 
     for (let j = 0; j < stateChanges; j++) {
       // Re-render with a changing prop to simulate state updates
-      rerender(React.cloneElement(element, { 'data-state': j }))
+      rerender(React.cloneElement<any>(element, { 'data-state': j }))
     }
 
     if (i >= warmups) {
@@ -70,7 +70,7 @@ async function measureMemoryOnUpdate(element: React.ReactElement, options?: { st
 }
 
 describe('React.createElement vs MeoNode Comparison', () => {
-  const NUM_NODES = 5000 // Reduced from 10k to prevent stack overflow in deeply nested tests
+  const NUM_NODES = 5000 // Test with 5000 nodes for nested structures
   // Table to store results - will be created fresh for the final output
   let resultsTable: Table.Table
 
@@ -179,8 +179,6 @@ describe('React.createElement vs MeoNode Comparison', () => {
   })
 
   it('should compare 5,000 nested nodes between React.createElement and MeoNode', async () => {
-    // Reduced to 5k to prevent stack overflow in deeply nested structures
-
     // React.createElement implementation (deeply nested)
     const createReactElementNestedNodes = () => {
       let nestedNode = React.createElement('div', null, `Deepest Node`)
