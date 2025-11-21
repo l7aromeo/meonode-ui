@@ -2,8 +2,8 @@
   "compilerOptions": {
     "types": ["jest", "@testing-library/jest-dom", "@types/node"],
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
@@ -16,6 +16,6 @@
     "isolatedModules": true,
     "strict": true
   },
-  "include": ["src", "tests"],
+  "include": ["src", "tests", "rollup.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

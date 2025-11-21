@@ -7,19 +7,19 @@
   "types": "./dist/main.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/main.js",
-      "require": "./dist/main.js",
-      "types": "./dist/main.d.ts"
+      "import": "./dist/esm/main.js",
+      "require": "./dist/cjs/main.js",
+      "types": "./dist/esm/main.d.ts"
     },
     "./client": {
-      "import": "./dist/client.js",
-      "require": "./dist/client.js",
-      "types": "./dist/client.d.ts"
+      "import": "./dist/esm/client.js",
+      "require": "./dist/cjs/client.js",
+      "types": "./dist/esm/client.d.ts"
     },
     "./nextjs-registry": {
-      "import": "./dist/nextjs-registry/index.js",
-      "require": "./dist/nextjs-registry/index.js",
-      "types": "./dist/nextjs-registry/index.d.ts"
+      "import": "./dist/esm/nextjs-registry/index.js",
+      "require": "./dist/cjs/nextjs-registry/index.js",
+      "types": "./dist/esm/nextjs-registry/index.d.ts"
     }
   },
   "files": [
@@ -35,7 +35,7 @@
     "test:perf": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose tests/performance.test.ts tests/react-createelement-comparison.test.ts",
     "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose",
     "prebuild": "yarn lint && yarn test:all",
-    "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
+    "build": "yarn prebuild && rm -rf ./dist && rollup -c rollup.config.ts && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
     "publish:patch": "./prepublish.sh && yarn build && yarn version -i patch && yarn npm publish --tag latest",
     "publish:minor": "./prepublish.sh && yarn build && yarn version -i minor && yarn npm publish --tag latest",
@@ -46,15 +46,15 @@
     "@emotion/react": "^11.14.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.3",
-    "@babel/core": "^7.28.5",
-    "@babel/preset-env": "^7.28.5",
-    "@babel/preset-typescript": "^7.28.5",
     "@emotion/cache": "^11.14.0",
     "@emotion/jest": "^11.14.2",
     "@emotion/styled": "^11.14.1",
     "@eslint/js": "^9.39.1",
     "@mui/material": "^7.3.5",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -63,12 +63,10 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
-    "@typescript/native-preview": "^7.0.0-dev.20251118.1",
-    "babel-plugin-module-resolver": "^5.0.2",
-    "babel-preset-minify": "0.5.2",
+    "@typescript/native-preview": "^7.0.0-dev.20251121.1",
     "cli-table3": "^0.6.5",
     "eslint": "^9.39.1",
-    "eslint-plugin-jsdoc": "^61.2.1",
+    "eslint-plugin-jsdoc": "^61.4.0",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-unused-imports": "^4.3.0",
     "husky": "^9.1.7",
@@ -78,8 +76,12 @@
     "prettier": "^3.6.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "rollup": "^4.53.3",
+    "rollup-plugin-preserve-directives": "^0.4.0",
+    "rollup-plugin-tsconfig-paths": "^1.5.2",
     "ts-jest": "^29.4.5",
     "tsc-alias": "^1.8.16",
+    "tslib": "^2.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0"
   },
