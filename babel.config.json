@@ -29,7 +29,8 @@
       "minify",
       {
         "keepFnName": true,
-        "keepClassName": true
+        "keepClassName": true,
+        "builtIns": false
       }
     ]
   ],
