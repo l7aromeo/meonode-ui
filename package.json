@@ -31,9 +31,9 @@
   "scripts": {
     "watch:build": "yarn dlx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
-    "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci --verbose --testPathIgnorePatterns=\"tests/performance.test.ts\"",
-    "test:perf": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci --verbose tests/performance.test.ts",
-    "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --experimental-vm-modules node_modules/jest/bin/jest.js --ci --verbose",
+    "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose --testPathIgnorePatterns=\"tests/performance.test.ts\" --testPathIgnorePatterns=\"tests/react-createelement-comparison.test.ts\"",
+    "test:perf": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose tests/performance.test.ts tests/react-createelement-comparison.test.ts",
+    "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose",
     "prebuild": "yarn lint && yarn test:all",
     "build": "yarn prebuild && rm -rf ./dist && babel src --out-dir dist --extensions \".ts,.tsx,.js\" && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
@@ -52,7 +52,9 @@
     "@babel/preset-typescript": "^7.28.5",
     "@emotion/cache": "^11.14.0",
     "@emotion/jest": "^11.14.2",
+    "@emotion/styled": "^11.14.1",
     "@eslint/js": "^9.39.1",
+    "@mui/material": "^7.3.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -81,7 +83,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0"
   },
-  "packageManager": "yarn@4.10.2",
+  "packageManager": "yarn@4.11.0",
   "peerDependencies": {
     "@emotion/cache": ">=11.14.0",
     "react": ">=19.2.0",
