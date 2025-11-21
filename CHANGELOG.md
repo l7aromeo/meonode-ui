@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.11
+
+### Fix
+- **core**: enhance MeoNodeUnmounter cleanup logic and support additional props cloning ([`02c17f7`](https://github.com/l7aromeo/meonode-ui/commit/02c17f7))
+  - Refactor MeoNodeUnmounter to use useEffectEvent for stable cleanup on unmount
+  - Cleanup removes node from BaseNode.elementCache, untracks mount via MountTrackerUtil, unregisters from BaseNode.cacheCleanupRegistry, and clears lastSignature to prevent memory leaks
+  - Support cloning and forwarding additional props to valid React children elements
+
+### Refactor
+- **node.util**: enhance documentation for utility methods and improve clarity ([`ee42c24`](https://github.com/l7aromeo/meonode-ui/commit/ee42c24))
+- **theme**: reorder ThemeResolverCache methods for clarity ([`cb842c8`](https://github.com/l7aromeo/meonode-ui/commit/cb842c8))
+  - Moved `_generateCacheKey` and `_evict` methods below the main logic in `ThemeResolverCache` for better readability and organization
+  - Removed duplicate declaration of `_instance` property
+  - Kept functionality unchanged, improving code structure and maintainability
+
+### Test
+- **perf**: add memory leak detection test for navigation cycles and improve formatMemory function ([`ba139fc`](https://github.com/l7aromeo/meonode-ui/commit/ba139fc))
+  - Added a new performance test to detect memory leaks during repeated navigation cycles between pages
+  - The test measures heap memory usage before, during, and after navigation, ensuring memory growth stays within acceptable limits
+  - Enhanced the formatMemory utility to correctly handle negative byte values and added JSDoc comments for clarity
+  - Removed an obsolete shallowly equal props performance test to streamline the test suite
+- **unmounter**: add regression test for MeoNodeUnmounter to forward implicit props in MUI RadioGroup integration ([`2ecaabd`](https://github.com/l7aromeo/meonode-ui/commit/2ecaabd))
+  - Added a test to ensure MeoNodeUnmounter correctly forwards props injected via React.cloneElement, addressing issues with libraries like MUI where RadioGroup injects 'checked' and 'onChange' into Radio components
+  - This prevents swallowing of props and verifies proper behavior of controlled radio inputs
+  - Also updated an existing cache size assertion to allow equality, reflecting improved mount tracking
+- **perf**: update react-createelement comparison tests with 5000 nested nodes and fix typings ([`b345ec0`](https://github.com/l7aromeo/meonode-ui/commit/b345ec0))
+  - Changed rerender to use React.cloneElement<any> for proper typing
+  - Updated NUM_NODES constant to 5000 for nested structure tests
+  - Removed redundant comments about node count reduction to prevent stack overflow
+
+### Chore
+- **deps**: upgrade devDependencies and update test scripts ([`2ea128e`](https://github.com/l7aromeo/meonode-ui/commit/2ea128e))
+  - add new devDependencies: @emotion/is-prop-valid@1.4.0, @emotion/styled@11.14.1, @mui/material@7.3.5, and related packages
+  - update yarn to version 4.11.0
+  - update test scripts to increase max-old-space-size to 8192 and include react-createelement-comparison.test.ts in test and perf runs
+  - update various package resolutions in yarn.lock to align with new versions and dependencies
+- **babel**: add "builtIns": false to minify plugin configuration ([`e16cdfb`](https://github.com/l7aromeo/meonode-ui/commit/e16cdfb))
+- **yarn**: update yarnPath to version 4.11.0 ([`ecb6c68`](https://github.com/l7aromeo/meonode-ui/commit/ecb6c68))
+
+### Docs
+- **CONTRIBUTING**: improve formatting and readability of contribution guidelines ([`a7462ed`](https://github.com/l7aromeo/meonode-ui/commit/a7462ed))
+
 ## 0.4.10
 
 ### Fix
