@@ -7,11 +7,9 @@ import { getValueByPath } from '@src/helper/common.helper.js'
  * Cache manager for theme resolution operations.
  */
 class ThemeResolverCache {
+  private static _instance: ThemeResolverCache | null = null
   private readonly CACHE_SIZE_LIMIT = 500
   private readonly CACHE_EVICTION_BATCH_SIZE = 50
-
-  private static _instance: ThemeResolverCache | null = null
-
   private readonly _resolutionCache = new Map<string, Record<string, unknown>>()
   private readonly _pathLookupCache = new Map<string, Record<string, unknown> | string | null>()
   private readonly _themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
@@ -21,14 +19,6 @@ class ThemeResolverCache {
       ThemeResolverCache._instance = new ThemeResolverCache()
     }
     return ThemeResolverCache._instance
-  }
-
-  /**
-   * Generate a stable cache key from object and theme, including the theme mode.
-   */
-  private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
-    // Including theme.mode is critical for cache correctness.
-    return `${ObjHelper.stringify(obj)}_${theme.mode}_${ObjHelper.stringify(theme.system)}`
   }
 
   getResolution<O extends Record<string, unknown>>(obj: O, theme: Theme) {
@@ -69,18 +59,6 @@ class ThemeResolverCache {
     }
   }
 
-  private _evict(cache: Map<string, unknown>) {
-    const keys = cache.keys()
-    for (let i = 0; i < this.CACHE_EVICTION_BATCH_SIZE; i++) {
-      const key = keys.next().value
-      if (key) {
-        cache.delete(key)
-      } else {
-        break
-      }
-    }
-  }
-
   getThemeRegex(): RegExp {
     this._themeRegex.lastIndex = 0
     return this._themeRegex
@@ -94,24 +72,38 @@ class ThemeResolverCache {
     this._resolutionCache.clear()
     this._pathLookupCache.clear()
   }
+
+  /**
+   * Generate a stable cache key from object and theme, including the theme mode.
+   */
+  private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
+    // Including theme.mode is critical for cache correctness.
+    return `${ObjHelper.stringify(obj)}_${theme.mode}_${ObjHelper.stringify(theme.system)}`
+  }
+
+  private _evict(cache: Map<string, unknown>) {
+    const keys = cache.keys()
+    for (let i = 0; i < this.CACHE_EVICTION_BATCH_SIZE; i++) {
+      const key = keys.next().value
+      if (key) {
+        cache.delete(key)
+      } else {
+        break
+      }
+    }
+  }
 }
 
-/**
- * Parsed flex shorthand components for CSS flex property
- * @interface FlexComponents
- * @property grow - The flex-grow value (how much the item should grow)
- * @property shrink - The flex-shrink value (how much the item should shrink)
- * @property basis - The flex-basis value (initial main size before free space is distributed)
- */
 interface FlexComponents {
   grow: number
   shrink: number
   basis: string | number
 }
-export class ThemeUtil {
-  private constructor() {}
 
+export class ThemeUtil {
   private static themeCache = ThemeResolverCache.getInstance()
+
+  private constructor() {}
 
   /**
    * Parses a CSS flex shorthand property into its individual components.
