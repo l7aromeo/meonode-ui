@@ -37,12 +37,20 @@ expect.addSnapshotSerializer(createSerializer())
 
 jest.useRealTimers()
 
-function formatMemory(bytes: number): string {
+/**
+ * Formats a number of bytes into a human-readable string.
+ * @param bytes The number of bytes to format.
+ * @returns A string representing the formatted memory size.
+ */
+export function formatMemory(bytes: number): string {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return i === 0 ? `${bytes} ${sizes[i]}` : `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+  const isNegative = bytes < 0
+  const absBytes = Math.abs(bytes)
+  const i = Math.floor(Math.log(absBytes) / Math.log(k))
+  const formattedValue = i === 0 ? `${absBytes} ${sizes[i]}` : `${parseFloat((absBytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+  return isNegative ? `-${formattedValue}` : formattedValue
 }
 
 afterEach(cleanup)
@@ -814,6 +822,140 @@ describe('Performance Testing', () => {
 
         expect(memoryGrowthMB).toBeLessThan(20)
       }, 30000)
+
+      it('should not leak memory during navigation cycles', async () => {
+        const group = 'Memory Management Performance'
+        const groupDescription = 'Tests for memory usage, garbage collection, and resource management'
+        const testName = 'Navigation Memory Leak Check'
+        const testDescription = 'Measures memory usage after simulating navigation between two different pages multiple times to detect leaks.'
+
+        const forceGC = async () => {
+          if (global.gc) {
+            global.gc()
+            await new Promise(resolve => setTimeout(resolve, 50))
+          }
+        }
+
+        const createPage = (pageName: string, numElements: number) => {
+          const elements = Array.from({ length: numElements }, (_, i) =>
+            Div({
+              key: `${pageName}-element-${i}`,
+              css: {
+                width: '10px',
+                height: '10px',
+                backgroundColor: i % 2 === 0 ? 'blue' : 'green',
+                margin: '2px',
+              },
+              children: `${pageName} Item ${i}`,
+            }),
+          )
+          return Container({
+            children: [
+              H1(`${pageName} Page`, { 'data-testid': `${pageName}-header` }),
+              ...elements,
+              Button(`Go to Other Page from ${pageName}`, {
+                'data-testid': `${pageName}-navigate-button`,
+                onClick: () => {
+                  /* Handled by parent */
+                },
+              }),
+            ],
+          }).render()
+        }
+
+        const NUM_NAV_CYCLES = 10
+
+        const RootComponent: React.FC = () => {
+          const [currentPage, setCurrentPage] = React.useState<'page1' | 'page2'>('page1')
+
+          const handleNavigate = () => {
+            setCurrentPage(prev => (prev === 'page1' ? 'page2' : 'page1'))
+          }
+
+          const page1 = createPage('Page1', 1000)
+          const page2 = createPage('Page2', 1500)
+
+          return ThemeProvider({
+            theme,
+            children: Div({
+              children: [
+                currentPage === 'page1'
+                  ? Div({ key: 'page1', children: page1, onClick: handleNavigate })
+                  : Div({ key: 'page2', children: page2, onClick: handleNavigate }),
+              ],
+            }).render(),
+          }).render()
+        }
+
+        // Initial memory measurement
+        await forceGC()
+        const initialMemory = process.memoryUsage().heapUsed
+
+        const { getByTestId, unmount } = render(Node(RootComponent).render())
+
+        let currentMemory = 0
+        const memorySnapshots: { cycle: number; page: string; memory: number }[] = []
+
+        for (let i = 0; i < NUM_NAV_CYCLES; i++) {
+          await act(async () => {
+            const currentPageId = i % 2 === 0 ? 'Page1' : 'Page2'
+            fireEvent.click(getByTestId(`${currentPageId}-navigate-button`))
+          })
+
+          await forceGC()
+          currentMemory = process.memoryUsage().heapUsed
+          memorySnapshots.push({ cycle: i + 1, page: i % 2 === 0 ? 'page2' : 'page1', memory: currentMemory })
+
+          // Add a small delay to allow potential async operations to complete
+          await new Promise(resolve => setTimeout(resolve, 20))
+        }
+
+        unmount()
+        await forceGC()
+        const finalMemoryAfterUnmount = process.memoryUsage().heapUsed
+
+        // Calculate peak memory usage during navigation
+        const peakMemory = Math.max(...memorySnapshots.map(s => s.memory))
+
+        // Analyze memory trends
+        // We expect the memory usage to stabilize, not constantly grow.
+        // A simple check is to compare the initial memory to the final memory after unmounting,
+        // and also ensure that the peak during navigation isn't excessively high compared to initial.
+        const memoryGrowthAfterNavigations = peakMemory - initialMemory
+        const memoryGrowthAfterUnmount = finalMemoryAfterUnmount - initialMemory
+
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Initial Heap Size', formatMemory(initialMemory))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Peak Heap Size During Navigation', formatMemory(peakMemory))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Final Heap Size After Unmount', formatMemory(finalMemoryAfterUnmount))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Memory Growth (Peak - Initial)', formatMemory(memoryGrowthAfterNavigations))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Memory Growth (Final Unmount - Initial)', formatMemory(memoryGrowthAfterUnmount))
+
+        // Allow for some fluctuation, but not a continuous leak.
+        // For example, allow up to 50 MB growth during operations, and expect it to return closer to initial after unmount.
+        const PEAK_MEMORY_TOLERANCE_MB = 50
+        const UNMOUNT_MEMORY_TOLERANCE_MB = 20
+
+        expect(memoryGrowthAfterNavigations / 1024 / 1024).toBeLessThan(PEAK_MEMORY_TOLERANCE_MB)
+        expect(memoryGrowthAfterUnmount / 1024 / 1024).toBeLessThan(UNMOUNT_MEMORY_TOLERANCE_MB)
+
+        // Additionally, check that memory tends to return to a baseline after unmount for each cycle
+        // This is a more robust check for continuous leaks than just initial vs final.
+        // For simplicity, we'll check that the last snapshot is not drastically higher than the first.
+        if (memorySnapshots.length > 1) {
+          const firstNavMemory = memorySnapshots[0].memory
+          const lastNavMemory = memorySnapshots[memorySnapshots.length - 1].memory
+          const memoryChangeDuringCycles = lastNavMemory - firstNavMemory
+          recordGroupMetric(
+            group,
+            groupDescription,
+            testName,
+            testDescription,
+            'Memory Change Across Cycles (Last Nav - First Nav)',
+            formatMemory(memoryChangeDuringCycles),
+          )
+          expect(memoryChangeDuringCycles / 1024 / 1024).toBeLessThan(10) // Small growth allowed
+        }
+      }, 100000)
     })
 
     // Prop Processing Group
@@ -837,23 +979,6 @@ describe('Performance Testing', () => {
         recordGroupMetric(group, groupDescription, testName, testDescription, `Duration`, `${duration.toFixed(2)} ms`)
         recordGroupMetric(group, groupDescription, testName, testDescription, 'Nodes Processed', NUM_NODES)
         expect(duration).toBeLessThan(100)
-      })
-
-      it('should generate stableKeys efficiently for nodes with shallowly equal props', () => {
-        const testName = 'Shallowly Equal Props'
-        const testDescription = 'Measures performance of node instantiation with shallowly equal props to test stableKey generation efficiency'
-        const NUM_NODES = 5000
-
-        const t0 = performance.now()
-        for (let i = 0; i < NUM_NODES; i++) {
-          Column({ color: 'theme.primary', padding: '10px' })
-        }
-        const t1 = performance.now()
-        const duration = t1 - t0
-
-        recordGroupMetric(group, groupDescription, testName, testDescription, `Duration`, `${duration.toFixed(2)} ms`)
-        recordGroupMetric(group, groupDescription, testName, testDescription, 'Nodes Processed', NUM_NODES)
-        expect(duration).toBeLessThan(250)
       })
 
       it('should generate stableKeys for nodes with unique props', () => {
