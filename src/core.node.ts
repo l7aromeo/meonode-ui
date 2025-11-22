@@ -396,7 +396,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               } else if (isValidElement(child)) {
                 finalChildren[i] = child
               } else {
-                finalChildren[i] = child as ReactNode
+                finalChildren[i] = child
               }
             }
           }
