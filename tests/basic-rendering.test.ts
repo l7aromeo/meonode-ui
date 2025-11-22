@@ -1,4 +1,4 @@
-import { Component, Div, H1, P, Span } from '@src/main.js'
+import { Component, Div, H1, P, Span, createNode, Node } from '@src/main.js'
 import { cleanup, render } from '@testing-library/react'
 import { createSerializer, matchers } from '@emotion/jest'
 
@@ -9,6 +9,70 @@ expect.addSnapshotSerializer(createSerializer())
 afterEach(cleanup)
 
 describe('Basic Rendering', () => {
+  it('should pass through props defined in the props object as attributes, not CSS', () => {
+    // Create a Div where 'height' is passed via 'props' to force it as an attribute
+    const App = Div({
+      children: 'Attribute Test',
+      props: { height: '100px' },
+      'data-testid': 'attr-test-element',
+    })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('attr-test-element') as HTMLElement
+
+    // Assert that the element has the 'height' attribute
+    expect(element).toHaveAttribute('height', '100px')
+
+    // Assert that it does NOT have height in style (it shouldn't be processed by Emotion)
+    // Note: getComputedStyle might return default values, so we check inline style specifically
+    expect(element.style.height).toBe('')
+  })
+
+  it('should pass props correctly to a component wrapped with createNode', () => {
+    // Define a functional component that expects a height prop
+    const Fun = ({ height }: { height: string }) => {
+      return Div({
+        children: `Height is ${height}`,
+        'data-testid': 'fun-component',
+        props: { 'data-height': height }, // Pass it through to DOM for verification
+      }).render()
+    }
+
+    // Wrap it with createNode
+    const MyFun = createNode(Fun)
+
+    // Render with props passed via the 'props' object
+    const App = MyFun({ props: { height: '200px' } })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('fun-component')
+
+    // Verify the prop was received by the component
+    expect(element).toHaveTextContent('Height is 200px')
+    expect(element).toHaveAttribute('data-height', '200px')
+  })
+
+  it('should pass props correctly to a component wrapped with Node()', () => {
+    // Define a functional component that expects a height prop
+    const Fun = ({ height }: { height: string }) => {
+      return Div({
+        children: `Height is ${height}`,
+        'data-testid': 'node-fun-component',
+        props: { 'data-height': height },
+      }).render()
+    }
+
+    // Render using Node() factory with props passed via the 'props' object
+    const App = Node(Fun, { props: { height: '300px' } })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('node-fun-component')
+
+    // Verify the prop was received by the component
+    expect(element).toHaveTextContent('Height is 300px')
+    expect(element).toHaveAttribute('data-height', '300px')
+  })
+
   // Verifies that a `Div` component renders correctly in the DOM even without any explicit props, ensuring its basic existence.
   it('should render an empty prop Div node', () => {
     // Create an instance of the Div component without any props.
@@ -105,5 +169,45 @@ describe('Basic Rendering', () => {
     // Assert the parent-child relationship for the nested elements.
     expect(getByText('Nested Text').parentElement?.tagName).toBe('DIV')
     expect(getByText('Nested Text').parentElement?.parentElement?.tagName).toBe('DIV')
+  })
+
+  it('should not leak internal MeoNode processing props to rendered DOM elements', () => {
+    // Create a Div with internal MeoNode props that should be filtered out during rendering
+    const App = Div({
+      children: 'Test Content',
+      css: { color: 'red', fontSize: '16px' },
+      props: { 'data-custom': 'value' }, // This maps to internal nativeProps
+      disableEmotion: false,
+      // Regular DOM props that SHOULD be passed through
+      id: 'test-div',
+      className: 'test-class',
+      'data-testid': 'test-element',
+    })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('test-element') as HTMLElement
+
+    // Assert that the element exists and has the expected text
+    expect(element).toBeInTheDocument()
+    expect(element).toHaveTextContent('Test Content')
+
+    // Assert that regular DOM props are present
+    expect(element).toHaveAttribute('id', 'test-div')
+    expect(element).toHaveClass('test-class')
+    expect(element).toHaveAttribute('data-testid', 'test-element')
+    expect(element).toHaveAttribute('data-custom', 'value') // from props (mapped to nativeProps)
+
+    // Assert that internal MeoNode props are NOT present as attributes
+    expect(element).not.toHaveAttribute('css')
+    expect(element).not.toHaveAttribute('nativeProps')
+    expect(element).not.toHaveAttribute('props')
+    expect(element).not.toHaveAttribute('disableEmotion')
+    expect(element).not.toHaveAttribute('node') // from MeoNodeUnmounter
+
+    // Additional check: verify that the element doesn't have any attribute with "[object Object]" value
+    // This would indicate a leaked object prop
+    const attributes = Array.from(element.attributes)
+    const hasObjectValue = attributes.some(attr => attr.value === '[object Object]')
+    expect(hasObjectValue).toBe(false)
   })
 })
