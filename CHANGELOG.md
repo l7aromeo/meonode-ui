@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.13] - 2025-11-23
+
+### Fix
+- **props**: improve prop handling and prevent leakage ([`73cc696`](https://github.com/l7aromeo/meonode-ui/commit/73cc696b3df8c1bd2ddef789de58febc6cd2f1c5))
+  - This commit refactors prop handling within the MeoNode ecosystem to ensure that internal processing props are not leaked to the DOM.
+  - Key changes:
+    - The `MeoNodeUnmounter` is updated to correctly isolate and pass through props intended for the underlying DOM element, improving compatibility with libraries like MUI.
+    - Internal props such as `node`, `css`, and `disableEmotion` are now explicitly prevented from being rendered as HTML attributes.
+    - Added comprehensive tests to verify that standard HTML attributes are passed through while internal props are successfully filtered out.
+  - This improves the robustness and predictability of component rendering.
+
+### Test
+- **props**: add tests for prop handling and leakage ([`a508e10`](https://github.com/l7aromeo/meonode-ui/commit/a508e107539d9ce84e8d99b63a0af329b28f3249))
+  - Added new tests to verify that component props are correctly passed as HTML attributes, handle createNode and Node() correctly, and crucially, that internal MeoNode props are not leaked to the DOM.
+
+### Chore
+- **core**: remove unnecessary type assertion from finalChildren assignment ([`827b3ef`](https://github.com/l7aromeo/meonode-ui/commit/827b3ef4490bca08d58ef5fe1fd885aadbbb1524))
+
 ## [0.4.12] - 2025-11-21
 
 ### Feat
