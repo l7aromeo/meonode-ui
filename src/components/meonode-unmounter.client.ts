@@ -21,7 +21,10 @@ import type { NodeInstance } from '@src/types/node.type.js'
  * @param {ReactNode} [props.children] The children to be rendered by this component.
  * @returns {ReactNode} The `children` passed to the component.
  */
-export default function MeoNodeUnmounter({ node, children, ...rest }: { node: NodeInstance; children?: ReactNode }): ReactNode {
+export default function MeoNodeUnmounter({ children, ...props }: { node: NodeInstance; children?: ReactNode }): ReactNode {
+  // Extract node from props, excluding it from rest
+  const { node, ...rest } = props
+
   const onUnmount = useEffectEvent(() => {
     if (node.stableKey) {
       BaseNode.elementCache.delete(node.stableKey)
@@ -42,7 +45,10 @@ export default function MeoNodeUnmounter({ node, children, ...rest }: { node: No
     return () => onUnmount()
   }, [])
 
-  if (isValidElement(children)) {
+  // If children is a valid React element and we have additional props (from cloneElement),
+  // clone it with those props. This allows libraries like MUI to inject implicit props.
+  // The `node` prop is explicitly excluded to prevent it from leaking to the DOM.
+  if (isValidElement(children) && Object.keys(rest).length > 0) {
     return cloneElement(children, rest)
   }
 
