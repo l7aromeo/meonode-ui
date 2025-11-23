@@ -2,236 +2,354 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.14] - 2025-11-23
+
+### Perf
+
+- **cache**: enforce dependency-based caching with shouldCacheElement helper ([
+  `0df9b3b`](https://github.com/l7aromeo/meonode-ui/commit/0df9b3b28c7874acbf33826ab7bb17f8b0464250))
+    - Introduces NodeUtil.shouldCacheElement() helper to centralize and enforce the opt-in caching strategy where only
+      nodes with explicit dependencies are cached
+    - Completes the memory optimization by closing loopholes where nodes without dependencies were still being cached
+      based on stableKey alone
+    - Replaces 4 inconsistent cache eligibility checks in BaseNode.render():
+        - Cache lookup for parent nodes
+        - Cache lookup for child nodes
+        - Cache storage during rendering
+        - MeoNodeUnmounter wrapping decision
+    - Impact: Reduces memory usage, ensures mount tracking and cache operations stay in sync, improves code
+      maintainability
+
+### Test
+
+- **memoization**: refine test to assert precise cache size after rendering components ([
+  `8ded697`](https://github.com/l7aromeo/meonode-ui/commit/8ded6974cc1565c384abe1a3ca54e1f7bc8a9619))
+
+### Chore
+
+- **type**: remove src/types/env.d.ts as it is no longer needed
+
 ## [0.4.13] - 2025-11-23
 
 ### Fix
-- **props**: improve prop handling and prevent leakage ([`73cc696`](https://github.com/l7aromeo/meonode-ui/commit/73cc696b3df8c1bd2ddef789de58febc6cd2f1c5))
-  - This commit refactors prop handling within the MeoNode ecosystem to ensure that internal processing props are not leaked to the DOM.
-  - Key changes:
-    - The `MeoNodeUnmounter` is updated to correctly isolate and pass through props intended for the underlying DOM element, improving compatibility with libraries like MUI.
-    - Internal props such as `node`, `css`, and `disableEmotion` are now explicitly prevented from being rendered as HTML attributes.
-    - Added comprehensive tests to verify that standard HTML attributes are passed through while internal props are successfully filtered out.
-  - This improves the robustness and predictability of component rendering.
+
+- **props**: improve prop handling and prevent leakage ([
+  `73cc696`](https://github.com/l7aromeo/meonode-ui/commit/73cc696b3df8c1bd2ddef789de58febc6cd2f1c5))
+    - This commit refactors prop handling within the MeoNode ecosystem to ensure that internal processing props are not
+      leaked to the DOM.
+    - Key changes:
+        - The `MeoNodeUnmounter` is updated to correctly isolate and pass through props intended for the underlying DOM
+          element, improving compatibility with libraries like MUI.
+        - Internal props such as `node`, `css`, and `disableEmotion` are now explicitly prevented from being rendered as
+          HTML attributes.
+        - Added comprehensive tests to verify that standard HTML attributes are passed through while internal props are
+          successfully filtered out.
+    - This improves the robustness and predictability of component rendering.
 
 ### Test
-- **props**: add tests for prop handling and leakage ([`a508e10`](https://github.com/l7aromeo/meonode-ui/commit/a508e107539d9ce84e8d99b63a0af329b28f3249))
-  - Added new tests to verify that component props are correctly passed as HTML attributes, handle createNode and Node() correctly, and crucially, that internal MeoNode props are not leaked to the DOM.
+
+- **props**: add tests for prop handling and leakage ([
+  `a508e10`](https://github.com/l7aromeo/meonode-ui/commit/a508e107539d9ce84e8d99b63a0af329b28f3249))
+    - Added new tests to verify that component props are correctly passed as HTML attributes, handle createNode and
+      Node() correctly, and crucially, that internal MeoNode props are not leaked to the DOM.
 
 ### Chore
-- **core**: remove unnecessary type assertion from finalChildren assignment ([`827b3ef`](https://github.com/l7aromeo/meonode-ui/commit/827b3ef4490bca08d58ef5fe1fd885aadbbb1524))
+
+- **core**: remove unnecessary type assertion from finalChildren assignment ([
+  `827b3ef`](https://github.com/l7aromeo/meonode-ui/commit/827b3ef4490bca08d58ef5fe1fd885aadbbb1524))
 
 ## [0.4.12] - 2025-11-21
 
 ### Feat
-- **build**: migrate from Babel to Rollup with ESM and CJS support ([`70326a1`](https://github.com/l7aromeo/meonode-ui/commit/70326a107259c095d571b838dda15ffbf845af1d))
-  - Replace Babel build system with Rollup configuration to prevent output legacy javascript code
-  - Add support for both ESM and CJS output formats
-  - Update package.json exports to point to new build outputs
-  - Add Rollup plugins for TypeScript, commonjs, minification, and preserve directives
-  - Remove Babel-related dependencies and configuration files
-  - Update tsconfig.json to use 'preserve' module setting and bundler resolution
-  - Configure build to output to separate ESM and CJS directories
+
+- **build**: migrate from Babel to Rollup with ESM and CJS support ([
+  `70326a1`](https://github.com/l7aromeo/meonode-ui/commit/70326a107259c095d571b838dda15ffbf845af1d))
+    - Replace Babel build system with Rollup configuration to prevent output legacy javascript code
+    - Add support for both ESM and CJS output formats
+    - Update package.json exports to point to new build outputs
+    - Add Rollup plugins for TypeScript, commonjs, minification, and preserve directives
+    - Remove Babel-related dependencies and configuration files
+    - Update tsconfig.json to use 'preserve' module setting and bundler resolution
+    - Configure build to output to separate ESM and CJS directories
 
 ## [0.4.11] - 2025-11-21
 
 ### Fix
-- **core**: enhance MeoNodeUnmounter cleanup logic and support additional props cloning ([`02c17f7`](https://github.com/l7aromeo/meonode-ui/commit/02c17f7))
-  - Refactor MeoNodeUnmounter to use useEffectEvent for stable cleanup on unmount
-  - Cleanup removes node from BaseNode.elementCache, untracks mount via MountTrackerUtil, unregisters from BaseNode.cacheCleanupRegistry, and clears lastSignature to prevent memory leaks
-  - Support cloning and forwarding additional props to valid React children elements
+
+- **core**: enhance MeoNodeUnmounter cleanup logic and support additional props cloning ([
+  `02c17f7`](https://github.com/l7aromeo/meonode-ui/commit/02c17f7))
+    - Refactor MeoNodeUnmounter to use useEffectEvent for stable cleanup on unmount
+    - Cleanup removes node from BaseNode.elementCache, untracks mount via MountTrackerUtil, unregisters from
+      BaseNode.cacheCleanupRegistry, and clears lastSignature to prevent memory leaks
+    - Support cloning and forwarding additional props to valid React children elements
 
 ### Refactor
-- **node.util**: enhance documentation for utility methods and improve clarity ([`ee42c24`](https://github.com/l7aromeo/meonode-ui/commit/ee42c24))
-- **theme**: reorder ThemeResolverCache methods for clarity ([`cb842c8`](https://github.com/l7aromeo/meonode-ui/commit/cb842c8))
-  - Moved `_generateCacheKey` and `_evict` methods below the main logic in `ThemeResolverCache` for better readability and organization
-  - Removed duplicate declaration of `_instance` property
-  - Kept functionality unchanged, improving code structure and maintainability
+
+- **node.util**: enhance documentation for utility methods and improve clarity ([
+  `ee42c24`](https://github.com/l7aromeo/meonode-ui/commit/ee42c24))
+- **theme**: reorder ThemeResolverCache methods for clarity ([
+  `cb842c8`](https://github.com/l7aromeo/meonode-ui/commit/cb842c8))
+    - Moved `_generateCacheKey` and `_evict` methods below the main logic in `ThemeResolverCache` for better readability
+      and organization
+    - Removed duplicate declaration of `_instance` property
+    - Kept functionality unchanged, improving code structure and maintainability
 
 ### Test
-- **perf**: add memory leak detection test for navigation cycles and improve formatMemory function ([`ba139fc`](https://github.com/l7aromeo/meonode-ui/commit/ba139fc))
-  - Added a new performance test to detect memory leaks during repeated navigation cycles between pages
-  - The test measures heap memory usage before, during, and after navigation, ensuring memory growth stays within acceptable limits
-  - Enhanced the formatMemory utility to correctly handle negative byte values and added JSDoc comments for clarity
-  - Removed an obsolete shallowly equal props performance test to streamline the test suite
-- **unmounter**: add regression test for MeoNodeUnmounter to forward implicit props in MUI RadioGroup integration ([`2ecaabd`](https://github.com/l7aromeo/meonode-ui/commit/2ecaabd))
-  - Added a test to ensure MeoNodeUnmounter correctly forwards props injected via React.cloneElement, addressing issues with libraries like MUI where RadioGroup injects 'checked' and 'onChange' into Radio components
-  - This prevents swallowing of props and verifies proper behavior of controlled radio inputs
-  - Also updated an existing cache size assertion to allow equality, reflecting improved mount tracking
-- **perf**: update react-createelement comparison tests with 5000 nested nodes and fix typings ([`b345ec0`](https://github.com/l7aromeo/meonode-ui/commit/b345ec0))
-  - Changed rerender to use React.cloneElement<any> for proper typing
-  - Updated NUM_NODES constant to 5000 for nested structure tests
-  - Removed redundant comments about node count reduction to prevent stack overflow
+
+- **perf**: add memory leak detection test for navigation cycles and improve formatMemory function ([
+  `ba139fc`](https://github.com/l7aromeo/meonode-ui/commit/ba139fc))
+    - Added a new performance test to detect memory leaks during repeated navigation cycles between pages
+    - The test measures heap memory usage before, during, and after navigation, ensuring memory growth stays within
+      acceptable limits
+    - Enhanced the formatMemory utility to correctly handle negative byte values and added JSDoc comments for clarity
+    - Removed an obsolete shallowly equal props performance test to streamline the test suite
+- **unmounter**: add regression test for MeoNodeUnmounter to forward implicit props in MUI RadioGroup integration ([
+  `2ecaabd`](https://github.com/l7aromeo/meonode-ui/commit/2ecaabd))
+    - Added a test to ensure MeoNodeUnmounter correctly forwards props injected via React.cloneElement, addressing
+      issues with libraries like MUI where RadioGroup injects 'checked' and 'onChange' into Radio components
+    - This prevents swallowing of props and verifies proper behavior of controlled radio inputs
+    - Also updated an existing cache size assertion to allow equality, reflecting improved mount tracking
+- **perf**: update react-createelement comparison tests with 5000 nested nodes and fix typings ([
+  `b345ec0`](https://github.com/l7aromeo/meonode-ui/commit/b345ec0))
+    - Changed rerender to use React.cloneElement<any> for proper typing
+    - Updated NUM_NODES constant to 5000 for nested structure tests
+    - Removed redundant comments about node count reduction to prevent stack overflow
 
 ### Chore
-- **deps**: upgrade devDependencies and update test scripts ([`2ea128e`](https://github.com/l7aromeo/meonode-ui/commit/2ea128e))
-  - add new devDependencies: @emotion/is-prop-valid@1.4.0, @emotion/styled@11.14.1, @mui/material@7.3.5, and related packages
-  - update yarn to version 4.11.0
-  - update test scripts to increase max-old-space-size to 8192 and include react-createelement-comparison.test.ts in test and perf runs
-  - update various package resolutions in yarn.lock to align with new versions and dependencies
-- **babel**: add "builtIns": false to minify plugin configuration ([`e16cdfb`](https://github.com/l7aromeo/meonode-ui/commit/e16cdfb))
+
+- **deps**: upgrade devDependencies and update test scripts ([
+  `2ea128e`](https://github.com/l7aromeo/meonode-ui/commit/2ea128e))
+    - add new devDependencies: @emotion/is-prop-valid@1.4.0, @emotion/styled@11.14.1, @mui/material@7.3.5, and related
+      packages
+    - update yarn to version 4.11.0
+    - update test scripts to increase max-old-space-size to 8192 and include react-createelement-comparison.test.ts in
+      test and perf runs
+    - update various package resolutions in yarn.lock to align with new versions and dependencies
+- **babel**: add "builtIns": false to minify plugin configuration ([
+  `e16cdfb`](https://github.com/l7aromeo/meonode-ui/commit/e16cdfb))
 - **yarn**: update yarnPath to version 4.11.0 ([`ecb6c68`](https://github.com/l7aromeo/meonode-ui/commit/ecb6c68))
 
 ### Docs
-- **CONTRIBUTING**: improve formatting and readability of contribution guidelines ([`a7462ed`](https://github.com/l7aromeo/meonode-ui/commit/a7462ed))
+
+- **CONTRIBUTING**: improve formatting and readability of contribution guidelines ([
+  `a7462ed`](https://github.com/l7aromeo/meonode-ui/commit/a7462ed))
 
 ## [0.4.10] - 2025-11-20
 
 ### Fix
-- **unmounter**: prevent redundant FinalizationRegistry callbacks ([`59f5adf`](https://github.com/l7aromeo/meonode-ui/commit/59f5adf2f553aa49a88d1b44366b004d829ca107))
-  - Explicitly unregister node from cacheCleanupRegistry on unmount
-  - Prevents double cleanup when node is both unmounted and GC'd
-  - Improves cleanup efficiency and reduces unnecessary registry callbacks
+
+- **unmounter**: prevent redundant FinalizationRegistry callbacks ([
+  `59f5adf`](https://github.com/l7aromeo/meonode-ui/commit/59f5adf2f553aa49a88d1b44366b004d829ca107))
+    - Explicitly unregister node from cacheCleanupRegistry on unmount
+    - Prevents double cleanup when node is both unmounted and GC'd
+    - Improves cleanup efficiency and reduces unnecessary registry callbacks
 
 ### Perf
-- **util**: optimize prop processing and child handling ([`be26488`](https://github.com/l7aromeo/meonode-ui/commit/be26488e304629dd13851dfcaa7fedf43ad8b5c3))
-  - Conditional sort: only sort keys if length > 1 (eliminates unnecessary sorts)
-  - Replace for...in with Object.keys() iteration for better performance and safety
-  - Add fast path for single child processing (non-array or 1-element array)
-  - Avoid unnecessary array operations for common single-child case
-  - Performance impact:
-    - Reduced CPU overhead for small prop objects
-    - Faster iteration with Object.keys() vs for...in
-    - Eliminates array map() call for single child components
 
-- **core**: add exception safety and optimize render method ([`5aad000`](https://github.com/l7aromeo/meonode-ui/commit/5aad000335ff29f078a9d40192d5a70fe9b61d12))
-  - Wrap render logic in try-finally to ensure renderContext is always released
-  - Null out workStack slots before releasing to help GC
-  - Pre-allocate finalChildren array to avoid resizing during iteration
-  - Replace non-null assertion with explicit error handling for better debugging
-  - Add object pooling for workStack and renderedElements (reduces GC pressure)
-  - Pool capped at 50 contexts with 2048-item limit to prevent memory issues
-  - Exception safety ensures cleanup even if rendering throws
+- **util**: optimize prop processing and child handling ([
+  `be26488`](https://github.com/l7aromeo/meonode-ui/commit/be26488e304629dd13851dfcaa7fedf43ad8b5c3))
+    - Conditional sort: only sort keys if length > 1 (eliminates unnecessary sorts)
+    - Replace for...in with Object.keys() iteration for better performance and safety
+    - Add fast path for single child processing (non-array or 1-element array)
+    - Avoid unnecessary array operations for common single-child case
+    - Performance impact:
+        - Reduced CPU overhead for small prop objects
+        - Faster iteration with Object.keys() vs for...in
+        - Eliminates array map() call for single child components
+
+- **core**: add exception safety and optimize render method ([
+  `5aad000`](https://github.com/l7aromeo/meonode-ui/commit/5aad000335ff29f078a9d40192d5a70fe9b61d12))
+    - Wrap render logic in try-finally to ensure renderContext is always released
+    - Null out workStack slots before releasing to help GC
+    - Pre-allocate finalChildren array to avoid resizing during iteration
+    - Replace non-null assertion with explicit error handling for better debugging
+    - Add object pooling for workStack and renderedElements (reduces GC pressure)
+    - Pool capped at 50 contexts with 2048-item limit to prevent memory issues
+    - Exception safety ensures cleanup even if rendering throws
 
 ### Test
-- **perf**: add React comparison tests with memory tracking ([`bc66d54`](https://github.com/l7aromeo/meonode-ui/commit/bc66d540c4ffa4ad083322dbdbc201f652ea5314))
-  - Add comprehensive performance comparison between React.createElement and MeoNode
-  - Test both flat (10k nodes) and nested (5k nodes) structures
-  - Include memory usage measurements (initial + after 100 updates)
-  - Reduce nested nodes from 10k to 5k to prevent stack overflow with StyledRenderer
-  - Add table output with time and memory columns for clear comparison
-  - Add GC availability warning for accurate measurements
-  - Provides detailed performance and memory behavior insights during re-renders
-  - Avoids stack overflow in deeply nested test scenarios
 
-- **performance**: enhance performance metrics report formatting and adjust thresholds ([`6f3abe4`](https://github.com/l7aromeo/meonode-ui/commit/6f3abe4442938aa6cd414341fdf2aba25a9ece58))
-  - Improve table formatting for performance metrics
-  - Adjust test thresholds based on optimization results
-  - Enhanced reporting for better visibility into performance characteristics
+- **perf**: add React comparison tests with memory tracking ([
+  `bc66d54`](https://github.com/l7aromeo/meonode-ui/commit/bc66d540c4ffa4ad083322dbdbc201f652ea5314))
+    - Add comprehensive performance comparison between React.createElement and MeoNode
+    - Test both flat (10k nodes) and nested (5k nodes) structures
+    - Include memory usage measurements (initial + after 100 updates)
+    - Reduce nested nodes from 10k to 5k to prevent stack overflow with StyledRenderer
+    - Add table output with time and memory columns for clear comparison
+    - Add GC availability warning for accurate measurements
+    - Provides detailed performance and memory behavior insights during re-renders
+    - Avoids stack overflow in deeply nested test scenarios
+
+- **performance**: enhance performance metrics report formatting and adjust thresholds ([
+  `6f3abe4`](https://github.com/l7aromeo/meonode-ui/commit/6f3abe4442938aa6cd414341fdf2aba25a9ece58))
+    - Improve table formatting for performance metrics
+    - Adjust test thresholds based on optimization results
+    - Enhanced reporting for better visibility into performance characteristics
 
 ## [0.4.9] - 2025-11-19
 
 ### Feat
-- **build**: add support for @tests alias and include tests folder in build and test configs ([`4dfd165`](https://github.com/l7aromeo/meonode-ui/commit/4dfd165fa52f93fe63ac7338344b91dfa5622c4b))
+
+- **build**: add support for @tests alias and include tests folder in build and test configs ([
+  `4dfd165`](https://github.com/l7aromeo/meonode-ui/commit/4dfd165fa52f93fe63ac7338344b91dfa5622c4b))
 
 ### Perf
-- **core**: optimize rendering, caching, and memory management ([`4f599be`](https://github.com/l7aromeo/meonode-ui/commit/4f599be44458fef208a30849545606b060c4ec6b))
-  - Reworks the core rendering loop to use a more efficient, manually-managed work stack with exponential growth, reducing reallocations and improving performance for deep and wide node trees.
-  - Optimizes stable key generation by removing expensive shallow equality checks in favor of strict reference equality, significantly speeding up prop processing for cached components.
-  - Implements a high-performance MinHeap-based LRU cache eviction strategy for prop processing, replacing a slower sort-based method. This ensures that the most relevant props are kept in the cache with minimal overhead.
-  - Introduces CSS object hashing to accelerate prop signature generation, avoiding costly serialization of large style objects.
-  - Fixes several memory leaks by ensuring proper cleanup of node properties (lastSignature, lastPropsObj) and unregistering nodes from the cache cleanup registry upon eviction.
-  - Decouples element cache deletion from mount tracking to prevent race conditions and ensure reliable cleanup during component unmounting.
+
+- **core**: optimize rendering, caching, and memory management ([
+  `4f599be`](https://github.com/l7aromeo/meonode-ui/commit/4f599be44458fef208a30849545606b060c4ec6b))
+    - Reworks the core rendering loop to use a more efficient, manually-managed work stack with exponential growth,
+      reducing reallocations and improving performance for deep and wide node trees.
+    - Optimizes stable key generation by removing expensive shallow equality checks in favor of strict reference
+      equality, significantly speeding up prop processing for cached components.
+    - Implements a high-performance MinHeap-based LRU cache eviction strategy for prop processing, replacing a slower
+      sort-based method. This ensures that the most relevant props are kept in the cache with minimal overhead.
+    - Introduces CSS object hashing to accelerate prop signature generation, avoiding costly serialization of large
+      style objects.
+    - Fixes several memory leaks by ensuring proper cleanup of node properties (lastSignature, lastPropsObj) and
+      unregistering nodes from the cache cleanup registry upon eviction.
+    - Decouples element cache deletion from mount tracking to prevent race conditions and ensure reliable cleanup during
+      component unmounting.
 
 ### Refactor
-- **build**: rename constants directory from constants to constant and update imports accordingly ([`9531947`](https://github.com/l7aromeo/meonode-ui/commit/9531947af9b304c11c0865e8deafa1a633220753))
+
+- **build**: rename constants directory from constants to constant and update imports accordingly ([
+  `9531947`](https://github.com/l7aromeo/meonode-ui/commit/9531947af9b304c11c0865e8deafa1a633220753))
 
 ### Test
-- **perf**: overhaul performance test suite ([`e3bd6ac`](https://github.com/l7aromeo/meonode-ui/commit/e3bd6ac6ceca474f935da644ff0c23b2f1de7692))
-  - Introduces a new, structured performance reporting system using cli-table3 for clear, grouped metrics.
-  - Refactors the entire performance test suite into logical groups: Layout Rendering, Memory Management, and Prop Processing.
-  - Adds comprehensive memory leak detection tests for heavy state changes and repeated mount/unmount cycles, using forced garbage collection for more accurate heap analysis.
-  - Extracts the large, complex CSS object into a dedicated test constant for better separation of concerns.
-  - Updates memoization tests to align with the new, weighted LRU cache eviction scoring.
+
+- **perf**: overhaul performance test suite ([
+  `e3bd6ac`](https://github.com/l7aromeo/meonode-ui/commit/e3bd6ac6ceca474f935da644ff0c23b2f1de7692))
+    - Introduces a new, structured performance reporting system using cli-table3 for clear, grouped metrics.
+    - Refactors the entire performance test suite into logical groups: Layout Rendering, Memory Management, and Prop
+      Processing.
+    - Adds comprehensive memory leak detection tests for heavy state changes and repeated mount/unmount cycles, using
+      forced garbage collection for more accurate heap analysis.
+    - Extracts the large, complex CSS object into a dedicated test constant for better separation of concerns.
+    - Updates memoization tests to align with the new, weighted LRU cache eviction scoring.
 
 ### Chore
-- **deps**: update dependencies including typescript-eslint to 8.47.0 and add cli-table3 0.6.5 ([`6064555`](https://github.com/l7aromeo/meonode-ui/commit/6064555f0108ed47f9b31e98c4758f7449a67ff2))
+
+- **deps**: update dependencies including typescript-eslint to 8.47.0 and add cli-table3 0.6.5 ([
+  `6064555`](https://github.com/l7aromeo/meonode-ui/commit/6064555f0108ed47f9b31e98c4758f7449a67ff2))
 
 ## [0.4.8] - 2025-11-18
 
 ### Feat
-- **client**: add generic type parameter to render function for stronger type safety ([`90a770e`](https://github.com/l7aromeo/meonode-ui/commit/90a770e))
-- **core**: improve BaseNode rendering with iterative traversal and memory optimizations ([`1d5330a`](https://github.com/l7aromeo/meonode-ui/commit/1d5330a))
-  - Introduce WorkItem interface to represent nodes in the iterative work stack during BaseNode rendering.
-  - Replace recursive render traversal with an iterative depth-first approach using a preallocated workStack array for better performance and reduced call stack usage.
-  - Implement dynamic resizing of workStack array to handle arbitrary tree sizes efficiently.
-  - Update BaseNode’s internal caching fields (`lastPropsRef` and `lastSignature`) to be public and consistently used for stable key generation.
-  - Modify MeoNodeUnmounter component to accept BaseNode instance and clear its `lastPropsRef` and `lastSignature` on unmount to prevent memory leaks.
-  - Refine type annotations across node utilities and factory functions for stronger type safety (`Record<string, unknown>` instead of `any`).
-  - Optimize critical prop extraction logic by replacing Set and startsWith checks with faster inline charCode comparisons.
-  - Clean up and clarify utility methods related to prop signature creation, shallow equality, and portal management.
-  - Improve node.util.ts by adjusting caching strategies, prop categorization, and React element handling for better robustness and maintainability.
+
+- **client**: add generic type parameter to render function for stronger type safety ([
+  `90a770e`](https://github.com/l7aromeo/meonode-ui/commit/90a770e))
+- **core**: improve BaseNode rendering with iterative traversal and memory optimizations ([
+  `1d5330a`](https://github.com/l7aromeo/meonode-ui/commit/1d5330a))
+    - Introduce WorkItem interface to represent nodes in the iterative work stack during BaseNode rendering.
+    - Replace recursive render traversal with an iterative depth-first approach using a preallocated workStack array for
+      better performance and reduced call stack usage.
+    - Implement dynamic resizing of workStack array to handle arbitrary tree sizes efficiently.
+    - Update BaseNode’s internal caching fields (`lastPropsRef` and `lastSignature`) to be public and consistently used
+      for stable key generation.
+    - Modify MeoNodeUnmounter component to accept BaseNode instance and clear its `lastPropsRef` and `lastSignature` on
+      unmount to prevent memory leaks.
+    - Refine type annotations across node utilities and factory functions for stronger type safety (
+      `Record<string, unknown>` instead of `any`).
+    - Optimize critical prop extraction logic by replacing Set and startsWith checks with faster inline charCode
+      comparisons.
+    - Clean up and clarify utility methods related to prop signature creation, shallow equality, and portal management.
+    - Improve node.util.ts by adjusting caching strategies, prop categorization, and React element handling for better
+      robustness and maintainability.
 
 ### Fixes
-- **navigation-cache-manager**: add proper typing and global window declaration for cleanup flag ([`6180d40`](https://github.com/l7aromeo/meonode-ui/commit/6180d40))
+
+- **navigation-cache-manager**: add proper typing and global window declaration for cleanup flag ([
+  `6180d40`](https://github.com/l7aromeo/meonode-ui/commit/6180d40))
 
 ### Refactor
-- improve typings and type safety in theme util and styled renderer ([`dbe1f33`](https://github.com/l7aromeo/meonode-ui/commit/dbe1f33))
-  - Added explicit TypeScript types (e.g., CssProp, Record<string, unknown>) for variables and function signatures in `styled-renderer.client.ts` and `theme.util.ts`.
-  - Updated cache maps to use more precise generic types for better type inference and safety.
-  - Enhanced `resolveObjWithTheme` and related theme resolution logic with stronger typing and nullish coalescing.
-  - Improved error handling for invalid theme path values.
-  - Applied copy-on-write pattern with properly typed arrays and objects during theme resolution.
-  - Strengthened type guards, e.g., `isPlainObject` type predicate.
-  - Minor fixes to variable declarations with explicit types for clarity and consistency.
+
+- improve typings and type safety in theme util and styled renderer ([
+  `dbe1f33`](https://github.com/l7aromeo/meonode-ui/commit/dbe1f33))
+    - Added explicit TypeScript types (e.g., CssProp, Record<string, unknown>) for variables and function signatures in
+      `styled-renderer.client.ts` and `theme.util.ts`.
+    - Updated cache maps to use more precise generic types for better type inference and safety.
+    - Enhanced `resolveObjWithTheme` and related theme resolution logic with stronger typing and nullish coalescing.
+    - Improved error handling for invalid theme path values.
+    - Applied copy-on-write pattern with properly typed arrays and objects during theme resolution.
+    - Strengthened type guards, e.g., `isPlainObject` type predicate.
+    - Minor fixes to variable declarations with explicit types for clarity and consistency.
 
 ### Chore
-- **babel**: update preset-env targets and expand plugin exclusions ([`f38cd24`](https://github.com/l7aromeo/meonode-ui/commit/f38cd24))
-  - Set preset-env targets to support ES modules
-  - Enable bugfixes option
-  - Add multiple plugins to exclude list for better optimization
-  - Clean up formatting of root, alias, extensions, and exclude fields
+
+- **babel**: update preset-env targets and expand plugin exclusions ([
+  `f38cd24`](https://github.com/l7aromeo/meonode-ui/commit/f38cd24))
+    - Set preset-env targets to support ES modules
+    - Enable bugfixes option
+    - Add multiple plugins to exclude list for better optimization
+    - Clean up formatting of root, alias, extensions, and exclude fields
 
 ### Test
-- **performance**: add comprehensive performance tests and metrics reporting ([`c3d7a81`](https://github.com/l7aromeo/meonode-ui/commit/c3d7a81))
-  - Add detailed performance tests measuring render times for realistic layouts, 10,000 flat nodes, and 10,000 deeply nested nodes.
-  - Introduce a heavy state changes test to detect memory leaks and ensure responsiveness under frequent updates.
-  - Collect and log performance metrics including median render times and memory usage for analysis.
-  - Add tests for stableKey generation performance with identical, shallowly equal, unique, large, and complex CSS props.
-  - Enhance test suite with CSS styling for better visualization and interaction during tests.
-  - Improve cleanup and reporting to avoid resource leaks and provide clearer performance insights.
+
+- **performance**: add comprehensive performance tests and metrics reporting ([
+  `c3d7a81`](https://github.com/l7aromeo/meonode-ui/commit/c3d7a81))
+    - Add detailed performance tests measuring render times for realistic layouts, 10,000 flat nodes, and 10,000 deeply
+      nested nodes.
+    - Introduce a heavy state changes test to detect memory leaks and ensure responsiveness under frequent updates.
+    - Collect and log performance metrics including median render times and memory usage for analysis.
+    - Add tests for stableKey generation performance with identical, shallowly equal, unique, large, and complex CSS
+      props.
+    - Enhance test suite with CSS styling for better visualization and interaction during tests.
+    - Improve cleanup and reporting to avoid resource leaks and provide clearer performance insights.
 
 ## [0.4.7] - 2025-11-17
 
 ### Fixes
-- **core/cache:** optimize navigation cache debounce timing and enhance stableKey handling ([`fff6f207`](https://github.com/l7aromeo/meonode-ui/commit/fff6f2070a06cc5ad461a2f992b111fb957fae6f))
-  - Adjust navigation cleanup debounce duration dynamically based on cache size for better performance.
-  - Change stableKey and _lastSignature to be optional to better represent their possible undefined state.
-  - Refactor _getStableKey to return undefined on server instead of empty string.
-  - Optimize critical props extraction by introducing NodeUtil.extractCriticalProps helper.
-  - Improve client-side caching logic to avoid lookups when stableKey is absent.
-  - Remove unused imports and redundant code in node.util.ts; improve shallowEqual implementation.
-  - Update createPropSignature to return undefined on server and use getElementTypeName directly.
-  - Add detailed comments and refine hashString combining FNV-1a and djb2 hashes for robustness.
+
+- **core/cache:** optimize navigation cache debounce timing and enhance stableKey handling ([
+  `fff6f207`](https://github.com/l7aromeo/meonode-ui/commit/fff6f2070a06cc5ad461a2f992b111fb957fae6f))
+    - Adjust navigation cleanup debounce duration dynamically based on cache size for better performance.
+    - Change stableKey and _lastSignature to be optional to better represent their possible undefined state.
+    - Refactor _getStableKey to return undefined on server instead of empty string.
+    - Optimize critical props extraction by introducing NodeUtil.extractCriticalProps helper.
+    - Improve client-side caching logic to avoid lookups when stableKey is absent.
+    - Remove unused imports and redundant code in node.util.ts; improve shallowEqual implementation.
+    - Update createPropSignature to return undefined on server and use getElementTypeName directly.
+    - Add detailed comments and refine hashString combining FNV-1a and djb2 hashes for robustness.
 
 ## [0.4.6] - 2025-11-17
 
 ### Fixes
-- **core/cache:** enhance memoization & caching system to prevent memory leaks and ensure safe lifecycle management ([`253d7d00`](https://github.com/l7aromeo/meonode-ui/commit/253d7d006121dc588a51580d5120c7123a5f8777))
+
+- **core/cache:** enhance memoization & caching system to prevent memory leaks and ensure safe lifecycle management ([
+  `253d7d00`](https://github.com/l7aromeo/meonode-ui/commit/253d7d006121dc588a51580d5120c7123a5f8777))
   This introduces a robust, three-layered cleanup strategy to ensure cache integrity:
-  1. An immediate, lifecycle-driven cleanup via the new `MeoNodeUnmounter` component.
-  2. A debounced, event-driven cleanup for SPA navigations via `NavigationCacheManagerUtil`.
-  3. A final, GC-driven safety net using the `FinalizationRegistry` API.
+    1. An immediate, lifecycle-driven cleanup via the new `MeoNodeUnmounter` component.
+    2. A debounced, event-driven cleanup for SPA navigations via `NavigationCacheManagerUtil`.
+    3. A final, GC-driven safety net using the `FinalizationRegistry` API.
 
 ### Refactor
+
 - **core:** migrate core logic from `src/helper/` to a new `src/util/` directory for better separation of concerns.
 - **core:** extract internal utility functions from `core.node.ts` into `node.util.ts`.
 - **core:** make internal caches on `BaseNode` public to support the new externalized management architecture.
 
 ### Chore
+
 - **tooling:** enable TypeScript's `strict: true` mode and update codebase to be fully compliant.
 - **tooling:** add CommonJS (`require`) exports to `package.json` for improved module compatibility.
-- **tooling:** add `NODE_OPTIONS='--expose-gc'` to the test script to allow for explicit garbage collection during tests.
-- **tests:** refine test suite by standardizing `afterEach` hooks and updating memoization tests to directly validate internal caching.
+- **tooling:** add `NODE_OPTIONS='--expose-gc'` to the test script to allow for explicit garbage collection during
+  tests.
+- **tests:** refine test suite by standardizing `afterEach` hooks and updating memoization tests to directly validate
+  internal caching.
 
 ## [0.4.5] - 2025-11-15
 
 ### Feat
-- **cache**: implement robust cache management and theme caching ([`9ed749f6`](https://github.com/l7aromeo/meonode-ui/commit/9ed749f6d877fdc8b6a736788add13225b07dd63))
+
+- **cache**: implement robust cache management and theme caching ([
+  `9ed749f6`](https://github.com/l7aromeo/meonode-ui/commit/9ed749f6d877fdc8b6a736788add13225b07dd63))
   Refactor NavigationCacheManager for robustness, add memory monitoring and auto-cleanup.
   Implement LRU eviction for ThemeResolverCache and integrate with BaseNode cache clearing.
 
 ### Refactor
-- **test**: split node.test.ts into smaller, more focused test files ([`930f998e`](https://github.com/l7aromeo/meonode-ui/commit/930f998e5f91faef3ff42fcafc6b02fc23f422ff))
+
+- **test**: split node.test.ts into smaller, more focused test files ([
+  `930f998e`](https://github.com/l7aromeo/meonode-ui/commit/930f998e5f91faef3ff42fcafc6b02fc23f422ff))
   This commit refactors the test suite by splitting the monolithic `node.test.ts`
   file into several smaller, more focused test files, each covering a specific
   aspect of the BaseNode functionality.
@@ -243,152 +361,241 @@ All notable changes to this project will be documented in this file.
   preserving the test's original intent of verifying cache collision prevention.
 
 ### Fix
-- **core**: pass disableEmotion flag to _renderProcessedNode for improved processing ([`b68e3d4`](https://github.com/l7aromeo/meonode-ui/commit/b68e3d49a732ee590805a0298f733b800a9b172d))
+
+- **core**: pass disableEmotion flag to _renderProcessedNode for improved processing ([
+  `b68e3d4`](https://github.com/l7aromeo/meonode-ui/commit/b68e3d49a732ee590805a0298f733b800a9b172d))
 
 ### Chore
-- **test**: adjust performance test cleanup by removing cache clearing from afterEach ([`f72cea5e`](https://github.com/l7aromeo/meonode-ui/commit/f72cea5ef983fdaba012a7d446b58c7da06f5e1a))
+
+- **test**: adjust performance test cleanup by removing cache clearing from afterEach ([
+  `f72cea5e`](https://github.com/l7aromeo/meonode-ui/commit/f72cea5ef983fdaba012a7d446b58c7da06f5e1a))
 
 ## [0.4.4] - 2025-11-15
 
 ### Perf
-- **core**: implement intelligent caching and memory management ([`0e5671b`](https://github.com/l7aromeo/meonode-ui/commit/0e5671b36189c964d66676ef633f3ccdbd9004e2))
-  Introduces a sophisticated caching and memory management system to prevent memory leaks and improve performance in Single Page Applications (SPAs).
 
-  This new system intelligently tracks mounted components and automatically cleans up caches of unmounted components during navigation events.
+- **core**: implement intelligent caching and memory management ([
+  `0e5671b`](https://github.com/l7aromeo/meonode-ui/commit/0e5671b36189c964d66676ef633f3ccdbd9004e2))
+  Introduces a sophisticated caching and memory management system to prevent memory leaks and improve performance in
+  Single Page Applications (SPAs).
+
+  This new system intelligently tracks mounted components and automatically cleans up caches of unmounted components
+  during navigation events.
 
   Key features and improvements include:
 
-  - **Navigation-aware Cache Eviction:** A new `NavigationCacheManager` listens for browser navigation events (popstate, pushState, etc.) and triggers a safe cleanup of the element cache. This prevents the cache from growing indefinitely with stale entries from previous pages.
+    - **Navigation-aware Cache Eviction:** A new `NavigationCacheManager` listens for browser navigation events (
+      popstate, pushState, etc.) and triggers a safe cleanup of the element cache. This prevents the cache from growing
+      indefinitely with stale entries from previous pages.
 
-  - **Mount Tracking:** A `MountTracker` class now keeps a record of all mounted `BaseNode` instances. This allows the cache eviction logic to accurately determine which components are safe to remove from the cache.
+    - **Mount Tracking:** A `MountTracker` class now keeps a record of all mounted `BaseNode` instances. This allows the
+      cache eviction logic to accurately determine which components are safe to remove from the cache.
 
-  - **Advanced Eviction Policies:** The `SafeCacheManager` implements several eviction policies, including evicting unmounted components, old unmounted components, and an emergency eviction policy for high memory pressure scenarios.
+    - **Advanced Eviction Policies:** The `SafeCacheManager` implements several eviction policies, including evicting
+      unmounted components, old unmounted components, and an emergency eviction policy for high memory pressure
+      scenarios.
 
-  - **Memory-Safe Portal System:** The portal implementation has been refactored to use a `WeakMap`. This ensures that portal-related DOM elements and React roots are automatically garbage collected when the corresponding `BaseNode` instance is no longer in use, preventing a common source of memory leaks.
+    - **Memory-Safe Portal System:** The portal implementation has been refactored to use a `WeakMap`. This ensures that
+      portal-related DOM elements and React roots are automatically garbage collected when the corresponding `BaseNode`
+      instance is no longer in use, preventing a common source of memory leaks.
 
-  - **Improved Cache Entry Metadata:** The element cache entries now store additional metadata, such as creation timestamp, access count, and a `WeakRef` to the node instance, enabling more intelligent eviction decisions.
+    - **Improved Cache Entry Metadata:** The element cache entries now store additional metadata, such as creation
+      timestamp, access count, and a `WeakRef` to the node instance, enabling more intelligent eviction decisions.
 
-  - **Enhanced Stability:** Component identifiers for caching are now generated using a `WeakMap`, providing more stable and reliable keys than relying on component names, which can be affected by minification.
+    - **Enhanced Stability:** Component identifiers for caching are now generated using a `WeakMap`, providing more
+      stable and reliable keys than relying on component names, which can be affected by minification.
 
-  - **Comprehensive Test Coverage:** Added a suite of new integration tests to validate the caching and memory management system. These tests cover key scenarios including cache collision, rapid navigation, React 18 Strict Mode compatibility, large prop object fingerprinting, and LRU eviction logic.
+    - **Comprehensive Test Coverage:** Added a suite of new integration tests to validate the caching and memory
+      management system. These tests cover key scenarios including cache collision, rapid navigation, React 18 Strict
+      Mode compatibility, large prop object fingerprinting, and LRU eviction logic.
 
 ### Fix
-- **core**: simplify property assignment in common helper ([`312af57`](https://github.com/l7aromeo/meonode-ui/commit/312af574712202a25bdd62fab94441a937f159f2))
+
+- **core**: simplify property assignment in common helper ([
+  `312af57`](https://github.com/l7aromeo/meonode-ui/commit/312af574712202a25bdd62fab94441a937f159f2))
 
 ### Refactor
-- **core**: add ElementCacheEntry interface for memoization and update css prop type ([`6a8381c`](https://github.com/l7aromeo/meonode-ui/commit/6a8381c4c85cb22df4ba398637401d420461e413))
+
+- **core**: add ElementCacheEntry interface for memoization and update css prop type ([
+  `6a8381c`](https://github.com/l7aromeo/meonode-ui/commit/6a8381c4c85cb22df4ba398637401d420461e413))
 
 ## [0.4.3] - 2025-11-14
 
 ### Docs
-- **core**: add detailed comments to rendering methods ([`731c83e`](https://github.com/l7aromeo/meonode-ui/commit/731c83e))
+
+- **core**: add detailed comments to rendering methods ([
+  `731c83e`](https://github.com/l7aromeo/meonode-ui/commit/731c83e))
 
 ### Fix
-- **core**: adjust isStyledComponent logic to improve style handling ([`ff7a59e`](https://github.com/l7aromeo/meonode-ui/commit/ff7a59e))
+
+- **core**: adjust isStyledComponent logic to improve style handling ([
+  `ff7a59e`](https://github.com/l7aromeo/meonode-ui/commit/ff7a59e))
 
 ### Refactor
-- **core**: simplify _processProps by removing style prop handling ([`b3570b4`](https://github.com/l7aromeo/meonode-ui/commit/b3570b4))
+
+- **core**: simplify _processProps by removing style prop handling ([
+  `b3570b4`](https://github.com/l7aromeo/meonode-ui/commit/b3570b4))
 
 ## [0.4.2] - 2025-11-14
 
 ### Fix
-- **core**: remove deps property from props since it should not be passed to element attribute ([`6b01cbe`](https://github.com/l7aromeo/meonode-ui/commit/6b01cbe))
+
+- **core**: remove deps property from props since it should not be passed to element attribute ([
+  `6b01cbe`](https://github.com/l7aromeo/meonode-ui/commit/6b01cbe))
 
 ## [0.4.1] - 2025-11-14
 
 ### Test
-- **node**: enhance dependency and memoization tests with real-world scenarios ([`d7452fa`](https://github.com/l7aromeo/meonode-ui/commit/d7452fae9b3ef22a82dc83210851849d82de479f))
+
+- **node**: enhance dependency and memoization tests with real-world scenarios ([
+  `d7452fa`](https://github.com/l7aromeo/meonode-ui/commit/d7452fae9b3ef22a82dc83210851849d82de479f))
 
 ### Fix
-- **core**: enhance error handling and improve style property detection ([`ca79c27`](https://github.com/l7aromeo/meonode-ui/commit/ca79c277cdfea5b62b54779ec2492518681639d1))
+
+- **core**: enhance error handling and improve style property detection ([
+  `ca79c27`](https://github.com/l7aromeo/meonode-ui/commit/ca79c277cdfea5b62b54779ec2492518681639d1))
 
 ### Chore
-- **deps**: update dependencies in package.json for improved stability and performance ([`eba2108`](https://github.com/l7aromeo/meonode-ui/commit/eba21080c953b1c6b6c1bbb6a401257845116f09))
+
+- **deps**: update dependencies in package.json for improved stability and performance ([
+  `eba2108`](https://github.com/l7aromeo/meonode-ui/commit/eba21080c953b1c6b6c1bbb6a401257845116f09))
 
 ### Perf
-- **core**: Optimize prop processing and caching with new signature generation ([`8cf0319`](https://github.com/l7aromeo/meonode-ui/commit/8cf0319fd99c3c8496b6e63207cb378b6c521ae2))
+
+- **core**: Optimize prop processing and caching with new signature generation ([
+  `8cf0319`](https://github.com/l7aromeo/meonode-ui/commit/8cf0319fd99c3c8496b6e63207cb378b6c521ae2))
 
 ### Refactor
-- **types**: move node.type.ts to types directory and update imports ([`ccf769a`](https://github.com/l7aromeo/meonode-ui/commit/ccf769a2670e4546bfa776034a4fa8925ca2d27d))
+
+- **types**: move node.type.ts to types directory and update imports ([
+  `ccf769a`](https://github.com/l7aromeo/meonode-ui/commit/ccf769a2670e4546bfa776034a4fa8925ca2d27d))
 
 ## [0.4.0] - 2025-11-13
 
 ### Feature
+
 - **core**: Implemented an advanced memoization and caching system to optimize rendering performance. This includes:
-    - **Dependency-Based Memoization**: Nodes can now be created with a dependency array, similar to React's `useMemo`, to prevent unnecessary re-renders of the node and its entire subtree if dependencies have not changed. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
-    - **Enhanced Prop Caching**: The prop signature generation is now more robust, and the cache uses an advanced LRU eviction strategy to remain efficient. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
-    - **API Updates**: The `Node`, `createNode`, `createChildrenFirstNode`, and `Component` HOCs have been updated to accept an optional `deps` array to enable memoization. ([`3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+    - **Dependency-Based Memoization**: Nodes can now be created with a dependency array, similar to React's `useMemo`,
+      to prevent unnecessary re-renders of the node and its entire subtree if dependencies have not changed. ([
+      `3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+    - **Enhanced Prop Caching**: The prop signature generation is now more robust, and the cache uses an advanced LRU
+      eviction strategy to remain efficient. ([
+      `3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
+    - **API Updates**: The `Node`, `createNode`, `createChildrenFirstNode`, and `Component` HOCs have been updated to
+      accept an optional `deps` array to enable memoization. ([
+      `3b0a110`](https://github.com/l7aromeo/meonode-ui/commit/3b0a110eb3db25862476d020182be9f0dba663e4))
 
 ### Test
-- **core**: Added a comprehensive suite of tests for the new memoization and caching system, covering dependency-based memoization, reactive and non-reactive children, complex state updates, and memoization of Higher-Order Components (HOCs). ([`6bcd1b1`](https://github.com/l7aromeo/meonode-ui/commit/6bcd1b1bc6b2450c3d4296cb4af326f61cfee401))
+
+- **core**: Added a comprehensive suite of tests for the new memoization and caching system, covering dependency-based
+  memoization, reactive and non-reactive children, complex state updates, and memoization of Higher-Order Components (
+  HOCs). ([`6bcd1b1`](https://github.com/l7aromeo/meonode-ui/commit/6bcd1b1bc6b2450c3d4296cb4af326f61cfee401))
 
 ## [0.3.18] - 2025-11-12
 
 ### Fixed
-- **core**: refine prop caching to handle dynamic props correctly ([`4c0641e`](https://github.com/l7aromeo/meonode-ui/commit/4c0641e892f934551f100629cac72fc3f4649ab0))
+
+- **core**: refine prop caching to handle dynamic props correctly ([
+  `4c0641e`](https://github.com/l7aromeo/meonode-ui/commit/4c0641e892f934551f100629cac72fc3f4649ab0))
 
 ## [0.3.17] - 2025-11-12
 
 ### Perf
-- **core**: implement iterative renderer and prop caching ([`8a3a264`](https://github.com/l7aromeo/meonode-ui/commit/8a3a264be68bd041b6340636f5f7ee2b0caa63ff))
-- **helper**: refactor theme resolution logic for improved performance and cache correctness ([`9614cb8`](https://github.com/l7aromeo/meonode-ui/commit/9614cb8d2aeae0d9bd2f9cf3edd51c022cd93273))
+
+- **core**: implement iterative renderer and prop caching ([
+  `8a3a264`](https://github.com/l7aromeo/meonode-ui/commit/8a3a264be68bd041b6340636f5f7ee2b0caa63ff))
+- **helper**: refactor theme resolution logic for improved performance and cache correctness ([
+  `9614cb8`](https://github.com/l7aromeo/meonode-ui/commit/9614cb8d2aeae0d9bd2f9cf3edd51c022cd93273))
 
 ### Chore
-- fix typo in JSDoc comment for useTheme hook ([`de0ddd9`](https://github.com/l7aromeo/meonode-ui/commit/de0ddd9a6308f4a76b6ad843a6139d42bd3fcf53))
-- add deprecation notice to usePortal hook for future removal ([`f8a2923`](https://github.com/l7aromeo/meonode-ui/commit/f8a29230cad3962addb8cf28ed3538e6de236181))
-- update PortalProps type definition to provide a default type parameter ([`de73ba5`](https://github.com/l7aromeo/meonode-ui/commit/de73ba5b9d9dd51637b24b0309d681309d9338ae))
-- update isNodeInstance type guard to use BaseNode instead of NodeInstance ([`2c69d05`](https://github.com/l7aromeo/meonode-ui/commit/2c69d05b3d1593a976e439ca7404696b781e5012))
-- rename jest.config.mjs to jest.config.ts and update configuration for TypeScript support ([`a3213eb`](https://github.com/l7aromeo/meonode-ui/commit/a3213eb5b91a55364cb4f5362005bc2a46934de5))
-- **scripts**: increase stack size for jest test and fix build commands ([`e046cdf`](https://github.com/l7aromeo/meonode-ui/commit/e046cdf397e2cf418e09e149a9e0cf1e48f3d926))
-- update tsconfig.json to exclude dist and node_modules directories ([`eeb9577`](https://github.com/l7aromeo/meonode-ui/commit/eeb957722ab7a26cbe59047c068f9955b082502e))
-- update tsconfig.json with enhanced compiler options and path mappings for better development experience ([`89bc1a4`](https://github.com/l7aromeo/meonode-ui/commit/89bc1a42c23f015acfed1bcb860ebb6a4c684fc1))
+
+- fix typo in JSDoc comment for useTheme hook ([
+  `de0ddd9`](https://github.com/l7aromeo/meonode-ui/commit/de0ddd9a6308f4a76b6ad843a6139d42bd3fcf53))
+- add deprecation notice to usePortal hook for future removal ([
+  `f8a2923`](https://github.com/l7aromeo/meonode-ui/commit/f8a29230cad3962addb8cf28ed3538e6de236181))
+- update PortalProps type definition to provide a default type parameter ([
+  `de73ba5`](https://github.com/l7aromeo/meonode-ui/commit/de73ba5b9d9dd51637b24b0309d681309d9338ae))
+- update isNodeInstance type guard to use BaseNode instead of NodeInstance ([
+  `2c69d05`](https://github.com/l7aromeo/meonode-ui/commit/2c69d05b3d1593a976e439ca7404696b781e5012))
+- rename jest.config.mjs to jest.config.ts and update configuration for TypeScript support ([
+  `a3213eb`](https://github.com/l7aromeo/meonode-ui/commit/a3213eb5b91a55364cb4f5362005bc2a46934de5))
+- **scripts**: increase stack size for jest test and fix build commands ([
+  `e046cdf`](https://github.com/l7aromeo/meonode-ui/commit/e046cdf397e2cf418e09e149a9e0cf1e48f3d926))
+- update tsconfig.json to exclude dist and node_modules directories ([
+  `eeb9577`](https://github.com/l7aromeo/meonode-ui/commit/eeb957722ab7a26cbe59047c068f9955b082502e))
+- update tsconfig.json with enhanced compiler options and path mappings for better development experience ([
+  `89bc1a4`](https://github.com/l7aromeo/meonode-ui/commit/89bc1a42c23f015acfed1bcb860ebb6a4c684fc1))
 
 ## [0.3.16] - 2025-11-05
 
 ### Added
-- **tests**: add tests for Fragment, Suspense, and Activity components to verify styling prop handling ([`2af386f`](https://github.com/l7aromeo/meonode-ui/commit/2af386f))
-- **core**: enhance NodeProps type to conditionally include built-in React components ([`3b8a4cb`](https://github.com/l7aromeo/meonode-ui/commit/3b8a4cb))
-- **react**: add REACT_ACTIVITY_TYPE to react-is helper ([`e91e48f`](https://github.com/l7aromeo/meonode-ui/commit/e91e48f))
-- **core**: export NO_STYLE_TAGS type for better type inference ([`a6db6e8`](https://github.com/l7aromeo/meonode-ui/commit/a6db6e8))
-- **react**: add Fragment component to create a container without extra DOM elements ([`d5e376a`](https://github.com/l7aromeo/meonode-ui/commit/d5e376a))
+
+- **tests**: add tests for Fragment, Suspense, and Activity components to verify styling prop handling ([
+  `2af386f`](https://github.com/l7aromeo/meonode-ui/commit/2af386f))
+- **core**: enhance NodeProps type to conditionally include built-in React components ([
+  `3b8a4cb`](https://github.com/l7aromeo/meonode-ui/commit/3b8a4cb))
+- **react**: add REACT_ACTIVITY_TYPE to react-is helper ([
+  `e91e48f`](https://github.com/l7aromeo/meonode-ui/commit/e91e48f))
+- **core**: export NO_STYLE_TAGS type for better type inference ([
+  `a6db6e8`](https://github.com/l7aromeo/meonode-ui/commit/a6db6e8))
+- **react**: add Fragment component to create a container without extra DOM elements ([
+  `d5e376a`](https://github.com/l7aromeo/meonode-ui/commit/d5e376a))
 
 ## [0.3.15] - 2025-11-04
 
 ### Added
-- **core**: add disableEmotion prop to disable emotion styling and propagate to children ([`377a9e9`](https://github.com/l7aromeo/meonode-ui/commit/377a9e9d4844ba7869155e686c9b31f0f9ce2329))
-- **react**: enhance isContextProvider and isReactClassComponent checks ([`e8839e4`](https://github.com/l7aromeo/meonode-ui/commit/e8839e4c231bdd66686f7b43d9889a18cd9fc791))
+
+- **core**: add disableEmotion prop to disable emotion styling and propagate to children ([
+  `377a9e9`](https://github.com/l7aromeo/meonode-ui/commit/377a9e9d4844ba7869155e686c9b31f0f9ce2329))
+- **react**: enhance isContextProvider and isReactClassComponent checks ([
+  `e8839e4`](https://github.com/l7aromeo/meonode-ui/commit/e8839e4c231bdd66686f7b43d9889a18cd9fc791))
 
 ## [0.3.14] - 2025-10-30
 
 ### Added
-- **core**: Add handling for Suspense and Activity components ([`0f9fcb1`](https://github.com/l7aromeo/meonode-ui/commit/0f9fcb171fdce28b5a880e69e2d591543e3af817))
+
+- **core**: Add handling for Suspense and Activity components ([
+  `0f9fcb1`](https://github.com/l7aromeo/meonode-ui/commit/0f9fcb171fdce28b5a880e69e2d591543e3af817))
 
 ## [0.3.13] - 2025-10-30
 
 ### Fixed
-- **theme.helper**: process theme strings returned from functions ([`286fd89`](https://github.com/l7aromeo/meonode-ui/commit/286fd89e28cc10b467a208be4cdf1b7508d0be8c))
+
+- **theme.helper**: process theme strings returned from functions ([
+  `286fd89`](https://github.com/l7aromeo/meonode-ui/commit/286fd89e28cc10b467a208be4cdf1b7508d0be8c))
 
 ## [0.3.12] - 2025-10-23
 
 ### Added
-- **react**: add Suspense component and JSDoc for Activity and Suspense ([`c1760fd`](https://github.com/l7aromeo/meonode-ui/commit/c1760fd))
 
+- **react**: add Suspense component and JSDoc for Activity and Suspense ([
+  `c1760fd`](https://github.com/l7aromeo/meonode-ui/commit/c1760fd))
 
 ## [0.3.11] - 2025-10-19
 
 ### Added
-- **components**: add react activity node and export it in main ([`aadbc2d`](https://github.com/l7aromeo/meonode-ui/commit/aadbc2d08a928f1ba88bd4572b45eed8cb100a87))
-- **theme.helper**: update resolveObjWithTheme to improve object type checking ([`da1ce4c`](https://github.com/l7aromeo/meonode-ui/commit/da1ce4cd53ccbe2d2a562a49730151434177dc59))
+
+- **components**: add react activity node and export it in main ([
+  `aadbc2d`](https://github.com/l7aromeo/meonode-ui/commit/aadbc2d08a928f1ba88bd4572b45eed8cb100a87))
+- **theme.helper**: update resolveObjWithTheme to improve object type checking ([
+  `da1ce4c`](https://github.com/l7aromeo/meonode-ui/commit/da1ce4cd53ccbe2d2a562a49730151434177dc59))
 
 ### Changed
-- **chore**: update dependencies in package.json and yarn.lock ([`0c0ced6`](https://github.com/l7aromeo/meonode-ui/commit/0c0ced68662bb701634d49dc79da86e4ddce5392))
-- **chore**: remove \'use strict\' directive from multiple files ([`17d79dc`](https://github.com/l7aromeo/meonode-ui/commit/17d79dcb105a8c2062695071c3f587f6db9a5711))
+
+- **chore**: update dependencies in package.json and yarn.lock ([
+  `0c0ced6`](https://github.com/l7aromeo/meonode-ui/commit/0c0ced68662bb701634d49dc79da86e4ddce5392))
+- **chore**: remove \'use strict\' directive from multiple files ([
+  `17d79dc`](https://github.com/l7aromeo/meonode-ui/commit/17d79dcb105a8c2062695071c3f587f6db9a5711))
 
 ### Docs
-- **docs**: update Node.js version requirement in CONTRIBUTING.md ([`4c577c3`](https://github.com/l7aromeo/meonode-ui/commit/4c577c3e23294bdc188cda5b14375af1cb967888))
+
+- **docs**: update Node.js version requirement in CONTRIBUTING.md ([
+  `4c577c3`](https://github.com/l7aromeo/meonode-ui/commit/4c577c3e23294bdc188cda5b14375af1cb967888))
 
 ### Test
-- **node**: add test case for preserving Node instances passed through props and theme resolution ([`f4d1344`](https://github.com/l7aromeo/meonode-ui/commit/f4d1344355f2a4631ccdf04998bcf618d4ce1dc6))
+
+- **node**: add test case for preserving Node instances passed through props and theme resolution ([
+  `f4d1344`](https://github.com/l7aromeo/meonode-ui/commit/f4d1344355f2a4631ccdf04998bcf618d4ce1dc6))
 
 ## [0.3.10] - 2025-10-09
 
@@ -410,11 +617,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **styling**: Enabled theme-aware functions for css props, allowing for more dynamic styling (e.g., `color: theme => theme.system.colors.primary`).
+- **styling**: Enabled theme-aware functions for css props, allowing for more dynamic styling (e.g.,
+  `color: theme => theme.system.colors.primary`).
 
 ### Refactor
 
-- **core**: Refactored the style resolution logic (`resolveObjWithTheme` and `StyledRenderer`) to selectively process the `css` prop. This enables the new theme-function feature while ensuring that other props (like `children`) are not processed, maintaining compatibility with Next.js Server Components.
+- **core**: Refactored the style resolution logic (`resolveObjWithTheme` and `StyledRenderer`) to selectively process
+  the `css` prop. This enables the new theme-function feature while ensuring that other props (like `children`) are not
+  processed, maintaining compatibility with Next.js Server Components.
 
 ## [0.3.7] - 2025-09-27
 
@@ -530,7 +740,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **feat:** update NodeFunction type to improve dynamic node content generation and update FunctionRendererProps interface to use NodeFunction
+- **feat:** update NodeFunction type to improve dynamic node content generation and update FunctionRendererProps
+  interface to use NodeFunction
 
 ### Fixed
 
@@ -538,6 +749,7 @@ All notable changes to this project will be documented in this file.
 - **fix(node.type.ts):** remove unused processRawNode property from Node type
 
 ### Changed
+
 - **package:** update dependencies to latest versions
 
 ## [0.2.20] - 2025-09-22
@@ -625,7 +837,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **feat(common.helper)**: add omit and omitUndefined utility functions to create object copies without specified keys or undefined values
+- **feat(common.helper)**: add omit and omitUndefined utility functions to create object copies without specified keys
+  or undefined values
 - **feat**: integrate omit and omitUndefined functions to manage finalProps for standard HTML tags and custom components
 
 ### Refactor
@@ -641,14 +854,16 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- **types**: removed redundant `key` prop from `FinalNodeProps` and default `key` from `NodeProps` types for cleaner type definitions
+- **types**: removed redundant `key` prop from `FinalNodeProps` and default `key` from `NodeProps` types for cleaner
+  type definitions
 
 ## [0.2.16] - 2025-09-13
 
 ### Added
 
 - **feat(core)**: introduce static _isServer property to optimize server-side checks in caching methods
-- **feat(core)**: remove passedKey from _functionRenderer and simplify function-as-child wrapper; augment toPortal unmount to clean portal container
+- **feat(core)**: remove passedKey from _functionRenderer and simplify function-as-child wrapper; augment toPortal
+  unmount to clean portal container
 
 ### Refactor
 
