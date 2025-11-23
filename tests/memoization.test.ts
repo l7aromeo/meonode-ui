@@ -745,10 +745,10 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     NavigationCacheManagerUtil.getInstance().start()
 
     // Populate cache with components
-    const { unmount } = render(Div({ children: [P('Content 1'), P('Content 2'), P('Content 3')] }).render())
+    const { unmount } = render(Div({ children: [P('Content 1'), P('Content 2'), P('Content 3', {}, [])] }).render())
 
     const initialCacheSize = BaseNode.elementCache.size
-    expect(initialCacheSize).toBeGreaterThan(0)
+    expect(initialCacheSize).toBe(1) // Content 3 should be cached
 
     // Unmount components (they become eligible for cleanup)
     unmount()
