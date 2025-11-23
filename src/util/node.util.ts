@@ -454,6 +454,18 @@ export class NodeUtil {
   }
 
   /**
+   * Determines if a given `NodeInstance` should be cached.
+   * Caching is enabled only on the client-side and if the node has both a `stableKey`
+   * (indicating it's a stable, identifiable element) and `dependencies` (suggesting its render
+   * output might be stable across re-renders if dependencies don't change).
+   * @param node The `NodeInstance` to check for cacheability.
+   * @returns `true` if the node should be cached, `false` otherwise.
+   */
+  public static shouldCacheElement<E extends NodeInstance>(node: E): node is E & { stableKey: string; dependencies: DependencyList } {
+    return !NodeUtil.isServer && !!node.stableKey && !!node.dependencies
+  }
+
+  /**
    * Determines if a node should update based on its dependency array.
    * Uses a shallow comparison, similar to React's `useMemo` and `useCallback`.
    * On server environments, always returns true since SSR has no concept of re-renders.

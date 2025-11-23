@@ -276,8 +276,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       MountTrackerUtil.trackMount(this.stableKey)
     }
 
-    // On server, we never reuse cached elements because that can cause hydration mismatches.
-    const cacheEntry = NodeUtil.isServer || !this.stableKey ? undefined : BaseNode.elementCache.get(this.stableKey)
+    // If this node is eligible for caching, retrieve the cached entry by stableKey;
+    // otherwise treat as if no cache exists.
+    const cacheEntry = NodeUtil.shouldCacheElement(this) ? BaseNode.elementCache.get(this.stableKey) : undefined
 
     // Decide whether this node (and its subtree) should update given dependency arrays.
     const shouldUpdate = NodeUtil.shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
@@ -346,8 +347,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             for (let i = childrenToProcess.length - 1; i >= 0; i--) {
               const child = childrenToProcess[i]
 
-              // Respect server/client differences for child cache lookup.
-              const childCacheEntry = NodeUtil.isServer || !child.stableKey ? undefined : BaseNode.elementCache.get(child.stableKey)
+              // Check if the child is eligible for caching and retrieve its cache entry.
+              const childCacheEntry = !NodeUtil.shouldCacheElement(child) ? undefined : BaseNode.elementCache.get(child.stableKey)
 
               // Determine whether the child should update given its deps and the parent's blocked state.
               const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
@@ -420,8 +421,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             }
           }
 
-          // Cache the generated element on client-side to speed up future renders.
-          if (!NodeUtil.isServer && node.stableKey) {
+          // Cache the rendered element if caching is enabled for this node (client-side only).
+          if (NodeUtil.shouldCacheElement(node)) {
             const existingEntry = BaseNode.elementCache.get(node.stableKey)
 
             if (existingEntry) {
@@ -456,7 +457,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       // Get the final rendered element for the root node of this render cycle.
       const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
-      return !NodeUtil.isServer && this.stableKey ? createElement(MeoNodeUnmounter, { node: this }, rootElement) : rootElement
+      // Wrap the root element with MeoNodeUnmounter if caching is enabled, to handle unmounting when the component is removed from the React tree.
+      return NodeUtil.shouldCacheElement(this) ? createElement(MeoNodeUnmounter, { node: this }, rootElement) : rootElement
     } finally {
       // Always release context back to pool, even if an exception occurred
       // Null out workStack slots to help GC before releasing
