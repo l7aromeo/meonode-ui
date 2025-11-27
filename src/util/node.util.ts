@@ -197,6 +197,8 @@ export class NodeUtil {
         }
       } else if (val && (val as NodeInstance).isBaseNode) {
         valStr = `${key}:${(val as NodeInstance).stableKey};`
+      } else if (valType === 'function') {
+        valStr = `${key}:${NodeUtil.hashString(val.toString())};`
       } else {
         // Include sorted keys for object structure signature
         const objKeys = Object.keys(val as Record<string, unknown>).sort()
