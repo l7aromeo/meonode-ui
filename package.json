@@ -36,9 +36,10 @@
     "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose",
     "prebuild": "yarn lint && yarn test:all",
     "build": "yarn prebuild && rm -rf ./dist && rollup -c rollup.config.ts && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
-    "publish:pre": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
+    "publish:prerelease": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
     "publish:patch": "./prepublish.sh && yarn build && yarn version -i patch && yarn npm publish --tag latest",
     "publish:minor": "./prepublish.sh && yarn build && yarn version -i minor && yarn npm publish --tag latest",
+    "publish:premajor": "./prepublish.sh && yarn build && yarn version -i premajor && yarn npm publish --tag next",
     "publish:major": "./prepublish.sh && yarn build && yarn version -i major && yarn npm publish --tag latest",
     "prepare": "husky"
   },
