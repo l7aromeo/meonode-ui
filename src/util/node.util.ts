@@ -333,7 +333,12 @@ export class NodeUtil {
     }
 
     // O(log n) eviction of top N entries
-    for (let i = 0; i < NodeUtil.CACHE_CLEANUP_BATCH; i++) {
+    const targetSize = NodeUtil.CACHE_SIZE_LIMIT
+    const currentSize = BaseNode.propProcessingCache.size
+    // Remove enough to get back to limit, plus a buffer batch
+    const countToRemove = Math.max(0, currentSize - targetSize) + NodeUtil.CACHE_CLEANUP_BATCH
+
+    for (let i = 0; i < countToRemove; i++) {
       const item = evictionHeap.pop()
       if (item) {
         BaseNode.propProcessingCache.delete(item.key)
