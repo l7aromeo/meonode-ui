@@ -29,7 +29,7 @@ export default function MeoNodeUnmounter({ children, ...props }: { node: NodeIns
     if (node.stableKey) {
       BaseNode.elementCache.delete(node.stableKey)
 
-      if (MountTrackerUtil.mountedNodes.has(node.stableKey)) {
+      if (MountTrackerUtil.isMounted(node.stableKey)) {
         MountTrackerUtil.untrackMount(node.stableKey)
       }
 
@@ -42,6 +42,12 @@ export default function MeoNodeUnmounter({ children, ...props }: { node: NodeIns
   })
 
   useEffect(() => {
+    // Track mount when component mounts
+    if (node.stableKey) {
+      MountTrackerUtil.trackMount(node.stableKey)
+    }
+
+    // Untrack when component unmounts
     return () => onUnmount()
   }, [])
 

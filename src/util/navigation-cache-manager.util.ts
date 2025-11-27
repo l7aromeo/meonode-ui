@@ -85,7 +85,7 @@ export class NavigationCacheManagerUtil {
       // Only clean UNMOUNTED elements
       BaseNode.elementCache.keys().forEach(key => {
         // Evict if the node is not currently mounted.
-        if (!MountTrackerUtil.mountedNodes.has(key)) {
+        if (!MountTrackerUtil.isMounted(key)) {
           BaseNode.elementCache.delete(key)
           unmountedElementsCleaned++
         }

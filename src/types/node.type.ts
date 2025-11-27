@@ -329,4 +329,6 @@ export interface WorkItem {
   node: NodeInstance
   isProcessed: boolean
   blocked: boolean
+  depth: number
+  childIndex: number
 }

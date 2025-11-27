@@ -201,7 +201,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       BaseNode.elementCache.delete(cacheKey)
     }
 
-    if (MountTrackerUtil.mountedNodes.has(cacheKey)) {
+    if (MountTrackerUtil.isMounted(cacheKey)) {
       MountTrackerUtil.untrackMount(cacheKey)
     }
   })
@@ -271,11 +271,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * @method render
    */
   public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
-    // Auto-track this node for mount detection
-    if (!NodeUtil.isServer && this.stableKey) {
-      MountTrackerUtil.trackMount(this.stableKey)
-    }
-
     // If this node is eligible for caching, retrieve the cached entry by stableKey;
     // otherwise treat as if no cache exists.
     const cacheEntry = NodeUtil.shouldCacheElement(this) ? BaseNode.elementCache.get(this.stableKey) : undefined
@@ -379,7 +374,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           if (childrenInProps) {
             // Convert child placeholders into concrete React nodes:
             // - If it's a BaseNode, lookup its rendered ReactElement from the map.
-            // - If it's already a React element, use it directly.
+            // - If it's already a React element, use it directly (with enhanced key).
             // - Otherwise treat as primitive ReactNode.
             const childArray = Array.isArray(childrenInProps) ? childrenInProps : [childrenInProps]
             const childCount = childArray.length
@@ -421,8 +416,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             }
           }
 
-          // Cache the rendered element if caching is enabled for this node (client-side only).
-          if (NodeUtil.shouldCacheElement(node)) {
+          // Cache child nodes (unwrapped) during the render loop
+          // The root node will be cached separately after wrapping
+          if (node !== this && NodeUtil.shouldCacheElement(node)) {
             const existingEntry = BaseNode.elementCache.get(node.stableKey)
 
             if (existingEntry) {
@@ -455,10 +451,39 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       }
 
       // Get the final rendered element for the root node of this render cycle.
-      const rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
+      let rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
-      // Wrap the root element with MeoNodeUnmounter if caching is enabled, to handle unmounting when the component is removed from the React tree.
-      return NodeUtil.shouldCacheElement(this) ? createElement(MeoNodeUnmounter, { node: this }, rootElement) : rootElement
+      // Wrap the root element with MeoNodeUnmounter if we need to track it
+      const needsTracking = !NodeUtil.isServer && this.stableKey
+      if (needsTracking) {
+        rootElement = createElement(MeoNodeUnmounter, { node: this }, rootElement)
+      }
+
+      // Cache the WRAPPED element (not the unwrapped one) so we reuse the same MeoNodeUnmounter instance
+      if (NodeUtil.shouldCacheElement(this)) {
+        const existingEntry = BaseNode.elementCache.get(this.stableKey)
+        if (existingEntry) {
+          // Update existing cache entry with the wrapped element
+          existingEntry.prevDeps = this._deps
+          existingEntry.renderedElement = rootElement
+          existingEntry.accessCount += 1
+        } else {
+          // Create new cache entry with the wrapped element
+          const newCacheEntry: ElementCacheEntry = {
+            prevDeps: this._deps,
+            renderedElement: rootElement,
+            nodeRef: new WeakRef(this),
+            createdAt: Date.now(),
+            accessCount: 1,
+            instanceId: this.instanceId,
+          }
+
+          BaseNode.elementCache.set(this.stableKey, newCacheEntry)
+          BaseNode.cacheCleanupRegistry.register(this, { cacheKey: this.stableKey, instanceId: this.instanceId }, this)
+        }
+      }
+
+      return rootElement
     } finally {
       // Always release context back to pool, even if an exception occurred
       // Null out workStack slots to help GC before releasing

@@ -8,14 +8,22 @@ import { __DEBUG__ } from '@src/constant/common.const.js'
 export class MountTrackerUtil {
   private constructor() {}
 
-  public static mountedNodes = new Set<string>()
+  private static _mountedCounts = new Map<string, number>()
   private static _unmountCallCount = new Map<string, number>() // Debug only
 
   /**
-   * Tracks a node as mounted. Adds its stable key and a WeakRef to the node to the map of mounted nodes.
+   * Checks if a node is currently mounted.
+   */
+  public static isMounted(key: string): boolean {
+    return (this._mountedCounts.get(key) || 0) > 0
+  }
+
+  /**
+   * Tracks a node as mounted. Increments the reference count for the stable key.
    */
   public static trackMount(key: string) {
-    this.mountedNodes.add(key)
+    const count = this._mountedCounts.get(key) || 0
+    this._mountedCounts.set(key, count + 1)
 
     if (__DEBUG__) {
       this._unmountCallCount.delete(key)
@@ -23,25 +31,32 @@ export class MountTrackerUtil {
   }
 
   /**
-   * Removes its stable key from the set of mounted nodes.
-   * In development mode, it also tracks multiple unmount calls for debugging purposes.
-   * @returns True if the node was previously tracked as mounted and is now removed, false otherwise.
+   * Decrements the reference count for the stable key.
+   * If the count reaches zero, the node is considered fully unmounted.
+   * @returns True if the node is still mounted (count > 0), false if fully unmounted.
    */
   public static untrackMount(key: string) {
-    const wasMounted = this.mountedNodes.delete(key)
+    const count = this._mountedCounts.get(key) || 0
+    if (count > 0) {
+      const newCount = count - 1
+      if (newCount === 0) {
+        this._mountedCounts.delete(key)
+      } else {
+        this._mountedCounts.set(key, newCount)
+      }
+      return newCount > 0
+    }
 
     if (__DEBUG__) {
-      if (!wasMounted) {
-        const count = (this._unmountCallCount.get(key) || 0) + 1
-        this._unmountCallCount.set(key, count)
-        if (count > 1) {
-          console.warn(
-            `[MeoNode] untrackMount called ${count} times for an already unmounted node: ${key}. This could indicate a memory leak or a bug in a component's lifecycle.`,
-          )
-        }
+      const debugCount = (this._unmountCallCount.get(key) || 0) + 1
+      this._unmountCallCount.set(key, debugCount)
+      if (debugCount > 1) {
+        console.warn(
+          `[MeoNode] untrackMount called ${debugCount} times for an already unmounted node: ${key}. This could indicate a memory leak or a bug in a component's lifecycle.`,
+        )
       }
     }
-    return wasMounted
+    return false
   }
 
   /**
@@ -49,7 +64,7 @@ export class MountTrackerUtil {
    * Removes all tracked nodes and debug counters.
    */
   public static cleanup() {
-    this.mountedNodes.clear()
+    this._mountedCounts.clear()
 
     if (__DEBUG__) {
       this._unmountCallCount.clear()
