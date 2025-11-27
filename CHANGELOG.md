@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0-0] - 2025-11-27
+
+### Fix
+
+- **core**: Overhaul mount tracking, caching, and fix stableKey generation to prevent memory leaks ([`af1b707`](https://github.com/l7aromeo/meonode-ui/commit/af1b707187b66cdbf9fe88f791aee30cfc7d2835))
+    - Replaced the simple `Set` in `MountTrackerUtil` with a reference-counting system (`Map`) to ensure a node is only considered unmounted when all its instances are gone.
+    - The root element of a render cycle is now wrapped with a `MeoNodeUnmounter` component before being cached to guarantee that the unmount logic is always present, even for cached elements.
+    - Improved `stableKey` generation in `NodeUtil.createPropSignature` to correctly differentiate function props by hashing their string representation, preventing cache collisions for components with different `onClick` or similar handlers.
+    - Added new test suites (`leak-repro.test.ts`, `props-caching-leak.test.ts`) to specifically target and verify the leak fixes.
+
+### Perf
+
+- **cache**: Improve props cache eviction strategy ([`ce2f561`](https://github.com/l7aromeo/meonode-ui/commit/ce2f5616b21d68873dff0f1c4466bf9a2a40ce4d))
+    - Adjusted the `propProcessingCache` eviction logic in `NodeUtil` to be more aggressive, removing enough items to get back to the `CACHE_SIZE_LIMIT` plus an additional buffer batch, preventing unbounded growth under high load.
+
+### Feat
+
+- **deps**: Add react-router-dom and test polyfills ([`29dcf13`](https://github.com/l7aromeo/meonode-ui/commit/29dcf137b5ebcba0e09e5acf13aadac6a0a0f513))
+    - Introduced `react-router-dom` as a new development dependency to enable integration testing with React Router.
+    - Added `whatwg-fetch` and Node.js `util` polyfills to `jest.setup.ts` for compatibility in the Jest environment.
+
+### Test
+
+- **react-router**: Add integration tests for react-router-dom ([`8478623`](https://github.com/l7aromeo/meonode-ui/commit/8478623add6bc66b9805a3ec9c0661f4df223f63))
+    - Introduced a new test suite to verify the proper functioning and caching behavior of MeoNode components when used within a React Router environment.
+    - Includes tests for declarative and programmatic navigation, ensuring that component lifecycles and caching mechanisms interact correctly with React Router's dynamic rendering.
+
+### Chore
+- **package**: Rename publish:pre script to publish:prerelease and add publish:premajor script in package.json ([`a98ba69`](https://github.com/l7aromeo/meonode-ui/commit/a98ba697a6e024126256a0e2517c839bbecd8058))
+
 ## [0.4.14] - 2025-11-23
 
 ### Perf
