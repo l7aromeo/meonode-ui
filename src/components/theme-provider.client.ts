@@ -16,7 +16,6 @@ export const ThemeContext = createContext<ThemeContextValue | null>(null)
  * @param {Children} [props.children] The children to render.
  * @param {Theme} props.theme The theme to provide.
  * @returns {ReactNode} The rendered component.
- * @private
  */
 export default function ThemeProvider({ children, theme }: { children?: Children; theme: Theme }): ReactNode {
   const [currentTheme, setTheme] = useState<Theme>(theme)
