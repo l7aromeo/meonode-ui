@@ -27,6 +27,10 @@ export default function MeoNodeUnmounter({ children, ...props }: { node: NodeIns
 
   const onUnmount = useEffectEvent(() => {
     if (node.stableKey) {
+      // Get the cache entry to access propSignatures before deleting
+      // const cacheEntry = BaseNode.elementCache.get(node.stableKey)
+
+      // Delete the element cache entry
       BaseNode.elementCache.delete(node.stableKey)
 
       if (MountTrackerUtil.isMounted(node.stableKey)) {
