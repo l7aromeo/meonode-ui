@@ -5,7 +5,7 @@ import { Node } from '@src/core.node.js'
 
 export interface ThemeContextValue {
   theme: Theme
-  setTheme: (theme: Theme) => void
+  setTheme: (theme: Theme | ((theme: Theme) => Theme)) => void
 }
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -27,6 +27,9 @@ export default function ThemeProvider({ children, theme }: { children?: Children
   const contextValue: ThemeContextValue = {
     theme: currentTheme,
     setTheme: theme => {
+      if (typeof theme === 'function') {
+        theme = theme(currentTheme)
+      }
       document.cookie = `theme=${theme.mode}; path=/;`
       setTheme(theme)
     },
