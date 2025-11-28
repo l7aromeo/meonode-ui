@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2025-11-28
+
+### Perf
+
+- **cache**: Remove props, CSS, and theme caching to improve performance and reduce overhead. ([`206361d`](https://github.com/l7aromeo/meonode-ui/commit/206361d)), ([`d7baa16`](https://github.com/l7aromeo/meonode-ui/commit/d7baa16))
+
+### Fix
+
+- **theme-provider**: Allow `setTheme` to accept an updater function for more flexible state management. ([`be8d261`](https://github.com/l7aromeo/meonode-ui/commit/be8d261))
+- **core**: Improve mount tracking for cached elements by ensuring `MeoNodeUnmounter` wraps all renderable nodes. ([`d0ca27e`](https://github.com/l7aromeo/meonode-ui/commit/d0ca27e))
+- **theme-provider**: Remove incorrect `@private` JSDoc tag from `ThemeProvider` component. ([`816e398`](https://github.com/l7aromeo/meonode-ui/commit/816e398))
+
+### Test
+
+- **performance**: Add controlled input performance tests to simulate human typing and measure `deps` memoization effectiveness. ([`bba48b8`](https://github.com/l7aromeo/meonode-ui/commit/bba48b8))
+
+### Docs
+
+- **readme**: Update `README.md` to reflect the removal of automatic caching and emphasize `deps`-based memoization. ([`2600d9c`](https://github.com/l7aromeo/meonode-ui/commit/2600d9c))
+
 ## [1.0.0-0] - 2025-11-27
 
 ### Fix
