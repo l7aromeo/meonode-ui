@@ -21,26 +21,29 @@ import type {
   NodeInstance,
   NodePortal,
   NodeProps,
-  PropProcessingCache,
   PropsOf,
   WorkItem,
 } from '@src/types/node.type.js'
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
-import { getComponentType, getElementTypeName, hasNoStyleTag } from '@src/helper/common.helper.js'
+import { getComponentType, getElementTypeName, hasNoStyleTag, getGlobalState } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
 import { __DEBUG__ } from '@src/constant/common.const.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { NodeUtil } from '@src/util/node.util.js'
-import { ThemeUtil } from '@src/util/theme.util.js'
+
+const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
+const NAVIGATION_STARTED_KEY = Symbol.for('@meonode/ui/BaseNode/navigationStarted')
+const RENDER_CONTEXT_POOL_KEY = Symbol.for('@meonode/ui/BaseNode/renderContextPool')
+const CACHE_CLEANUP_REGISTRY_KEY = Symbol.for('@meonode/ui/BaseNode/cacheCleanupRegistry')
+const PORTAL_CLEANUP_REGISTRY_KEY = Symbol.for('@meonode/ui/BaseNode/portalCleanupRegistry')
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
  * providing a unified interface for processing props, normalizing children, and handling styles.
  * This class is central to the library's ability to offer a JSX-free, fluent API for building UIs.
  * It uses an iterative rendering approach to handle deeply nested structures without causing stack overflows.
- * @class BaseNode
  * @template E - The type of React element or component this node represents.
  */
 export class BaseNode<E extends NodeElementType = NodeElementType> {
@@ -59,17 +62,23 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   // The last computed signature for the props object.
   lastSignature?: string
 
-  public static elementCache = new Map<string, ElementCacheEntry>()
-  public static propProcessingCache = new Map<string, PropProcessingCache>()
-
-  // Cleanup scheduling flag
-  public static scheduledCleanup = false
+  public static get elementCache() {
+    return getGlobalState(ELEMENT_CACHE_KEY, () => new Map<string, ElementCacheEntry>())
+  }
 
   // Navigation tracking
-  private static _navigationStarted = false
+  private static get _navigationStarted() {
+    return getGlobalState(NAVIGATION_STARTED_KEY, () => ({ value: false })).value
+  }
+
+  private static set _navigationStarted(value: boolean) {
+    getGlobalState(NAVIGATION_STARTED_KEY, () => ({ value: false })).value = value
+  }
 
   // Render Context Pooling
-  private static renderContextPool: { workStack: WorkItem[]; renderedElements: Map<BaseNode, ReactElement> }[] = []
+  private static get renderContextPool() {
+    return getGlobalState(RENDER_CONTEXT_POOL_KEY, () => [] as { workStack: WorkItem[]; renderedElements: Map<BaseNode, ReactElement> }[])
+  }
 
   private static acquireRenderContext() {
     const pool = BaseNode.renderContextPool
@@ -190,21 +199,28 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * entry from `BaseNode.elementCache`.
    * @public
    */
-  public static cacheCleanupRegistry = new FinalizationRegistry<{
-    cacheKey: string
-    instanceId: string
-  }>(heldValue => {
-    const { cacheKey, instanceId } = heldValue
-    const cacheEntry = BaseNode.elementCache.get(cacheKey)
 
-    if (cacheEntry?.instanceId === instanceId) {
-      BaseNode.elementCache.delete(cacheKey)
-    }
+  public static get cacheCleanupRegistry() {
+    return getGlobalState(
+      CACHE_CLEANUP_REGISTRY_KEY,
+      () =>
+        new FinalizationRegistry<{
+          cacheKey: string
+          instanceId: string
+        }>(heldValue => {
+          const { cacheKey, instanceId } = heldValue
+          const cacheEntry = BaseNode.elementCache.get(cacheKey)
 
-    if (MountTrackerUtil.isMounted(cacheKey)) {
-      MountTrackerUtil.untrackMount(cacheKey)
-    }
-  })
+          if (cacheEntry?.instanceId === instanceId) {
+            BaseNode.elementCache.delete(cacheKey)
+          }
+
+          if (MountTrackerUtil.isMounted(cacheKey)) {
+            MountTrackerUtil.untrackMount(cacheKey)
+          }
+        }),
+    )
+  }
 
   /**
    * FinalizationRegistry for cleaning up portal DOM containers and their associated React roots
@@ -219,42 +235,48 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * 2. Remove the `domElement` from the DOM if it is still connected.
    *
    * This prevents detached portal containers from leaking memory in long-running client apps.
-   * @private
+   * @internal
    */
-  public static portalCleanupRegistry = new FinalizationRegistry<{
-    domElement: HTMLDivElement
-    reactRoot: { unmount(): void }
-  }>(heldValue => {
-    const { domElement, reactRoot } = heldValue
+  public static get portalCleanupRegistry() {
+    return getGlobalState(
+      PORTAL_CLEANUP_REGISTRY_KEY,
+      () =>
+        new FinalizationRegistry<{
+          domElement: HTMLDivElement
+          reactRoot: { unmount(): void }
+        }>(heldValue => {
+          const { domElement, reactRoot } = heldValue
 
-    if (__DEBUG__) {
-      console.log('[MeoNode] FinalizationRegistry auto-cleaning portal')
-    }
+          if (__DEBUG__) {
+            console.log('[MeoNode] FinalizationRegistry auto-cleaning portal')
+          }
 
-    // Guard: Check if already unmounted
-    try {
-      // Only unmount if root still exists
-      if (reactRoot && typeof reactRoot.unmount === 'function') {
-        reactRoot.unmount()
-      }
-    } catch (error) {
-      // Swallow errors if already unmounted
-      if (__DEBUG__) {
-        console.error('[MeoNode] Portal auto-cleanup unmount error:', error)
-      }
-    }
+          // Guard: Check if already unmounted
+          try {
+            // Only unmount if root still exists
+            if (reactRoot && typeof reactRoot.unmount === 'function') {
+              reactRoot.unmount()
+            }
+          } catch (error) {
+            // Swallow errors if already unmounted
+            if (__DEBUG__) {
+              console.error('[MeoNode] Portal auto-cleanup unmount error:', error)
+            }
+          }
 
-    // Guard: Check if DOM element still connected
-    try {
-      if (domElement?.isConnected) {
-        domElement.remove()
-      }
-    } catch (error) {
-      if (__DEBUG__) {
-        console.error('[MeoNode] Portal auto-cleanup DOM removal error:', error)
-      }
-    }
-  })
+          // Guard: Check if DOM element still connected
+          try {
+            if (domElement?.isConnected) {
+              domElement.remove()
+            }
+          } catch (error) {
+            if (__DEBUG__) {
+              console.error('[MeoNode] Portal auto-cleanup DOM removal error:', error)
+            }
+          }
+        }),
+    )
+  }
 
   /**
    * Renders the `BaseNode` and its entire subtree into a ReactElement, with support for opt-in reactivity
@@ -631,9 +653,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     }
 
     // Clear all caches
-    BaseNode.propProcessingCache.clear()
     BaseNode.elementCache.clear()
-    ThemeUtil.clearThemeCache()
 
     // Clear mount tracking
     MountTrackerUtil.cleanup()

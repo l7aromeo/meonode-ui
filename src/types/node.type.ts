@@ -76,16 +76,6 @@ export type NodeElementType =
 export type Children = NodeElement | NodeElement[]
 
 /**
- * Cache for prop processing results to avoid repeated computations
- */
-export interface PropProcessingCache {
-  cssProps: Record<string, any>
-  signature: string
-  lastAccess: number
-  hitCount: number
-}
-
-/**
  * Represents an entry in the element cache.
  * Stores the rendered React element and its previous dependencies for memoization.
  */

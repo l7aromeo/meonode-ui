@@ -4,7 +4,6 @@ import { act, cleanup, render } from '@testing-library/react'
 import { StrictMode, useEffect, useState } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode, createNode } from '@src/core.node.js'
-import { NodeUtil } from '@src/util/node.util.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { FormControlLabel, Radio, RadioGroup } from '@mui/material'
 
@@ -516,70 +515,6 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
   })
 
   // Additional tests can be added here to further validate edge cases and complex scenarios.
-  it('LRU eviction prioritizes old, infrequently accessed entries', () => {
-    BaseNode.clearCaches()
-
-    // Access the private cache and constants
-    const cache = BaseNode.propProcessingCache
-    const CLEANUP_BATCH = (BaseNode as any).CACHE_CLEANUP_BATCH || 50
-
-    const now = Date.now()
-
-    // Add enough entries to exceed batch size so not everything gets evicted
-    // We'll add CLEANUP_BATCH + 10 entries total
-    const TOTAL_ENTRIES = CLEANUP_BATCH + 10
-
-    // First, add filler entries (medium priority)
-    for (let i = 0; i < TOTAL_ENTRIES - 3; i++) {
-      cache.set(`filler-${i}`, {
-        cssProps: { color: `color-${i}` },
-        signature: `sig-filler-${i}`,
-        lastAccess: now - 10000, // 10s old
-        hitCount: 5, // Medium frequency
-      })
-    }
-
-    // Entry A: Old but frequently accessed (should survive)
-    cache.set('entry-a', {
-      cssProps: { color: 'red' },
-      signature: 'sig-a',
-      lastAccess: now - 100000, // 100s old
-      hitCount: 100, // Very frequent - low eviction score
-    })
-
-    // Entry B: Recent and frequent (should survive)
-    cache.set('entry-b', {
-      cssProps: { color: 'blue' },
-      signature: 'sig-b',
-      lastAccess: now - 1000, // 1s old - very recent
-      hitCount: 50, // Frequent
-    })
-
-    // Entry C: Old and infrequent (should be evicted)
-    cache.set('entry-c', {
-      cssProps: { color: 'green' },
-      signature: 'sig-c',
-      lastAccess: now - 200000, // 200s old - very old
-      hitCount: 1, // Very infrequent - high eviction score
-    })
-
-    expect(cache.size).toBe(TOTAL_ENTRIES)
-
-    // Trigger eviction manually
-    ;(NodeUtil as any)._evictLRUEntries()
-
-    // Should have evicted CLEANUP_BATCH entries
-    expect(cache.size).toBe(TOTAL_ENTRIES - CLEANUP_BATCH)
-
-    // Entry C should be evicted (highest score: (200*0.3) + (1000/2)*0.7 = 60 + 350 = 410)
-    expect(cache.has('entry-c')).toBe(false)
-
-    // Entry A should survive (score: (100*0.3) + (1000/101)*0.7 ≈ 30 + 6.93 ≈ 36.93)
-    expect(cache.has('entry-a')).toBe(true)
-
-    // Entry B should survive (score: (1*0.3) + (1000/51)*0.7 ≈ 0.3 + 13.73 ≈ 14.03)
-    expect(cache.has('entry-b')).toBe(true)
-  })
 
   it('maintains cache integrity across mount/unmount/remount cycles', () => {
     BaseNode.clearCaches()

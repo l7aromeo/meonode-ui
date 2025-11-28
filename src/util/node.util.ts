@@ -10,13 +10,15 @@ import type {
   FinalNodeProps,
   Children,
   NodePortal,
-  PropProcessingCache,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
-import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined } from '@src/helper/common.helper.js'
+import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined, getGlobalState } from '@src/helper/common.helper.js'
 import { __DEBUG__ } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 import { createRoot, type Root } from 'react-dom/client'
+
+const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSignatureCache')
+const PORTAL_INFRASTRUCTURE_KEY = Symbol.for('@meonode/ui/NodeUtil/portalInfrastructure')
 
 /**
  * NodeUtil provides a collection of static utility methods and properties
@@ -31,28 +33,32 @@ export class NodeUtil {
   public static isServer = typeof window === 'undefined'
 
   // Unique ID generation for elements
-  private static _functionSignatureCache = new WeakMap<object, string>()
-
-  // Cache configuration
-  private static readonly CACHE_SIZE_LIMIT = 500
-  private static readonly CACHE_CLEANUP_BATCH = 50 // Clean up 50 entries at once when limit hit
-
-  // Caching css
-  private static _cssCache = new WeakMap<object, string>()
-
-  // Cache performance optimizations
+  private static get _functionSignatureCache() {
+    return getGlobalState(FUNCTION_SIGNATURE_CACHE_KEY, () => new WeakMap<object, string>())
+  }
 
   // Critical props for signature generation and shallow comparison
   private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
 
-  // Portal infrastructure using WeakMap for memory-safe management
-  public static portalInfrastructure = new WeakMap<
-    NodeInstance,
-    {
-      domElement: HTMLDivElement
-      reactRoot: NodePortal & { render(children: React.ReactNode): void }
-    }
-  >()
+  /**
+   * Portal infrastructure using WeakMap for memory-safe management.
+   * Stores the DOM element and React root associated with a NodeInstance.
+   * @internal
+   */
+  public static get portalInfrastructure() {
+    return getGlobalState(
+      PORTAL_INFRASTRUCTURE_KEY,
+      () =>
+        new WeakMap<
+          NodeInstance,
+          {
+            instanceId: string
+            domElement: HTMLDivElement
+            reactRoot: NodePortal & { render(children: React.ReactNode): void }
+          }
+        >(),
+    )
+  }
 
   /**
    * Type guard to check if an object is a NodeInstance.
@@ -113,10 +119,14 @@ export class NodeUtil {
    * @param css The CSS object to hash.
    * @returns A hash string representing the CSS object structure.
    */
-  private static hashCSS(css: Record<string, unknown>): string {
-    const cached = this._cssCache.get(css)
-    if (cached) return cached
 
+  /**
+   * Generates a fast structural hash for CSS objects without full serialization.
+   * This is an optimized hashing method that samples the first 10 keys for performance.
+   * @param css The CSS object to hash.
+   * @returns A hash string representing the CSS object structure.
+   */
+  private static hashCSS(css: Record<string, unknown>): string {
     // Fast structural hash without full serialization
     const keys = Object.keys(css)
     let hash = keys.length
@@ -134,9 +144,7 @@ export class NodeUtil {
       }
     }
 
-    const result = hash.toString(36)
-    this._cssCache.set(css, result)
-    return result
+    return hash.toString(36)
   }
 
   /**
@@ -269,104 +277,6 @@ export class NodeUtil {
   }
 
   /**
-   * Retrieves computed CSS props from the cache with LRU tracking.
-   * Access time and hit count are tracked for smarter eviction.
-   * Falls back to direct computation if no signature is provided or running on server.
-   * @param cacheableProps The props to compute CSS properties from.
-   * @param signature The cache signature to use for lookup.
-   * @returns An object containing the CSS props.
-   */
-  public static getCachedCssProps(cacheableProps: Record<string, unknown>, signature?: string): { cssProps: Record<string, unknown> } {
-    if (NodeUtil.isServer || !signature) return { cssProps: getCSSProps(cacheableProps) }
-
-    const cached = BaseNode.propProcessingCache.get(signature)
-
-    if (cached) {
-      // Update LRU metadata
-      cached.lastAccess = Date.now()
-      cached.hitCount++
-      return { cssProps: cached.cssProps }
-    }
-
-    const cssProps = getCSSProps(cacheableProps)
-    BaseNode.propProcessingCache.set(signature, {
-      cssProps,
-      signature,
-      lastAccess: Date.now(),
-      hitCount: 1,
-    })
-
-    // Batch cleanup for better performance
-    if (BaseNode.propProcessingCache.size > NodeUtil.CACHE_SIZE_LIMIT && !BaseNode.scheduledCleanup) {
-      BaseNode.scheduledCleanup = true
-
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(
-          () => {
-            NodeUtil._evictLRUEntries()
-            BaseNode.scheduledCleanup = false
-          },
-          { timeout: 2000 },
-        )
-      } else {
-        setTimeout(() => {
-          NodeUtil._evictLRUEntries()
-          BaseNode.scheduledCleanup = false
-        }, 100)
-      }
-    }
-
-    return { cssProps }
-  }
-
-  /**
-   * Implements an LRU eviction strategy that removes multiple entries at once.
-   * It uses a scoring system where older and less frequently used entries have a higher eviction priority.
-   * This batch eviction approach improves performance by avoiding frequent cache cleanup operations.
-   */
-  private static _evictLRUEntries(): void {
-    const now = Date.now()
-
-    // Create max-heap (using min-heap with inverted comparison) to get highest scores first
-    const evictionHeap = new MinHeap<{ key: string; score: number }>((a, b) => b.score - a.score)
-    for (const [key, value] of BaseNode.propProcessingCache.entries()) {
-      const score = this._calculateEvictionScore(value, now)
-      evictionHeap.push({ key, score })
-    }
-
-    // O(log n) eviction of top N entries
-    const targetSize = NodeUtil.CACHE_SIZE_LIMIT
-    const currentSize = BaseNode.propProcessingCache.size
-    // Remove enough to get back to limit, plus a buffer batch
-    const countToRemove = Math.max(0, currentSize - targetSize) + NodeUtil.CACHE_CLEANUP_BATCH
-
-    for (let i = 0; i < countToRemove; i++) {
-      const item = evictionHeap.pop()
-      if (item) {
-        BaseNode.propProcessingCache.delete(item.key)
-      } else {
-        // No more items to evict
-        break
-      }
-    }
-  }
-
-  /**
-   * Calculates an eviction score based on age and frequency of access.
-   * Higher scores mean more likelihood to be evicted.
-   * The scoring system uses weighted factors: 30% recency and 70% frequency.
-   * @param value The cache entry to score.
-   * @param now The current timestamp for calculating age.
-   * @returns A numeric score representing how likely the entry should be evicted.
-   */
-  private static _calculateEvictionScore(value: PropProcessingCache, now: number): number {
-    const age = now - value.lastAccess
-    const frequency = value.hitCount
-    // Weighted scoring: recency 30%, frequency 70% - favors frequently accessed items
-    return (age / 1000) * 0.3 + (1000 / (frequency + 1)) * 0.7
-  }
-
-  /**
    * The main prop processing pipeline. It separates cacheable and non-cacheable props,
    * generates a signature for caching, and assembles the final props object.
    * This method applies optimizations like fast-path for simple props and hybrid caching strategy.
@@ -375,7 +285,7 @@ export class NodeUtil {
    * @param stableKey The stable key used for child normalization (optional).
    * @returns The processed props object ready for rendering.
    */
-  public static processProps(element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey?: string): FinalNodeProps {
+  public static processProps(_element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey?: string): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
     // --- Fast Path Optimization ---
@@ -407,9 +317,9 @@ export class NodeUtil {
       }
     }
 
-    // 2. Pass element type to signature generation
-    const signature = NodeUtil.createPropSignature(element, cacheableProps)
-    const { cssProps: cachedCssProps } = NodeUtil.getCachedCssProps(cacheableProps, signature)
+    // 2. Pass element type to signature generation (still used for stableKey generation elsewhere, but not for caching here)
+    // We removed caching, so we just compute CSS props directly.
+    const { cssProps: cachedCssProps } = { cssProps: getCSSProps(cacheableProps) }
 
     // 3. Process non-cacheable props on every render to ensure correctness for functions and objects.
     const nonCachedCssProps = getCSSProps(nonCacheableProps)
@@ -766,7 +676,7 @@ export class NodeUtil {
       update: () => {}, // Placeholder, will be overridden
     }
 
-    infra = { domElement, reactRoot }
+    infra = { domElement, reactRoot, instanceId: node.instanceId }
     NodeUtil.portalInfrastructure.set(node, infra)
 
     // Register for cleanup
@@ -796,120 +706,5 @@ export class NodeUtil {
     } catch (error) {
       if (__DEBUG__) console.error('DOM removal error:', error)
     }
-  }
-}
-
-/**
- * A min-heap implementation for efficient priority queue operations.
- * Used for O(log n) eviction in the LRU cache system.
- */
-class MinHeap<T> {
-  private heap: T[] = []
-  private comparator: (a: T, b: T) => number
-
-  /**
-   * Constructs a new MinHeap with the provided comparator function.
-   * @param comparator A function that compares two elements and returns a negative value if the first is smaller,
-   * zero if they are equal, or a positive value if the first is larger.
-   */
-  constructor(comparator: (a: T, b: T) => number) {
-    this.comparator = comparator
-  }
-
-  /**
-   * Returns the number of elements in the heap.
-   * @returns The current size of the heap.
-   */
-  public size(): number {
-    return this.heap.length
-  }
-
-  /**
-   * Checks if the heap is empty.
-   * @returns True if the heap has no elements, false otherwise.
-   */
-  public isEmpty(): boolean {
-    return this.size() === 0
-  }
-
-  /**
-   * Adds a new value to the heap and maintains the heap property by bubbling it up to the correct position.
-   * @param value The value to add to the heap.
-   */
-  public push(value: T): void {
-    this.heap.push(value)
-    this.bubbleUp()
-  }
-
-  /**
-   * Removes and returns the smallest element from the heap (the root).
-   * After removal, it maintains the heap property by bubbling down the new root.
-   * @returns The smallest element in the heap, or undefined if the heap is empty.
-   */
-  public pop(): T | undefined {
-    if (this.isEmpty()) {
-      return undefined
-    }
-
-    this.swap(0, this.size() - 1)
-    const value = this.heap.pop()
-    this.bubbleDown()
-
-    return value
-  }
-
-  /**
-   * Moves the element at the specified index up the heap until the heap property is restored.
-   * This is used after inserting a new element to maintain the heap structure.
-   * @param index The index of the element to bubble up. Defaults to the last element in the heap.
-   */
-  private bubbleUp(index = this.size() - 1): void {
-    while (index > 0) {
-      const parentIndex = Math.floor((index - 1) / 2)
-      if (this.comparator(this.heap[parentIndex], this.heap[index]) <= 0) {
-        break
-      }
-      this.swap(parentIndex, index)
-      index = parentIndex
-    }
-  }
-
-  /**
-   * Moves the element at the specified index down the heap until the heap property is restored.
-   * This is used after removing the root element to maintain the heap structure.
-   * @param index The index of the element to bubble down. Defaults to the root element (index 0).
-   */
-  private bubbleDown(index = 0): void {
-    const lastIndex = this.size() - 1
-
-    while (true) {
-      const leftChildIndex = 2 * index + 1
-      const rightChildIndex = 2 * index + 2
-      let smallestIndex = index
-
-      if (leftChildIndex <= lastIndex && this.comparator(this.heap[leftChildIndex], this.heap[smallestIndex]) < 0) {
-        smallestIndex = leftChildIndex
-      }
-
-      if (rightChildIndex <= lastIndex && this.comparator(this.heap[rightChildIndex], this.heap[smallestIndex]) < 0) {
-        smallestIndex = rightChildIndex
-      }
-
-      if (smallestIndex === index) {
-        break
-      }
-
-      this.swap(index, smallestIndex)
-      index = smallestIndex
-    }
-  }
-
-  /**
-   * Swaps the elements at the two specified indices in the heap array.
-   * @param i The index of the first element to swap.
-   * @param j The index of the second element to swap.
-   */
-  private swap(i: number, j: number): void {
-    ;[this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]]
   }
 }

@@ -19,6 +19,26 @@ import type { ComponentProps, CSSProperties, ElementType } from 'react'
 import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constant/common.const.js'
 
 /**
+ * Retrieves or initializes a global state value using a Symbol key.
+ * This ensures singleton behavior across multiple bundles or module reloads,
+ * and protects against property name mangling during obfuscation.
+ * @param key The Symbol key to use for the global state.
+ * @param factory A factory function to create the initial value if it doesn't exist.
+ * @returns The global state value.
+ */
+export function getGlobalState<T>(key: symbol, factory: () => T): T {
+  const globalScope = (
+    typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {}
+  ) as Record<symbol, T>
+
+  if (!Object.prototype.hasOwnProperty.call(globalScope, key)) {
+    globalScope[key] = factory()
+  }
+
+  return globalScope[key]
+}
+
+/**
  * Retrieves a deeply nested value from an object using a dot-separated string path.
  *
  * This function traverses an object based on the provided path, which is a
