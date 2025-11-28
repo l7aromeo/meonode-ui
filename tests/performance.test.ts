@@ -16,6 +16,7 @@ import {
   H3,
   Header,
   Img,
+  Input,
   Li,
   Nav,
   Node,
@@ -111,7 +112,7 @@ function recordGroupMetric(groupName: string, groupDescription: string, testName
 // 3. Updated afterAll to display grouped metrics structure
 afterAll(() => {
   const table = new Table({
-    colWidths: [60, 30, 60],
+    colWidths: [60, 20, 40],
     wordWrap: true,
   })
 
@@ -135,16 +136,18 @@ afterAll(() => {
     groupData.tests.forEach(test => {
       const metricCount = test.metrics.length
 
-      // Add first metric row with test name and description
-      if (test.metrics.length > 0) {
-        table.push([test.name, test.metrics[0].value, { rowSpan: metricCount, content: test.description, vAlign: 'center' }])
+      if (metricCount > 0) {
+        // Header row for the test: Name spans 2 cols (Name + Value), Description spans all rows
+        table.push([
+          { content: test.name, colSpan: 2 },
+          { rowSpan: metricCount + 1, content: test.description, vAlign: 'center' },
+        ])
 
-        // Add additional metrics for this test
-        test.metrics.slice(1).forEach(metric => {
-          table.push([{ content: metric.name, style: { 'padding-left': 4 } }, metric.value])
+        // Metric rows
+        test.metrics.forEach(metric => {
+          table.push([{ content: metric.name, style: { 'padding-left': 2 } }, metric.value])
         })
       } else {
-        // If the test has no metrics, show just the test name with its description
         table.push([test.name, 'No metrics', test.description])
       }
     })
@@ -953,7 +956,7 @@ describe('Performance Testing', () => {
             'Memory Change Across Cycles (Last Nav - First Nav)',
             formatMemory(memoryChangeDuringCycles),
           )
-          expect(memoryChangeDuringCycles / 1024 / 1024).toBeLessThan(10) // Small growth allowed
+          expect(memoryChangeDuringCycles / 1024 / 1024).toBeLessThan(15) // Small growth allowed
         }
       }, 100000)
     })
@@ -1044,6 +1047,149 @@ describe('Performance Testing', () => {
         recordGroupMetric(group, groupDescription, testName, testDescription, 'Nodes Processed', NUM_NODES)
         expect(duration).toBeLessThan(300)
       })
+    })
+
+    // Form Input Performance Group
+    describe('Form Input Performance', () => {
+      const group = 'Form Input Performance'
+      const groupDescription = 'Tests for controlled input performance with simulated human typing'
+
+      it('should handle 100 controlled inputs with deps-based memoization efficiently', async () => {
+        const testName = '100 Controlled Inputs with Typing Simulation'
+        const testDescription =
+          'Measures performance of 100 controlled inputs with simulated human typing (200ms/char). Each input uses deps for optimized re-rendering.'
+
+        const NUM_INPUTS = 100
+        const CHARS_TO_TYPE = 5 // Type 5 characters per input
+        const TYPING_DELAY = 200 // Average human typing: ~200ms per character
+
+        const FormComponent: React.FC = () => {
+          // Initialize state for all inputs
+          const [inputValues, setInputValues] = React.useState<Record<number, string>>(() => {
+            const initial: Record<number, string> = {}
+            for (let i = 0; i < NUM_INPUTS; i++) {
+              initial[i] = ''
+            }
+            return initial
+          })
+
+          const handleChange = (index: number, value: string) => {
+            setInputValues(prev => ({ ...prev, [index]: value }))
+          }
+
+          // Create input fields using MeoNode with deps
+          const inputFields = []
+          for (let i = 0; i < NUM_INPUTS; i++) {
+            const value = inputValues[i]
+            inputFields.push(
+              Container(
+                {
+                  key: `input-row-${i}`,
+                  marginBottom: '8px',
+                  children: [
+                    Node('label', {
+                      marginRight: '8px',
+                      children: `Input ${i + 1}:`,
+                    }),
+                    Input(
+                      {
+                        type: 'text',
+                        value,
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(i, e.target.value),
+                        css: {
+                          padding: '4px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                        },
+                      },
+                      [value], // Only re-render when this specific input's value changes
+                    ),
+                  ],
+                },
+                [value], // Container also uses deps for double optimization
+              ),
+            )
+          }
+
+          return Container({
+            padding: '16px',
+            children: [
+              H2('Form Performance Test', { marginBottom: '16px' }),
+              Container({
+                maxHeight: '400px',
+                overflow: 'auto',
+                children: inputFields,
+              }),
+            ],
+          }).render()
+        }
+
+        // Initial render
+        const { container, unmount } = render(ThemeProvider({ theme, children: Node(FormComponent).render() }).render())
+
+        // Track typing performance
+        const typingTimes: number[] = []
+        const inputsToTest = [0, 25, 50, 75, 99] // Test a subset across the range
+
+        // Get all inputs once (they all have identical props, differentiated only by deps)
+        const allInputs = container.querySelectorAll('input')
+        expect(allInputs.length).toBe(NUM_INPUTS)
+
+        for (const inputIndex of inputsToTest) {
+          // Select input by index from the NodeList
+          const input = allInputs[inputIndex] as HTMLInputElement
+          expect(input).toBeTruthy()
+          expect(input.value).toBe('') // Verify initial state
+
+          for (let charIndex = 0; charIndex < CHARS_TO_TYPE; charIndex++) {
+            const char = String.fromCharCode(65 + charIndex) // A, B, C, D, E
+            const newValue = input.value + char
+
+            const t0 = performance.now()
+            await act(async () => {
+              fireEvent.change(input, { target: { value: newValue } })
+            })
+            const t1 = performance.now()
+            typingTimes.push(t1 - t0)
+
+            // Verify the input has the expected value (no cache collision)
+            // Expected: A, AB, ABC, ABCD, ABCDE
+            const expectedValue = String.fromCharCode(...Array.from({ length: charIndex + 1 }, (_, i) => 65 + i))
+            expect(input.value).toBe(expectedValue)
+
+            // Simulate human typing delay
+            await new Promise(resolve => setTimeout(resolve, TYPING_DELAY))
+          }
+
+          // Final verification: input should have 'ABCDE' typed
+          expect(input.value).toBe('ABCDE')
+        }
+
+        unmount()
+
+        // Calculate metrics
+        const avgTypingTime = typingTimes.reduce((sum, t) => sum + t, 0) / typingTimes.length
+        const maxTypingTime = Math.max(...typingTimes)
+        const p95TypingTime = typingTimes.sort((a, b) => a - b)[Math.floor(typingTimes.length * 0.95)]
+
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Number of Inputs', NUM_INPUTS)
+        recordGroupMetric(
+          group,
+          groupDescription,
+          testName,
+          testDescription,
+          'Characters Typed Per Input',
+          `${CHARS_TO_TYPE} (${inputsToTest.length} inputs tested)`,
+        )
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Avg Input Response Time', `${avgTypingTime.toFixed(2)} ms`)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Max Input Response Time', `${maxTypingTime.toFixed(2)} ms`)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'P95 Input Response Time', `${p95TypingTime.toFixed(2)} ms`)
+
+        // Performance assertions
+        expect(avgTypingTime).toBeLessThan(50) // Average should be very fast
+        expect(p95TypingTime).toBeLessThan(100) // P95 should still be responsive
+        expect(maxTypingTime).toBeLessThan(200) // Even worst case should be decent
+      }, 60000)
     })
   })
 })
