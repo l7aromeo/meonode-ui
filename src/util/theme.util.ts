@@ -1,98 +1,6 @@
 import type { CSSProperties } from '@emotion/serialize'
-import type { CssProp, Theme, ThemeSystem } from '@src/types/node.type.js'
-import { ObjHelper } from '@src/helper/obj.helper.js'
+import type { CssProp, Theme } from '@src/types/node.type.js'
 import { getValueByPath } from '@src/helper/common.helper.js'
-
-/**
- * Cache manager for theme resolution operations.
- */
-class ThemeResolverCache {
-  private static _instance: ThemeResolverCache | null = null
-  private readonly CACHE_SIZE_LIMIT = 500
-  private readonly CACHE_EVICTION_BATCH_SIZE = 50
-  private readonly _resolutionCache = new Map<string, Record<string, unknown>>()
-  private readonly _pathLookupCache = new Map<string, Record<string, unknown> | string | null>()
-  private readonly _themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
-
-  static getInstance(): ThemeResolverCache {
-    if (!ThemeResolverCache._instance) {
-      ThemeResolverCache._instance = new ThemeResolverCache()
-    }
-    return ThemeResolverCache._instance
-  }
-
-  getResolution<O extends Record<string, unknown>>(obj: O, theme: Theme) {
-    const key = this._generateCacheKey(obj, theme)
-    const result = this._resolutionCache.get(key) as O
-    if (result) {
-      // Move to end to mark as recently used
-      this._resolutionCache.delete(key)
-      this._resolutionCache.set(key, result)
-    }
-    return result || null
-  }
-
-  setResolution(obj: Record<string, any>, theme: Theme, result: Record<string, any>): void {
-    const key = this._generateCacheKey(obj, theme)
-    this._resolutionCache.set(key, result)
-    if (this._resolutionCache.size > this.CACHE_SIZE_LIMIT) {
-      this._evict(this._resolutionCache)
-    }
-  }
-
-  getPathLookup(theme: ThemeSystem, path: string): Record<string, unknown> | string | null {
-    const pathKey = `${ObjHelper.stringify(theme)}_${path}`
-    const result = this._pathLookupCache.get(pathKey)
-    if (result) {
-      // Move to end to mark as recently used
-      this._pathLookupCache.delete(pathKey)
-      this._pathLookupCache.set(pathKey, result)
-    }
-    return result ?? null
-  }
-
-  setPathLookup(theme: ThemeSystem, path: string, value: Record<string, unknown> | string | null): void {
-    const pathKey = `${ObjHelper.stringify(theme)}_${path}`
-    this._pathLookupCache.set(pathKey, value)
-    if (this._pathLookupCache.size > this.CACHE_SIZE_LIMIT) {
-      this._evict(this._pathLookupCache)
-    }
-  }
-
-  getThemeRegex(): RegExp {
-    this._themeRegex.lastIndex = 0
-    return this._themeRegex
-  }
-
-  shouldCache(): boolean {
-    return typeof window === 'undefined'
-  }
-
-  public clear() {
-    this._resolutionCache.clear()
-    this._pathLookupCache.clear()
-  }
-
-  /**
-   * Generate a stable cache key from object and theme, including the theme mode.
-   */
-  private _generateCacheKey(obj: Record<string, any>, theme: Theme): string {
-    // Including theme.mode is critical for cache correctness.
-    return `${ObjHelper.stringify(obj)}_${theme.mode}_${ObjHelper.stringify(theme.system)}`
-  }
-
-  private _evict(cache: Map<string, unknown>) {
-    const keys = cache.keys()
-    for (let i = 0; i < this.CACHE_EVICTION_BATCH_SIZE; i++) {
-      const key = keys.next().value
-      if (key) {
-        cache.delete(key)
-      } else {
-        break
-      }
-    }
-  }
-}
 
 interface FlexComponents {
   grow: number
@@ -101,8 +9,6 @@ interface FlexComponents {
 }
 
 export class ThemeUtil {
-  private static themeCache = ThemeResolverCache.getInstance()
-
   private constructor() {}
 
   /**
@@ -178,26 +84,17 @@ export class ThemeUtil {
 
     const themeSystem = theme.system
 
-    if (ThemeUtil.themeCache.shouldCache()) {
-      const cachedResult = ThemeUtil.themeCache.getResolution(obj, theme)
-      if (cachedResult !== null) {
-        return cachedResult
-      }
-    }
-
     const workStack: { value: unknown; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
     const resolvedValues = new Map<unknown, unknown>()
     const path = new Set<unknown>() // Used for cycle detection within the current traversal path.
 
+    const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
+
     const processThemeString = (value: string) => {
-      const regex = ThemeUtil.themeCache.getThemeRegex()
+      themeRegex.lastIndex = 0
       let hasChanged = false
-      const resolved = value.replace(regex, (match, path: string) => {
-        let themeValue = ThemeUtil.themeCache.getPathLookup(themeSystem, path)
-        if (themeValue === null) {
-          themeValue = getValueByPath(themeSystem, path)
-          ThemeUtil.themeCache.setPathLookup(themeSystem, path, themeValue)
-        }
+      const resolved = value.replace(themeRegex, (match, path: string) => {
+        const themeValue = getValueByPath(themeSystem, path)
         if (themeValue !== undefined && themeValue !== null) {
           hasChanged = true
           if (typeof themeValue === 'object') {
@@ -285,16 +182,7 @@ export class ThemeUtil {
     }
 
     const result = resolvedValues.get(obj) ?? obj
-
-    if (ThemeUtil.themeCache.shouldCache()) {
-      ThemeUtil.themeCache.setResolution(obj, theme, result)
-    }
-
     return result as O
-  }
-
-  public static clearThemeCache = () => {
-    ThemeUtil.themeCache.clear()
   }
 
   /**
