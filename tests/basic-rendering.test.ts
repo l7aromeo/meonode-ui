@@ -1,6 +1,7 @@
 import { Component, Div, H1, P, Span, createNode, Node } from '@src/main.js'
 import { cleanup, render } from '@testing-library/react'
 import { createSerializer, matchers } from '@emotion/jest'
+import React from 'react'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -209,5 +210,69 @@ describe('Basic Rendering', () => {
     const attributes = Array.from(element.attributes)
     const hasObjectValue = attributes.some(attr => attr.value === '[object Object]')
     expect(hasObjectValue).toBe(false)
+  })
+
+  it('should correctly handle style prop for DOM elements (extract and flatten)', () => {
+    // Create a React Element directly
+    const reactElement = React.createElement(
+      'div',
+      {
+        style: { color: 'blue', backgroundColor: 'white' },
+        'data-testid': 'react-element-test',
+      },
+      'React Element Content',
+    )
+
+    // Pass the React Element as a child to a MeoNode
+    // This forces processRawNode to process the React Element
+    const App = Div({
+      children: reactElement,
+    })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('react-element-test')
+
+    // The style should be applied to the element
+    expect(element).toHaveStyle({ color: 'rgb(0, 0, 255)' })
+  })
+
+  it('should NOT extract style prop for Components (pass as-is)', () => {
+    // Define a component that accepts a style prop (like SyntaxHighlighter)
+    const MyComponent = ({ style, children }: { style?: any; children?: React.ReactNode }) => {
+      return React.createElement(
+        'div',
+        {
+          'data-testid': 'component-style-test',
+          'data-has-style-prop': !!style,
+          'data-style-is-object': typeof style === 'object' && style !== null,
+          // We render the style keys as text to verify content
+          'data-style-keys': style ? Object.keys(style).join(',') : '',
+        },
+        children,
+      )
+    }
+
+    // Create a React Element for this component with a style prop
+    const themeObject = { themeKey: 'themeValue', anotherKey: 'value' }
+    const reactElement = React.createElement(
+      MyComponent,
+      {
+        style: themeObject,
+      },
+      'Component Content',
+    )
+
+    // Pass the React Element as a child to a MeoNode
+    const App = Div({
+      children: reactElement,
+    })
+
+    const { getByTestId } = render(App.render())
+    const element = getByTestId('component-style-test')
+
+    // Verify the style prop was passed to the component as-is
+    expect(element).toHaveAttribute('data-has-style-prop', 'true')
+    expect(element).toHaveAttribute('data-style-is-object', 'true')
+    expect(element).toHaveAttribute('data-style-keys', 'themeKey,anotherKey')
   })
 })

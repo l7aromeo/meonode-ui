@@ -462,12 +462,27 @@ export class NodeUtil {
 
     // Handle standard React elements.
     if (isValidElement(node)) {
-      const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<ElementType>
-      const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
+      // Only extract style if it's a DOM element (string type)
+      // For components, treat style as a normal prop
+      if (typeof node.type === 'string') {
+        const { style: childStyleObject, ...otherChildProps } = node.props as ComponentProps<ElementType>
+        const combinedProps = { ...otherChildProps, ...(childStyleObject || {}) }
+        return new BaseNode(
+          node.type as ElementType,
+          {
+            ...combinedProps,
+            ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
+            disableEmotion,
+          },
+          undefined,
+        )
+      }
+
+      // For components, pass props as is
       return new BaseNode(
         node.type as ElementType,
         {
-          ...combinedProps,
+          ...(node.props as any),
           ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
           disableEmotion,
         },
