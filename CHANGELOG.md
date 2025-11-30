@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2025-11-30
+
+### Fix
+
+- **core**: fix style prop extraction for React Components ([`19618b4`](https://github.com/l7aromeo/meonode-ui/commit/19618b4))
+    - Modified `processRawNode` to prevent `style` props from being extracted and flattened into HTML attributes when the node is a React Component.
+    - This ensures components receive their `style` prop intact as an object, preventing invalid attribute errors.
+
 ## [1.0.0] - 2025-11-28
 
 ### Perf
