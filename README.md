@@ -120,7 +120,6 @@ Built on @emotion/react for:
 - Vendor prefixing
 - Dead code elimination
 - Server-side rendering support
-- Zero-runtime overhead in production
 
 ### Smart Prop Differentiation
 
