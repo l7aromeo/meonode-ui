@@ -14,7 +14,6 @@ import type { NO_STYLE_TAGS } from '@src/constant/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
 import type { CSSObject, CSSInterpolation } from '@emotion/serialize'
 import { BaseNode } from '@src/core.node.js'
-import * as CSS from 'csstype'
 
 // ============================================================================
 // UTILITY TYPES
@@ -154,7 +153,7 @@ export type PropsOf<E extends NodeElementType> = E extends keyof JSX.IntrinsicEl
  * @template P - The props object of a component (e.g., PropsOf<E>)
  */
 export type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have a 'style' prop (even optional)?
-  ? S extends CSS.Properties<string | number> | Record<string, unknown> | undefined // Is the type of that 'style' prop (S) assignable to CSSProperties or undefined?
+  ? S extends CSSProperties | Record<string, unknown> | undefined // Is the type of that 'style' prop (S) assignable to CSSProperties or undefined?
     ? true // Yes, it's CSS compatible
     : false // No, 'style' exists but is not CSSProperties (e.g., style: string)
   : false // No, P does not have a 'style' prop at all
