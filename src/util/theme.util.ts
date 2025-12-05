@@ -161,6 +161,12 @@ export class ThemeUtil {
             if (Object.prototype.hasOwnProperty.call(currentValue, key)) {
               const value = currentValue[key]
               let newValue = resolvedValues.get(value) ?? value
+              let newKey = key
+
+              // Resolve theme variables in the key itself (e.g., media queries)
+              if (typeof key === 'string' && key.includes('theme.')) {
+                newKey = processThemeString(key)
+              }
 
               if (typeof newValue === 'function' && processFunctions) {
                 const funcResult = (newValue as (theme: Theme) => unknown)(theme)
@@ -169,9 +175,13 @@ export class ThemeUtil {
                 newValue = processThemeString(newValue)
               }
 
-              if (newValue !== value) {
+              if (newValue !== value || newKey !== key) {
                 if (newObj === null) newObj = { ...currentValue } // Copy-on-write
-                newObj[key] = newValue
+                if (newKey !== key) {
+                  // Key changed, remove old key and add new one
+                  delete newObj[key]
+                }
+                newObj[newKey] = newValue
               }
             }
           }
