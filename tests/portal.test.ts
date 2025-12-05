@@ -6,6 +6,28 @@ import { createPortal } from 'react-dom'
 afterEach(cleanup)
 
 describe('Portal System', () => {
+  it('should render content in a portal and unmount it', () => {
+    // Create content for the portal.
+    const PortalContent = ({ name }: { name: string }) => Div({ children: name })
+    // Create a Portal component factory.
+    const MyPortal = Portal(PortalContent)
+
+    let portalInstance: any
+    // Act: Render the portal content.
+    act(() => {
+      portalInstance = MyPortal({ name: 'Portal Content' })
+    })
+    // Assert: The portal content should be in the document body.
+    expect(document.body).toHaveTextContent('Portal Content')
+
+    // Act: Unmount the portal content.
+    act(() => {
+      portalInstance?.unmount()
+    })
+    // Assert: The portal content should no longer be in the document body.
+    expect(document.body).not.toHaveTextContent('Portal Content')
+  })
+
   it('should handle dynamic portal creation, update, and unmounting', async () => {
     // Made async
     const PortalComp = ({ portal }: PortalProps) => {

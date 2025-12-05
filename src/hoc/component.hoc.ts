@@ -1,6 +1,6 @@
 import { BaseNode, Node } from '@src/core.node.js'
-import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp } from '@src/types/node.type.js'
-import { type CSSProperties, type ReactElement, type ReactNode } from 'react'
+import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp, ThemedCSSProperties } from '@src/types/node.type.js'
+import type { ReactElement, ReactNode } from 'react'
 import { getElementTypeName } from '@src/helper/common.helper.js'
 import { NodeUtil } from '@src/util/node.util.js'
 
@@ -22,9 +22,9 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
       children: Children
     }>
   : TProps &
-      (HasCSSCompatibleStyleProp<TProps> extends true ? CSSProperties : object) &
+      (HasCSSCompatibleStyleProp<TProps> extends true ? ThemedCSSProperties : object) &
       Partial<{
-        props: Partial<Omit<TProps, 'children'>>
+        props: Partial<TProps> & { children?: never }
         children: Children
       }>
 
