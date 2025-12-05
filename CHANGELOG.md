@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2025-12-05
+
+### Feat
+
+- **types**: enforce strict component props and improve type inference ([`047c0f8`](https://github.com/l7aromeo/meonode-ui/commit/047c0f8))
+    - Redefined `MergedProps` and introduced `ValidateComponentProps` to strictly validate props passed to `Node` and `createNode`.
+    - Added `ExactProps` generic constraint to prevent excess property passing, improving type safety.
+    - Enhanced `PropsOf` to better infer props from React components, including `forwardRef` and `Memo` components.
+- **theme**: enable theme variable resolution in style keys ([`30ca1fd`](https://github.com/l7aromeo/meonode-ui/commit/30ca1fd))
+    - Updated `ThemeUtil` to resolve theme variables within style keys (e.g., media queries like `@media (max-width: theme.breakpoint.lg)`).
+
+### Refactor
+
+- **portal**: optimize portal implementation and fix types ([`9643682`](https://github.com/l7aromeo/meonode-ui/commit/9643682))
+    - Refactored `Portal` HOC to use a cleaner, more efficient implementation for provider wrapping.
+    - Improved type definitions for `PortalLauncher` and `PortalProps` to ensure correct prop inference.
+
+### Fix
+
+- **util**: correct function child detection and rendering logic ([`944cfbd`](https://github.com/l7aromeo/meonode-ui/commit/944cfbd))
+    - Updated `isFunctionChild` type definition to correctly identify function children while excluding React components (Class, Memo, ForwardRef).
+    - Updated `functionRenderer` type definition to properly handle function child execution.
+
+### Test
+
+- **test**: refactor tests to align with strict types and fix leaks ([`40c87c7`](https://github.com/l7aromeo/meonode-ui/commit/40c87c7))
+    - Updated various tests (`advanced-features`, `leak-repro`, `memoization`) to comply with the new strict type requirements.
+    - Added `strict-component-props.test.ts` and `theme-key-resolution.test.ts` to verify new features.
+
+### Chore
+
+- **build**: update build config and dependencies ([`a9367e0`](https://github.com/l7aromeo/meonode-ui/commit/a9367e0))
+    - Updated `package.json` scripts and `tsconfig.json` for better build and test processes.
+
 ## [1.0.1] - 2025-11-30
 
 ### Fix
