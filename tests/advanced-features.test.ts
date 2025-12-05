@@ -71,8 +71,9 @@ describe('Advanced Component Features', () => {
     // Create a Fragment component with a child Div and attempt to apply styling props directly to the Fragment.
     const App = Fragment({
       children: Div({ children: 'Fragment Child' }),
-      backgroundColor: 'red', // This styling prop should be ignored by Fragment
-      css: { border: '1px solid green' }, // This styling prop should be ignored by Fragment
+      // @ts-expect-error - 'backgroundColor' is not a valid prop for Fragment
+      backgroundColor: 'red',
+      css: { border: '1px solid green' },
     })
     // Render the component and get a utility to query the DOM by text, and the container.
     const { getByText, container } = render(App.render())
@@ -89,10 +90,11 @@ describe('Advanced Component Features', () => {
   it('should not apply styling props to Suspense component', () => {
     // Create a Suspense component with a fallback and a child Div, attempting to apply styling props directly to Suspense.
     const App = Suspense({
-      fallback: Div({ children: 'Loading...' }),
+      fallback: Div({ children: 'Loading...' }).render(),
       children: Div({ children: 'Suspense Child' }),
-      backgroundColor: 'blue', // This styling prop should be ignored by Suspense
-      css: { border: '1px solid yellow' }, // This styling prop should be ignored by Suspense
+      // @ts-expect-error - 'backgroundColor' is not a valid prop for Suspense
+      backgroundColor: 'blue',
+      css: { border: '1px solid yellow' },
     })
     // Render the component and get a utility to query the DOM by text, and the container.
     const { getByText, container } = render(App.render())
@@ -110,8 +112,9 @@ describe('Advanced Component Features', () => {
     // Create an Activity component with a child Div, attempting to apply styling props directly to Activity.
     const App = Activity({
       children: Div({ children: 'Activity Child' }),
-      backgroundColor: 'green', // This styling prop should be ignored by Activity
-      css: { border: '1px solid purple' }, // This styling prop should be ignored by Activity
+      // @ts-expect-error - 'backgroundColor' is not a valid prop for Activity
+      backgroundColor: 'green',
+      css: { border: '1px solid purple' },
     })
     // Render the component and get a utility to query the DOM by text, and the container.
     const { getByText, container } = render(App.render())

@@ -1,4 +1,6 @@
-const css = {
+import { CssProp } from '@src/types/node.type'
+
+const css: CssProp = {
   // Basic styling
   display: 'flex',
   flexDirection: 'column',

@@ -2,6 +2,7 @@ import { jest } from '@jest/globals'
 import { Div, H1, Node, P, setDebugMode, Span } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { StrictMode, useEffect, useState } from 'react'
+import React from 'react'
 import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode, createNode } from '@src/core.node.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
@@ -739,5 +740,40 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
     expect(radioTrue).toBeChecked()
     expect(radioFalse).not.toBeChecked()
+  })
+
+  it('should maintain cache across updates', () => {
+    let renderCount = 0
+    const Expensive = () => {
+      renderCount++
+      return React.createElement('div', null, 'Expensive')
+    }
+
+    // Create node outside to access stableKey
+    const expensiveNode = Node(Expensive, {}, [])
+
+    const App = () => {
+      const [, setCount] = useState(0)
+      return React.createElement('div', null, expensiveNode.render(), React.createElement('button', { onClick: () => setCount(c => c + 1) }, 'Update'))
+    }
+
+    const { getByText } = render(Node(App).render())
+
+    expect(renderCount).toBe(1)
+    expect(BaseNode.elementCache.has(expensiveNode.stableKey!)).toBe(true)
+
+    // Trigger update
+    act(() => {
+      getByText('Update').click()
+    })
+
+    // Should hit cache and NOT re-render
+    // If fast return path returns unwrapped element, wrapper unmounts -> deletes cache.
+    // So next render (this one) will be a cache MISS if cache was deleted.
+    // If cache was preserved, it should be 1.
+    expect(renderCount).toBe(1)
+
+    // Cache should still exist
+    expect(BaseNode.elementCache.has(expensiveNode.stableKey!)).toBe(true)
   })
 })
