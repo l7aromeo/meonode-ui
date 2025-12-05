@@ -1,4 +1,4 @@
-import { Div, Node, type NodeInstance, type Theme, ThemeProvider } from '@src/main.js'
+import { Div, Node, NodeInstance, type Theme, ThemeProvider } from '@src/main.js'
 import { cleanup, render } from '@testing-library/react'
 import { createRef } from 'react'
 import { createSerializer, matchers } from '@emotion/jest'

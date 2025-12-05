@@ -29,12 +29,12 @@
     "README.md"
   ],
   "scripts": {
-    "watch:build": "yarn dlx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
+    "watch:build": "npx nodemon --watch src --ext ts,tsx,js,json --exec \"yarn build\"",
     "lint": "eslint --fix",
     "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose --testPathIgnorePatterns=\"tests/performance.test.ts\" --testPathIgnorePatterns=\"tests/react-createelement-comparison.test.ts\"",
     "test:perf": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose tests/performance.test.ts tests/react-createelement-comparison.test.ts",
     "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules $(yarn bin jest) --ci --verbose",
-    "prebuild": "yarn lint && yarn test:all",
+    "prebuild": "yarn lint && yarn tsgo --noEmit && yarn test:all",
     "build": "yarn prebuild && rm -rf ./dist && rollup -c rollup.config.ts && tsgo -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "publish:prerelease": "./prepublish.sh && yarn build && yarn version -i prerelease && yarn npm publish --tag next",
     "publish:patch": "./prepublish.sh && yarn build && yarn version -i patch && yarn npm publish --tag latest",

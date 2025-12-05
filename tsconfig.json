@@ -6,15 +6,15 @@
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@src/*": ["src/*"],
-      "@tests/*": ["tests/*"]
-    },
-    "outDir": "dist",
+    "noEmit": true,
     "importHelpers": true,
     "isolatedModules": true,
-    "strict": true
+    "skipLibCheck": true,
+    "strict": true,
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
+    }
   },
   "include": ["src", "tests", "rollup.config.ts"],
   "exclude": ["dist", "node_modules"]
