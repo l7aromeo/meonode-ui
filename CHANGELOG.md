@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2025-12-05
+
+### Fix
+- **types**: update HasCSSCompatibleStyleProp to use CSSProperties directly ([`4e23499`](https://github.com/l7aromeo/meonode-ui/commit/4e234990147baba72064a2f7b4ff03fedfe23a98))
+
 ## [1.1.0] - 2025-12-05
 
 ### Feat
