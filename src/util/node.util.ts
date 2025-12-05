@@ -510,7 +510,7 @@ export class NodeUtil {
    * @param node The node to check.
    * @returns True if the node is a function-as-a-child, false otherwise.
    */
-  public static isFunctionChild<E extends NodeInstance | ReactNode>(node: NodeElement): node is NodeFunction<E> {
+  public static isFunctionChild<E extends NodeElementType>(node: NodeElement): node is NodeFunction<E> {
     if (typeof node !== 'function' || isReactClassComponent(node) || isMemo(node) || isForwardRef(node)) return false
     try {
       return !(node.prototype && typeof node.prototype.render === 'function')
@@ -534,7 +534,7 @@ export class NodeUtil {
    * @param disableEmotion Inherited flag to disable Emotion styling for children.
    * @returns The processed and rendered output of the render function, or null if an error occurs.
    */
-  public static functionRenderer<E extends ReactNode | NodeInstance>({ render, disableEmotion }: FunctionRendererProps<E>): ReactNode | null | undefined {
+  public static functionRenderer<E extends NodeElementType>({ render, disableEmotion }: FunctionRendererProps<E>): ReactNode | null | undefined {
     let result: NodeElement
     try {
       // Execute the render prop function to get its output.
