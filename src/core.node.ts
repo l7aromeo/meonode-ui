@@ -673,9 +673,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
  * It's the simplest way to wrap a component or element.
  * @function Node
  */
-function Node<AdditionalProps extends Record<string, unknown>, E extends NodeElementType>(
+function Node<AdditionalProps, E extends NodeElementType, ExactProps extends object = object>(
   element: E,
-  props: MergedProps<E, AdditionalProps> = {} as MergedProps<E, AdditionalProps>,
+  props: MergedProps<E, AdditionalProps, ExactProps> = {} as any,
   deps?: DependencyList,
 ): NodeInstance<E> {
   return new BaseNode(element, props as NodeProps<E>, deps)
@@ -705,26 +705,18 @@ export { Node }
  * This is useful for creating reusable, specialized factory functions (e.g., `const Div = createNode('div')`).
  * @function createNode
  */
-export function createNode<AdditionalInitialProps extends Record<string, unknown>, E extends NodeElementType>(
+export function createNode<AdditionalInitialProps, E extends NodeElementType, ExactInitialProps extends object = object>(
   element: E,
-  initialProps?: MergedProps<E, AdditionalInitialProps>,
+  initialProps?: MergedProps<E, AdditionalInitialProps, ExactInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
-      props: MergedProps<E, AdditionalProps>,
-      deps?: DependencyList,
-    ) => NodeInstance<E>) & {
+  ? (<AdditionalProps, ExactProps extends object = object>(props: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) => NodeInstance<E>) & {
       element: E
     }
-  : (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
-      props?: MergedProps<E, AdditionalProps>,
-      deps?: DependencyList,
-    ) => NodeInstance<E>) & {
+  : (<AdditionalProps, ExactProps extends object = object>(props?: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) => NodeInstance<E>) & {
       element: E
     } {
-  const Instance = <AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
-    props?: MergedProps<E, AdditionalProps>,
-    deps?: DependencyList,
-  ) => Node(element, { ...initialProps, ...props } as NodeProps<E> & AdditionalProps, deps)
+  const Instance = <AdditionalProps, ExactProps extends object = object>(props?: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) =>
+    Node(element, { ...initialProps, ...props } as any, deps)
   Instance.element = element
   return Instance as any
 }
@@ -734,25 +726,27 @@ export function createNode<AdditionalInitialProps extends Record<string, unknown
  * This provides a more ergonomic API for components that primarily wrap content (e.g., `P('Some text')`).
  * @function createChildrenFirstNode
  */
-export function createChildrenFirstNode<AdditionalInitialProps extends Record<string, unknown>, E extends NodeElementType>(
+export function createChildrenFirstNode<AdditionalInitialProps, E extends NodeElementType, ExactInitialProps extends object = object>(
   element: E,
-  initialProps?: Omit<NodeProps<E>, keyof AdditionalInitialProps | 'children'> & AdditionalInitialProps,
+  initialProps?: MergedProps<E, AdditionalInitialProps, ExactInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+  ? (<AdditionalProps = undefined, ExactProps extends object = object>(
       children: Children,
-      props: Omit<MergedProps<E, AdditionalProps>, 'children'>,
+      props: MergedProps<E, AdditionalProps, ExactProps> & { children?: never },
       deps?: DependencyList,
     ) => NodeInstance<E>) & { element: E }
-  : (<AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+  : (<AdditionalProps = undefined, ExactProps extends object = object>(
       children?: Children,
-      props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
+      props?: MergedProps<E, AdditionalProps, ExactProps> & { children?: never },
       deps?: DependencyList,
-    ) => NodeInstance<E>) & { element: E } {
-  const Instance = <AdditionalProps extends Record<string, unknown> = Record<string, unknown>>(
+    ) => NodeInstance<E>) & {
+      element: E
+    } {
+  const Instance = <AdditionalProps = undefined, ExactProps extends object = object>(
     children?: Children,
-    props?: Omit<MergedProps<E, AdditionalProps>, 'children'>,
+    props?: MergedProps<E, AdditionalProps, ExactProps> & { children?: never },
     deps?: DependencyList,
-  ) => Node(element, { ...initialProps, ...props, children } as NodeProps<E> & AdditionalProps, deps)
+  ) => Node(element, { ...initialProps, ...props, children } as any, deps)
   Instance.element = element
   return Instance as any
 }
