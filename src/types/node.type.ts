@@ -12,7 +12,7 @@ import React, {
 } from 'react'
 import type { NO_STYLE_TAGS } from '@src/constant/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
-import type { CSSObject, CSSInterpolation } from '@emotion/serialize'
+import type { CSSInterpolation } from '@emotion/serialize'
 import { BaseNode } from '@src/core.node.js'
 
 // ============================================================================
@@ -227,9 +227,24 @@ export type ThemedCSSProperties = {
  * A themed version of Emotion's `CSSObject` type. It allows property values to be
  * functions that receive the theme. This is applied recursively to handle
  * nested objects like pseudo-selectors and media queries.
+ *
+ * Supports theme functions at any nesting level:
+ * ```ts
+ * css: {
+ *   backgroundColor: theme => theme.colors.primary,  // ✓ Top level
+ *   '&:hover': {
+ *     backgroundColor: theme => theme.colors.hover,  // ✓ Nested level
+ *   }
+ * }
+ * ```
  */
 export type ThemedCSSObject = {
-  [P in keyof CSSObject]: ThemedValue<CSSObject[P] extends object ? ThemedCSSObject : CSSObject[P]>
+  // Standard CSS properties from CSSObject with themed values
+  [P in keyof CSSProperties]?: ThemedValue<CSSProperties[P]>
+} & {
+  // Index signature for nested selectors (pseudo-classes, media queries, child selectors)
+  // This allows arbitrary string keys like '&:hover', '@media...', '& .child', etc.
+  [key: string]: ThemedValue<ThemedCSSObject> | ThemedValue<CSSProperties[keyof CSSProperties]> | undefined
 }
 
 /**
