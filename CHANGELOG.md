@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2025-12-22
+
+### Fix
+
+- **types**: fix `ThemedCSSObject` to support nested selectors and theme functions in deeply nested objects ([`f938be5`](https://github.com/l7aromeo/meonode-ui/commit/f938be5ca17cb5af076e567cfb7df8a7df97cf0d))
+    - Updated `ThemedCSSObject` to use an intersection type with an index signature, allowing arbitrary string keys (like pseudo-selectors and media queries) to correctly resolve theme functions.
+
+### Chore
+
+- **deps**: update dependencies to latest versions ([`51925b1`](https://github.com/l7aromeo/meonode-ui/commit/51925b152ac8406f16ce627adc61ba4c3f442fc7))
+    - Updated `next` to `^16.1.0`, `react-router-dom` to `^7.11.0`, `rollup` to `^4.54.0`, `@testing-library/react` to `^16.3.1` and `@typescript/native-preview` to `^7.0.0`.
+
 ## [1.1.1] - 2025-12-05
 
 ### Fix
