@@ -119,10 +119,6 @@ export interface WorkItem {
   isProcessed: boolean
   /** Flag indicating if the node's children should be skipped (blocked) due to memoization. */
   blocked: boolean
-  /** The depth of the node in the tree (for debugging/profiling). */
-  depth: number
-  /** The index of the child in the parent's children array. */
-  childIndex: number
 }
 
 // ============================================================================
@@ -429,12 +425,6 @@ export interface NodePortal {
    * This removes the portal container from the document body.
    */
   unmount: () => void
-
-  /**
-   * Updates the content of the portal with a new node.
-   * @param node The new `NodeElement` to render inside the portal.
-   */
-  update: (node: NodeElement) => void
 }
 
 /**

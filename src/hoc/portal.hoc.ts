@@ -1,5 +1,5 @@
 import { BaseNode, Node } from '@src/core.node.js'
-import type { BasePortalProps, ComponentNode, NodeElement, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps } from '@src/types/node.type.js'
+import type { BasePortalProps, ComponentNode, NodeInstance, NodeProps, NodePortal, PortalLauncher, PortalProps } from '@src/types/node.type.js'
 import type { ReactNode } from 'react'
 
 // --- Function Overloads ---
@@ -72,9 +72,6 @@ export function Portal<P extends BasePortalProps | Record<string, any> = BasePor
   let portalInstance: NodePortal = {
     unmount: () => {
       console.warn('Portal instance not yet created. Cannot unmount.')
-    },
-    update: (node?: NodeElement) => {
-      console.warn('Portal instance not yet created. Cannot update.', node)
     },
   }
 
