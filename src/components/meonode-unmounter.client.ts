@@ -38,7 +38,11 @@ export default function MeoNodeUnmounter({ children, ...props }: { node: NodeIns
       }
 
       // Unregister from FinalizationRegistry to prevent redundant callback execution
-      BaseNode.cacheCleanupRegistry.unregister(node)
+      try {
+        BaseNode.cacheCleanupRegistry.unregister(node)
+      } catch {
+        // Ignore if not registered or not eligible
+      }
     }
 
     // Clear lastSignature to prevent memory leaks from retained prop objects

@@ -19,6 +19,17 @@ import type { ComponentProps, CSSProperties, ElementType } from 'react'
 import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constant/common.const.js'
 
 /**
+ * A reference to the global object across different environments.
+ * It checks for `globalThis`, `window` (browser), and `global` (Node.js).
+ * This is used to store shared state that persists across module reloads
+ * or multiple bundles in the same environment.
+ * @internal
+ */
+const _globalScope = (
+  typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {}
+) as Record<symbol, any>
+
+/**
  * Retrieves or initializes a global state value using a Symbol key.
  * This ensures singleton behavior across multiple bundles or module reloads,
  * and protects against property name mangling during obfuscation.
@@ -27,15 +38,11 @@ import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constant/common.const.js'
  * @returns The global state value.
  */
 export function getGlobalState<T>(key: symbol, factory: () => T): T {
-  const globalScope = (
-    typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {}
-  ) as Record<symbol, T>
-
-  if (!Object.prototype.hasOwnProperty.call(globalScope, key)) {
-    globalScope[key] = factory()
+  if (!(key in _globalScope)) {
+    _globalScope[key] = factory()
   }
 
-  return globalScope[key]
+  return _globalScope[key]
 }
 
 /**
@@ -266,22 +273,6 @@ export function getDOMProps<E extends ElementType, T extends ComponentProps<E>>(
 export function hasNoStyleTag(tag?: NodeElement): boolean {
   if (!tag || typeof tag !== 'string') return false
   return noStyleTagsSet.has(tag.toLowerCase() as (typeof NO_STYLE_TAGS)[number])
-}
-
-/**
- * Returns a shallow copy of the object with the specified keys omitted.
- * @param obj The source object.
- * @param keys The property keys to omit.
- * @returns A new object without the omitted keys.
- */
-export function omit<T extends object, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> {
-  const result = {} as Omit<T, K>
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && !keys.includes(key as unknown as K)) {
-      ;(result as any)[key] = obj[key]
-    }
-  }
-  return result
 }
 
 /**

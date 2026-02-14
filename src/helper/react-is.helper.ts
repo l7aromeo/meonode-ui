@@ -191,20 +191,6 @@ export const isSuspense = (object: unknown): boolean => typeOf(object) === REACT
 export const isSuspenseList = (object: unknown): boolean => typeOf(object) === REACT_SUSPENSE_LIST_TYPE
 
 /**
- * Checks if an object is a React ViewTransition component
- * @param {unknown} object Object to check
- * @returns {boolean} - True if object is ViewTransition
- */
-export const isViewTransition = (object: unknown): boolean => typeOf(object) === REACT_VIEW_TRANSITION_TYPE
-
-/**
- * Checks if an object is a React Activity component
- * @param {unknown} object Object to check
- * @returns {boolean} - True if object is Activity
- */
-export const isActivity = (object: unknown): boolean => typeOf(object) === REACT_ACTIVITY_TYPE
-
-/**
  * Set of known valid React special element types.
  * Used for quick validation of element types in isValidElementType().
  * Includes Fragment, Profiler, StrictMode, Suspense and SuspenseList.

@@ -5,7 +5,6 @@ import {
   type ExoticComponent,
   Fragment,
   type FragmentProps,
-  isValidElement,
   type ReactElement,
   type ReactNode,
 } from 'react'
@@ -16,7 +15,6 @@ import type {
   FinalNodeProps,
   HasRequiredProps,
   MergedProps,
-  NodeElement,
   NodeElementType,
   NodeInstance,
   NodePortal,
@@ -47,7 +45,8 @@ const PORTAL_CLEANUP_REGISTRY_KEY = Symbol.for('@meonode/ui/BaseNode/portalClean
  * @template E - The type of React element or component this node represents.
  */
 export class BaseNode<E extends NodeElementType = NodeElementType> {
-  public instanceId: string = Math.random().toString(36).slice(2) + Date.now().toString(36)
+  private static _idCounter = 0
+  public instanceId: string = `m${++BaseNode._idCounter}`
 
   public element: E
   public rawProps: Partial<NodeProps<E>> = {}
@@ -109,6 +108,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // Element type validation is performed once at construction to prevent invalid nodes from being created.
     if (!isValidElementType(element)) {
       const elementType = getComponentType(element)
+      if (NodeUtil.isNodeInstance(element)) {
+        throw new Error(`Invalid element type: MeoNode UI instance provided!`)
+      }
       throw new Error(`Invalid element type: ${elementType} provided!`)
     }
     this.element = element
@@ -134,7 +136,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    */
   public get props(): FinalNodeProps {
     if (!this._props) {
-      this._props = NodeUtil.processProps(this.element, this.rawProps, this.stableKey)
+      this._props = NodeUtil.processProps(this.rawProps, this.stableKey)
     }
     return this._props
   }
@@ -355,14 +357,19 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
           if (children) {
             // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
-            const childrenToProcess = (Array.isArray(children) ? children : [children]).filter(NodeUtil.isNodeInstance)
+            const childArray = Array.isArray(children) ? children : [children]
 
-            // --- Check capacity ONCE before loop ---
-            const requiredCapacity = stackPointer + childrenToProcess.length
-            ensureCapacity(requiredCapacity)
+            // --- Count BaseNode children for capacity check (avoids .filter() allocation) ---
+            let nodeChildCount = 0
+            for (let j = 0; j < childArray.length; j++) {
+              if (NodeUtil.isNodeInstance(childArray[j])) nodeChildCount++
+            }
 
-            for (let i = childrenToProcess.length - 1; i >= 0; i--) {
-              const child = childrenToProcess[i]
+            ensureCapacity(stackPointer + nodeChildCount)
+
+            for (let i = childArray.length - 1; i >= 0; i--) {
+              const child = childArray[i]
+              if (!NodeUtil.isNodeInstance(child)) continue
 
               // Check if the child is eligible for caching and retrieve its cache entry.
               const childCacheEntry = !NodeUtil.shouldCacheElement(child) ? undefined : BaseNode.elementCache.get(child.stableKey)
@@ -411,8 +418,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
                   throw new Error(`[MeoNode] Missing rendered element for child node: ${child.stableKey}`)
                 }
                 finalChildren[i] = rendered
-              } else if (isValidElement(child)) {
-                finalChildren[i] = child
               } else {
                 finalChildren[i] = child
               }
@@ -544,24 +549,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // Track if already unmounted to make unmount idempotent
     let isUnmounted = false
     const originalUnmount = reactRoot.unmount.bind(reactRoot)
-
-    reactRoot.update = (next: NodeElement) => {
-      if (isUnmounted) {
-        if (__DEBUG__) {
-          console.warn('[MeoNode] Attempt to update already-unmounted portal')
-        }
-        return
-      }
-
-      try {
-        const content = NodeUtil.isNodeInstance(next) ? next.render() : (next as ReactNode)
-        reactRoot.render(content)
-      } catch (error) {
-        if (__DEBUG__) {
-          console.error('[MeoNode] Portal update error:', error)
-        }
-      }
-    }
 
     reactRoot.unmount = () => {
       // Idempotent guard

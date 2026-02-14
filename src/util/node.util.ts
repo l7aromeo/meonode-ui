@@ -40,6 +40,9 @@ export class NodeUtil {
   // Critical props for signature generation and shallow comparison
   private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
 
+  // Cache for function prop toString() hashes to avoid repeated expensive serialization
+  private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
+
   /**
    * Portal infrastructure using WeakMap for memory-safe management.
    * Stores the DOM element and React root associated with a NodeInstance.
@@ -71,16 +74,7 @@ export class NodeUtil {
    * @param obj The object to check.
    * @returns True if the object is a NodeInstance, false otherwise.
    */
-  public static isNodeInstance = (obj: unknown): obj is NodeInstance => {
-    return (
-      typeof obj === 'object' &&
-      obj !== null &&
-      'element' in obj &&
-      typeof (obj as NodeInstance).render === 'function' &&
-      typeof (obj as NodeInstance).toPortal === 'function' &&
-      'isBaseNode' in obj
-    )
-  }
+  public static isNodeInstance = (obj: unknown): obj is NodeInstance => obj instanceof BaseNode
 
   /**
    * Determines if a given string `k` is a valid CSS style property.
@@ -107,7 +101,7 @@ export class NodeUtil {
       h1 ^= char
       h1 = Math.imul(h1, 16777619)
       // djb2
-      h2 = (h2 * 33) ^ char
+      h2 = Math.imul(h2, 33) ^ char
     }
 
     return `${(h1 >>> 0).toString(36)}_${(h2 >>> 0).toString(36)}`
@@ -206,7 +200,12 @@ export class NodeUtil {
       } else if (val && (val as NodeInstance).isBaseNode) {
         valStr = `${key}:${(val as NodeInstance).stableKey};`
       } else if (valType === 'function') {
-        valStr = `${key}:${NodeUtil.hashString(val.toString())};`
+        let hash = NodeUtil._propFuncCache.get(val as (...args: any[]) => any)
+        if (!hash) {
+          hash = NodeUtil.hashString(val.toString())
+          NodeUtil._propFuncCache.set(val as (...args: any[]) => any, hash)
+        }
+        valStr = `${key}:${hash};`
       } else {
         // Include sorted keys for object structure signature
         const objKeys = Object.keys(val as Record<string, unknown>).sort()
@@ -280,12 +279,11 @@ export class NodeUtil {
    * The main prop processing pipeline. It separates cacheable and non-cacheable props,
    * generates a signature for caching, and assembles the final props object.
    * This method applies optimizations like fast-path for simple props and hybrid caching strategy.
-   * @param element The element type for which props are being processed.
    * @param rawProps The original props to process.
    * @param stableKey The stable key used for child normalization (optional).
    * @returns The processed props object ready for rendering.
    */
-  public static processProps(_element: NodeElementType, rawProps: Partial<NodeProps<NodeElementType>> = {}, stableKey?: string): FinalNodeProps {
+  public static processProps(rawProps: Partial<NodeProps> = {}, stableKey?: string): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
     // --- Fast Path Optimization ---
@@ -319,7 +317,7 @@ export class NodeUtil {
 
     // 2. Pass element type to signature generation (still used for stableKey generation elsewhere, but not for caching here)
     // We removed caching, so we just compute CSS props directly.
-    const { cssProps: cachedCssProps } = { cssProps: getCSSProps(cacheableProps) }
+    const cachedCssProps = getCSSProps(cacheableProps)
 
     // 3. Process non-cacheable props on every render to ensure correctness for functions and objects.
     const nonCachedCssProps = getCSSProps(nonCacheableProps)
@@ -413,8 +411,8 @@ export class NodeUtil {
       return true
     }
     // Shallow compare deps. If any have changed, update.
-    if (newDeps.some((dep, i) => !Object.is(dep, prevDeps[i]))) {
-      return true
+    for (let i = 0; i < newDeps.length; i++) {
+      if (!Object.is(newDeps[i], prevDeps[i])) return true
     }
 
     // Deps are the same, no update needed.
@@ -547,8 +545,10 @@ export class NodeUtil {
       result = null
     }
 
-    // Handle null or undefined results directly, as they are valid React render outputs.
-    if (result === null || result === undefined) return result as never
+    // Handle null, undefined, or primitive types results directly, as they are valid React render outputs.
+    if (result === null || result === undefined || typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+      return result
+    }
 
     // If the result is already a BaseNode instance, process it.
     if (NodeUtil.isNodeInstance(result)) {
@@ -584,9 +584,6 @@ export class NodeUtil {
     if (result instanceof React.Component) {
       return NodeUtil.renderProcessedNode({ processedElement: NodeUtil.processRawNode(result.render(), disableEmotion), disableEmotion })
     }
-
-    // Handle primitive types directly, as they are valid React children.
-    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result
 
     // For any other non-primitive, non-array result, process it as a single NodeElement.
     const processedResult = NodeUtil.processRawNode(result as NodeElement, disableEmotion)
