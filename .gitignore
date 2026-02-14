@@ -17,3 +17,6 @@ node_modules
 *.log
 .idea
 .fleet
+
+# Ai
+.claude
