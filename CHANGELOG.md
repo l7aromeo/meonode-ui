@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-02-15
+
+### Feat
+
+- **hook**: remove deprecated `usePortal` hook and related portal update logic ([`eb40bd1`](https://github.com/l7aromeo/meonode-ui/commit/eb40bd1))
+    - Deleted the unstable `usePortal` hook and removed the `update` method from `NodePortal` and `Portal` HOC to streamline the API.
+
+### Refactor
+
+- **core**: optimize core logic, instance ID generation, and utility helpers ([`27fdd1b`](https://github.com/l7aromeo/meonode-ui/commit/27fdd1b))
+    - Switched `instanceId` to use a static counter for deterministic IDs.
+    - Optimized the iterative render loop by reducing array allocations and improving capacity checks.
+    - Refactored `NodeUtil.isNodeInstance` to use `instanceof BaseNode` for better performance.
+    - Improved `getGlobalState` to use a shared internal scope.
+    - Enhanced `NodeUtil` with a weak map cache for function prop hashes.
+
+### Build
+
+- **rollup**: update configuration to use `.cjs` extension for CommonJS output ([`7f6a130`](https://github.com/l7aromeo/meonode-ui/commit/7f6a130))
+    - Updated `rollup.config.ts` and `package.json` to use `.cjs` for CJS bundles to ensure compatibility in ESM-first environments.
+
+### Chore
+
+- **deps**: update dependencies to latest versions ([`f95591e`](https://github.com/l7aromeo/meonode-ui/commit/f95591e))
+    - Updated various devDependencies including `typescript-eslint`, `next`, `react`, and `rollup`.
+- **git**: update `.gitignore` to include AI-related directories ([`0607574`](https://github.com/l7aromeo/meonode-ui/commit/0607574))
+    - Added `.claude` to the ignore list.
+
 ## [1.1.2] - 2025-12-22
 
 ### Fix
