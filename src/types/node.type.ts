@@ -392,46 +392,68 @@ export type ComponentNode = (NodeInstance | ReactNode) | (() => NodeInstance | R
 // ============================================================================
 
 /**
- * Base props interface for components rendered inside a portal.
- * @property children - The content to render within the portal. Accepts a single NodeElement or an array of NodeElements.
- * @property portal - An object providing portal lifecycle control methods.
- * @property unmount - Function to unmount and clean up the portal instance.
+ * A ref-based pub/sub data channel for pushing updates to portal layers
+ * without re-rendering the parent component.
+ * @template T The data type managed by the channel.
  */
-export interface BasePortalProps {
-  /** Content to render within the portal */
-  children?: Children
-
-  /** Portal control object containing lifecycle methods */
-  portal: {
-    /** Unmounts and cleans up the portal */
-    unmount: () => void
-  }
+export interface DataChannel<T = any> {
+  /** Returns the current data value */
+  get: () => T
+  /** Sets a new data value and notifies all subscribers */
+  set: (next: T) => void
+  /** Subscribes to data changes. Returns an unsubscribe function. */
+  subscribe: (cb: (data: T) => void) => () => void
 }
 
 /**
- * Props type for components rendered through the Portal HOC.
- * Extends the component's own props with portal-specific functionality.
- * @template T The component's own prop types
+ * An entry in the portal stack managed by PortalProvider.
+ * @template T The data type for this portal layer.
+ * @internal
  */
-export type PortalProps<T extends BasePortalProps | Record<string, any> = Record<string, any>> = T & BasePortalProps
-
-/**
- * Interface representing a portal instance with lifecycle methods.
- * Provides methods to unmount the portal and update its content dynamically.
- */
-export interface NodePortal {
-  /**
-   * Unmounts the portal and cleans up the DOM element.
-   * This removes the portal container from the document body.
-   */
-  unmount: () => void
+export interface PortalStackEntry<T = any> {
+  id: number
+  Component: React.ComponentType<PortalLayerProps<T>>
+  channel: DataChannel<T>
 }
 
 /**
- * Function type for creating portal instances.
- * Allows passing providers through props at portal creation time.
- * @template P The portal content component's prop types
+ * Props received by components rendered inside a portal layer.
+ * @template T The data type passed via the data channel.
  */
-export type PortalLauncher<P extends BasePortalProps | Record<string, any>> = (
-  props?: (P & { provider?: NodeInstance }) & Omit<PortalProps<P>, 'portal'>,
-) => NodePortal
+export interface PortalLayerProps<T = any> {
+  /** Current data from the data channel */
+  data: T
+  /** The depth of this layer in the portal stack (1-indexed from bottom) */
+  depth: number
+  /** Closes this specific portal layer */
+  close: () => void
+}
+
+/**
+ * Handle returned by `showPortal` or `usePortal().open` for controlling a portal instance.
+ * @template T The data type for this portal.
+ */
+export interface PortalHandle<T = any> {
+  /** Unique identifier for this portal layer */
+  id: number
+  /** Pushes new data to the portal layer without re-rendering the parent */
+  updateData: (next: T) => void
+  /** Closes this specific portal layer */
+  close: () => void
+}
+
+/**
+ * The value provided by PortalContext for managing the portal stack.
+ */
+export interface PortalContextValue {
+  /** Current portal stack entries */
+  stack: PortalStackEntry[]
+  /** Opens a new portal layer with a component and optional initial data */
+  showPortal: <T>(Component: React.ComponentType<PortalLayerProps<T>>, initialData?: T) => PortalHandle<T>
+  /** Closes the topmost portal layer */
+  hidePortal: () => void
+  /** Closes a specific portal layer by its id */
+  hidePortalById: (id: number) => void
+  /** Closes all portal layers */
+  hideAll: () => void
+}

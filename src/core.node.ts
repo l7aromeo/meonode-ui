@@ -17,7 +17,6 @@ import type {
   MergedProps,
   NodeElementType,
   NodeInstance,
-  NodePortal,
   NodeProps,
   PropsOf,
   WorkItem,
@@ -35,7 +34,6 @@ const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
 const NAVIGATION_STARTED_KEY = Symbol.for('@meonode/ui/BaseNode/navigationStarted')
 const RENDER_CONTEXT_POOL_KEY = Symbol.for('@meonode/ui/BaseNode/renderContextPool')
 const CACHE_CLEANUP_REGISTRY_KEY = Symbol.for('@meonode/ui/BaseNode/cacheCleanupRegistry')
-const PORTAL_CLEANUP_REGISTRY_KEY = Symbol.for('@meonode/ui/BaseNode/portalCleanupRegistry')
 
 /**
  * The core abstraction of the MeoNode library. It wraps a React element or component,
@@ -219,62 +217,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
           if (MountTrackerUtil.isMounted(cacheKey)) {
             MountTrackerUtil.untrackMount(cacheKey)
-          }
-        }),
-    )
-  }
-
-  /**
-   * FinalizationRegistry for cleaning up portal DOM containers and their associated React roots
-   * when the owning `BaseNode` instance is garbage-collected.
-   *
-   * The held value must include:
-   * - `domElement`: the container `HTMLDivElement` appended to `document.body`.
-   * - `reactRoot`: an object with an `unmount()` method to unmount the React root.
-   *
-   * On cleanup the registry handler will attempt to:
-   * 1. Unmount the React root (errors are swallowed in non-production builds with logging).
-   * 2. Remove the `domElement` from the DOM if it is still connected.
-   *
-   * This prevents detached portal containers from leaking memory in long-running client apps.
-   * @internal
-   */
-  public static get portalCleanupRegistry() {
-    return getGlobalState(
-      PORTAL_CLEANUP_REGISTRY_KEY,
-      () =>
-        new FinalizationRegistry<{
-          domElement: HTMLDivElement
-          reactRoot: { unmount(): void }
-        }>(heldValue => {
-          const { domElement, reactRoot } = heldValue
-
-          if (__DEBUG__) {
-            console.log('[MeoNode] FinalizationRegistry auto-cleaning portal')
-          }
-
-          // Guard: Check if already unmounted
-          try {
-            // Only unmount if root still exists
-            if (reactRoot && typeof reactRoot.unmount === 'function') {
-              reactRoot.unmount()
-            }
-          } catch (error) {
-            // Swallow errors if already unmounted
-            if (__DEBUG__) {
-              console.error('[MeoNode] Portal auto-cleanup unmount error:', error)
-            }
-          }
-
-          // Guard: Check if DOM element still connected
-          try {
-            if (domElement?.isConnected) {
-              domElement.remove()
-            }
-          } catch (error) {
-            if (__DEBUG__) {
-              console.error('[MeoNode] Portal auto-cleanup DOM removal error:', error)
-            }
           }
         }),
     )
@@ -519,85 +461,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       }
       BaseNode.releaseRenderContext({ workStack, renderedElements })
     }
-  }
-
-  /**
-   * Renders the node into a React Portal, mounting it directly under `document.body`.
-   * Returns a handle with `update` and `unmount` methods to control the portal's lifecycle.
-   * @method toPortal
-   */
-  public toPortal(): NodePortal {
-    if (!NodeUtil.ensurePortalInfrastructure(this)) {
-      throw new Error('toPortal() can only be called in a client-side environment')
-    }
-
-    const infra = NodeUtil.portalInfrastructure.get(this)!
-    const { domElement, reactRoot } = infra
-
-    const renderCurrent = () => {
-      try {
-        reactRoot.render(this.render())
-      } catch (error) {
-        if (__DEBUG__) {
-          console.error('[MeoNode] Portal render error:', error)
-        }
-      }
-    }
-
-    renderCurrent()
-
-    // Track if already unmounted to make unmount idempotent
-    let isUnmounted = false
-    const originalUnmount = reactRoot.unmount.bind(reactRoot)
-
-    reactRoot.unmount = () => {
-      // Idempotent guard
-      if (isUnmounted) {
-        if (__DEBUG__) {
-          console.warn('[MeoNode] Portal already unmounted')
-        }
-        return
-      }
-
-      isUnmounted = true
-
-      // Unregister FIRST to prevent FinalizationRegistry from firing
-      try {
-        BaseNode.portalCleanupRegistry.unregister(this)
-      } catch (error) {
-        // May fail if already unregistered, that's fine
-        if (__DEBUG__) {
-          console.warn('[MeoNode] Portal unregister warning:', error)
-        }
-      }
-
-      // Remove from WeakMap
-      NodeUtil.portalInfrastructure.delete(this)
-
-      // Now do the actual cleanup
-      try {
-        // If the portal's container is still in the DOM, we need to tell React to unmount the component tree from it.
-        if (domElement?.isConnected) {
-          originalUnmount()
-        }
-      } catch (error) {
-        if (__DEBUG__) {
-          console.error('[MeoNode] Portal unmount error:', error)
-        }
-      }
-
-      try {
-        if (domElement?.isConnected) {
-          domElement.remove()
-        }
-      } catch (error) {
-        if (__DEBUG__) {
-          console.error('[MeoNode] Portal DOM cleanup error:', error)
-        }
-      }
-    }
-
-    return reactRoot
   }
 
   /**

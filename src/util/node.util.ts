@@ -9,16 +9,13 @@ import type {
   DependencyList,
   FinalNodeProps,
   Children,
-  NodePortal,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
 import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined, getGlobalState } from '@src/helper/common.helper.js'
 import { __DEBUG__ } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
-import { createRoot, type Root } from 'react-dom/client'
 
 const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSignatureCache')
-const PORTAL_INFRASTRUCTURE_KEY = Symbol.for('@meonode/ui/NodeUtil/portalInfrastructure')
 
 /**
  * NodeUtil provides a collection of static utility methods and properties
@@ -42,26 +39,6 @@ export class NodeUtil {
 
   // Cache for function prop toString() hashes to avoid repeated expensive serialization
   private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
-
-  /**
-   * Portal infrastructure using WeakMap for memory-safe management.
-   * Stores the DOM element and React root associated with a NodeInstance.
-   * @internal
-   */
-  public static get portalInfrastructure() {
-    return getGlobalState(
-      PORTAL_INFRASTRUCTURE_KEY,
-      () =>
-        new WeakMap<
-          NodeInstance,
-          {
-            instanceId: string
-            domElement: HTMLDivElement
-            reactRoot: NodePortal & { render(children: React.ReactNode): void }
-          }
-        >(),
-    )
-  }
 
   /**
    * Type guard to check if an object is a NodeInstance.
@@ -644,79 +621,5 @@ export class NodeUtil {
     if (typeof processedElement === 'function') return createElement(processedElement as ElementType, { key: passedKey })
     // For any other type (primitives, null, undefined, etc.), return it as a ReactNode.
     return processedElement as ReactNode
-  }
-
-  /**
-   * Ensures that the necessary DOM element and React root are available for portal rendering.
-   * This is only executed on the client-side.
-   * Handles cleanup of stale infrastructure and creates new infrastructure as needed.
-   * @param node The node instance that requires portal infrastructure.
-   * @returns True if portal infrastructure is ready, false on server or if setup fails.
-   */
-  public static ensurePortalInfrastructure(node: NodeInstance) {
-    if (NodeUtil.isServer) return false
-
-    let infra = NodeUtil.portalInfrastructure.get(node)
-
-    // Check if infrastructure exists and is still connected
-    if (infra?.domElement?.isConnected && infra?.reactRoot) {
-      return true
-    }
-
-    // Clean up stale or disconnected infrastructure
-    if (infra && (!infra.domElement?.isConnected || !infra.reactRoot)) {
-      try {
-        infra.reactRoot?.unmount?.()
-      } catch (error) {
-        if (__DEBUG__) {
-          console.error('MeoNode: Error unmounting stale portal root.', error)
-        }
-      }
-      NodeUtil.cleanupPortalInfra(infra)
-      NodeUtil.portalInfrastructure.delete(node)
-      infra = undefined
-    }
-
-    // Create new infrastructure
-    const domElement = document.createElement('div')
-    document.body.appendChild(domElement)
-
-    const root = createRoot(domElement)
-    const reactRoot = {
-      render: root.render.bind(root),
-      unmount: root.unmount.bind(root),
-      update: () => {}, // Placeholder, will be overridden
-    }
-
-    infra = { domElement, reactRoot, instanceId: node.instanceId }
-    NodeUtil.portalInfrastructure.set(node, infra)
-
-    // Register for cleanup
-    BaseNode.portalCleanupRegistry.register(node, { domElement, reactRoot }, node)
-
-    return true
-  }
-
-  /**
-   * Cleans up portal infrastructure by unmounting the React root and removing the DOM element.
-   * This ensures proper memory cleanup and prevents memory leaks.
-   * @param infra The infrastructure object containing the DOM element and React root to clean up.
-   */
-  public static cleanupPortalInfra(infra: { domElement: HTMLDivElement; reactRoot: Root }) {
-    try {
-      if (infra.reactRoot?.unmount) {
-        infra.reactRoot.unmount()
-      }
-    } catch (error) {
-      if (__DEBUG__) console.error('Portal cleanup error:', error)
-    }
-
-    try {
-      if (infra.domElement?.isConnected) {
-        infra.domElement.remove()
-      }
-    } catch (error) {
-      if (__DEBUG__) console.error('DOM removal error:', error)
-    }
   }
 }
