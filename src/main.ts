@@ -14,6 +14,8 @@ export * from '@src/types/node.type.js'
 export * from '@src/components/react.node.js'
 export * from '@src/components/html.node.js'
 export * from '@src/components/theme-provider.js'
+export * from '@src/components/portal-provider.js'
+export * from '@src/components/portal-host.js'
 
 // Hooks
 export * from '@src/hook/index.js'
