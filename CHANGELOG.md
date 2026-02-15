@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2026-02-15
+
+### Fix
+
+- **nextjs**: prevent duplicate style tags and content in StyleRegistry ([`91bec99`](https://github.com/l7aromeo/meonode-ui/commit/91bec99))
+    - Renamed `registry.client.ts` to `style-registry.client.ts` and implemented tracking of inserted IDs during SSR to avoid duplicate CSS injection in Next.js streaming.
+
+### Test
+
+- **emotion**: add style tag generation monitoring test ([`0576f0c`](https://github.com/l7aromeo/meonode-ui/commit/0576f0c))
+    - Added tests to verify that nested `Div` structures efficiently batch styles into a single style tag and that state changes correctly append new rules.
+
 ## [1.1.3] - 2026-02-15
 
 ### Feat
