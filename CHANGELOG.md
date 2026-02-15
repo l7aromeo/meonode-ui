@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0-0] - 2026-02-15
+
+### Feat
+
+- **portal**: implement stack-based portal system with PortalProvider and PortalHost ([`7196f6f`](https://github.com/l7aromeo/meonode-ui/commit/7196f6f))
+    - Introduced `PortalProvider` and `PortalHost` for managed overlay stacks.
+- **helper**: add data-channel helper for efficient portal updates ([`6508c0a`](https://github.com/l7aromeo/meonode-ui/commit/6508c0a))
+    - Added `createDataChannel` for high-performance, subscription-based state updates between components.
+- **hook**: add usePortal and useDataChannel hooks ([`b2f7d19`](https://github.com/l7aromeo/meonode-ui/commit/b2f7d19))
+    - Added reactive hooks to interact with the new portal system and data channels.
+
+### Refactor
+
+- **portal**: remove legacy portal system and update core ([`91ced63`](https://github.com/l7aromeo/meonode-ui/commit/91ced63))
+    - **BREAKING CHANGE**: Removed legacy `portal.hoc.ts` and associated logic in favor of the new stack-based architecture.
+    - Updated `BaseNode` and `NodeUtil` for better portal integration.
+
+### Test
+
+- **portal**: add tests for new portal system ([`92cd3c0`](https://github.com/l7aromeo/meonode-ui/commit/92cd3c0))
+    - Added integration tests for stack management and data synchronization.
+
+### Docs
+
+- **portal**: update README with new portal system examples ([`3f7a314`](https://github.com/l7aromeo/meonode-ui/commit/3f7a314))
+
 ## [1.1.4] - 2026-02-15
 
 ### Fix
