@@ -60,6 +60,59 @@ Button('Submit', {
 })
 ```
 
+### Advanced Portal System
+
+Manage complex UI layers like modals, drawers, and overlays with a powerful stack-based portal system. Supports nested portals and state synchronization.
+
+**Key Features:**
+- **Global Layout Integration:** Define the provider and host at the root for app-wide access.
+- **Auto-Sync:** Keep portal content in sync with parent state automatically.
+- **Nested Portals:** Open portals from within other portals easily.
+- **Stack-based management:** Automatically manages multiple overlapping layers.
+
+```typescript
+// 1. Setup at Layout Level
+const RootLayout = ({ children }: { children: ReactNode }) => 
+  PortalProvider({
+    children: [
+      ...children,
+      PortalHost() // Portals render here, on top of content
+    ]
+  })
+
+// 2. Define data interface and portal content
+interface MyData {
+  count: number;
+  setCount: React.Dispatch<React.SetStateAction<number>>;
+}
+
+const MyPortalContent = ({ data, close }: PortalLayerProps<MyData>) => 
+  Div({
+    children: [
+      Text(`Count: ${data?.count}`),
+      Button('Increment', { onClick: () => data?.setCount(c => c + 1) }),
+      Button('Close', { onClick: close })
+    ]
+  })
+
+// 3. Use anywhere in the tree
+const MyComponent = () => {
+  const [count, setCount] = useState(0)
+  // Auto-sync: portal updates whenever count changes
+  const portal = usePortal<MyData>({ count, setCount })
+
+  return Div({
+    children: [
+      Button('Open Modal', { 
+        onClick: () => portal.open(MyPortalContent) 
+      })
+    ]
+  })
+}
+```
+
+
+
 ### Context-Based Theming
 
 Theme values resolve automatically through React Context. Reference semantic tokens anywhere without prop drilling.
