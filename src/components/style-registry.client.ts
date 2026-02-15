@@ -26,20 +26,29 @@ export default function StyleRegistry({ children }: { children: ReactElement }) 
     return emotionCache
   })
 
+  // Track which IDs have already been inserted to prevent duplicates during streaming.
+  const [inserted] = useState(() => new Set<string>())
+
   // During server rendering, collect styles inserted into the cache and inline them in the HTML.
   useServerInsertedHTML(() => {
-    // Ensure deterministic output by sorting ids.
-    const sortedIds = Object.keys(cache.inserted).sort()
-    const styles = sortedIds.map(id => cache.inserted[id]).join('')
-    const ids = sortedIds.join(' ')
+    const ids = Object.keys(cache.inserted)
+    const newIds = ids.filter(id => !inserted.has(id))
 
-    if (!styles) {
+    if (newIds.length === 0) {
       return null
     }
 
+    // Mark IDs as inserted
+    newIds.forEach(id => inserted.add(id))
+
+    // Ensure deterministic output by sorting ids.
+    const sortedIds = newIds.sort()
+    const styles = sortedIds.map(id => cache.inserted[id]).join('')
+    const idsString = sortedIds.join(' ')
+
     // Insert a single style tag with the tracked Emotion ids.
     return createElement('style', {
-      'data-emotion': `${cache.key} ${ids}`,
+      'data-emotion': `${cache.key} ${idsString}`,
       dangerouslySetInnerHTML: { __html: styles },
     })
   })
