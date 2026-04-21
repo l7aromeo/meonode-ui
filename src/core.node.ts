@@ -374,6 +374,24 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           if (node.element === Fragment || isFragment(node.element)) {
             element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
           } else {
+            if (NodeUtil.isServer && typeof node.element === 'function' && !NodeUtil.isClientReference(node.element)) {
+              const invocationChildren = finalChildren.length === 0 ? undefined : finalChildren.length === 1 ? finalChildren[0] : finalChildren
+              const invocationProps =
+                invocationChildren === undefined ? elementProps : ({ ...elementProps, children: invocationChildren } as ComponentProps<ElementType>)
+              const invocationResult = (node.element as (props: ComponentProps<ElementType>) => unknown)(invocationProps)
+
+              if (NodeUtil.isPromiseLike(invocationResult)) {
+                // React server can resolve thenables in the tree; wrap in Fragment to keep key support.
+                element = createElement(Fragment, { key }, invocationResult as any)
+              } else if (NodeUtil.isNodeInstance(invocationResult)) {
+                element = invocationResult.render()
+              } else {
+                element = createElement(Fragment, { key }, invocationResult as any)
+              }
+              renderedElements.set(node, element)
+              continue
+            }
+
             // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
             // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
             const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))

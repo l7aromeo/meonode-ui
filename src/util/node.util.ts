@@ -41,6 +41,24 @@ export class NodeUtil {
   private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
 
   /**
+   * Runtime type guard for Promise-like values.
+   * Useful for server-side component invocation paths where a function
+   * may return either a sync node/element or an async result.
+   */
+  public static isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
+    return !!value && (typeof value === 'object' || typeof value === 'function') && typeof (value as PromiseLike<T>).then === 'function'
+  }
+
+  /**
+   * Detects React/Next client reference functions used by RSC.
+   * These must not be invoked on the server.
+   */
+  public static isClientReference(value: unknown): boolean {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return false
+    return (value as { $$typeof?: symbol }).$$typeof === Symbol.for('react.client.reference')
+  }
+
+  /**
    * Type guard to check if an object is a NodeInstance.
    *
    * A NodeInstance is expected to be a non-null object with:

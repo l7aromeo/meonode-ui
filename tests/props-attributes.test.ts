@@ -121,4 +121,18 @@ describe('Props and Attributes', () => {
     // Assert that ChildTwo's color is resolved correctly from the theme.
     expect(window.getComputedStyle(elementTwo).color).toBe('rgb(0, 0, 255)')
   })
+
+  it('should pass native HTML attributes through the props object even if they conflict with CSS property names', () => {
+    // Define a component that accepts a 'width' prop and applies it to a Div.
+    const Comp = ({ width }: { width: string | number }) => Div({ width, children: 'Prop Test' }).render()
+
+    // Render the component, passing 'width' via the 'props' object (native attributes).
+    const { getByText } = render(Node(Comp, { props: { width: '100%' } }).render())
+
+    // Get the rendered element.
+    const divElement = getByText('Prop Test')
+
+    // Assert that the 'width' attribute is applied as a native HTML attribute.
+    expect(window.getComputedStyle(divElement).width).toBe('100%')
+  })
 })
