@@ -7,7 +7,7 @@ import jsDoc from 'eslint-plugin-jsdoc'
 
 const eslintConfig = [
   {
-    ignores: ['**/dist/**', '**/build/**'], // Add other directories you wish to ignore
+    ignores: ['**/dist/**', '**/build/**', 'tests/rsc-fixtures/**/.next/**', 'tests/rsc-fixtures/**/node_modules/**'],
   },
   jsDoc.configs['flat/stylistic-typescript'],
   js.configs.recommended,

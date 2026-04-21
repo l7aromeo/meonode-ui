@@ -1,2 +1,2 @@
-yarn lint
-yarn test:all
+bun run lint
+bun run test:all

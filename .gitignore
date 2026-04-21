@@ -18,5 +18,12 @@ node_modules
 .idea
 .fleet
 
+# RSC integration fixture
+tests/rsc-fixtures/next-app/.next
+tests/rsc-fixtures/next-app/node_modules
+tests/rsc-fixtures/next-app/next-env.d.ts
+tests/rsc-fixtures/.rsc-server-pid
+tests/rsc-fixtures/.rsc-server-port
+
 # Ai
 .claude

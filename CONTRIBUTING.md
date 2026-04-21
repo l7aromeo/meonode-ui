@@ -90,17 +90,16 @@ git clone https://github.com/l7aromeo/meonode-ui.git
 cd meonode-ui
 
 # install dependencies (using Yarn)
-yarn install
+bun install
 
 # build the project
-yarn build
+bun run build
 
 # run tests
-yarn test
+bun run test
 
 # lint and format
-yarn lint
-yarn format
+bun run lint
 ```
 
 Notes
