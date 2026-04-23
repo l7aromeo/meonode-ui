@@ -425,11 +425,14 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
               element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
+              const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
+                processFunctions: false,
+              }) as ComponentProps<ElementType>
               const themedCss = ThemeUtil.resolveObjWithTheme(css, activeTheme, { processFunctions: true })
               const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
               const serverCssClassName = compileServerEmotionClassName(replaceThemeTokensWithCssVars(cssWithDefaults))
-              const mergedClassName = [elementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
-              const elementPropsWithClassName = mergedClassName ? { ...elementProps, className: mergedClassName } : elementProps
+              const mergedClassName = [resolvedElementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
+              const elementPropsWithClassName = mergedClassName ? { ...resolvedElementProps, className: mergedClassName } : resolvedElementProps
               element = createElement(node.element, elementPropsWithClassName, ...finalChildren)
             } else {
               // On server function components, keep css support for true server components.
