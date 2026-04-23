@@ -354,3 +354,13 @@ describe('H. Server calling Node(ServerComponent)', () => {
     expect(html).toContain('plain-server:from-server')
   })
 })
+
+describe('I. Server calling Node(client third-party reference)', () => {
+  it('server page can render Node(GoogleAnalytics) without client-reference access errors', async () => {
+    const { status, html } = await getPage('/google-analytics-node')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('ga-node-mounted')
+    expect(html).toMatch(/data-testid="ga-node-page"/)
+  })
+})
