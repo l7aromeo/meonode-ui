@@ -1,4 +1,5 @@
-import { Div } from '@meonode/ui'
+import { Div, Node, Span } from '@meonode/ui'
+import Link from 'next/link'
 
 // Category E, case 20 — server-rendered Div uses theme.* paths. Root layout
 // provides the ThemeProvider (client component); this page is server and
@@ -9,9 +10,21 @@ export default function Page() {
     'data-testid': 'theme-boundary-page',
     children: Div({
       'data-testid': 'theme-boundary-inner',
-      backgroundColor: 'theme.primary',
+      backgroundColor: 'theme.base',
       padding: 'theme.spacing.md',
-      children: 'theme-boundary-content',
+      children: [
+        Span('theme-boundary-content', { color: 'theme.base.content' }),
+        Node(Link, {
+          href: '/',
+          backgroundColor: 'theme.primary',
+          css: {
+            '& span': {
+              color: 'theme.primary.content',
+            },
+          },
+          children: Span('go-home'),
+        }),
+      ],
     }),
   }).render()
 }

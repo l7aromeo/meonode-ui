@@ -134,10 +134,10 @@ describe('B. Server → Client boundary', () => {
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('themed-from-server')
-    // theme.primary should resolve to the rgb(0, 128, 0) set in this page's provider
-    // (nested), or the layout's rgb(255, 107, 107). Either resolution indicates
-    // theme propagation worked across the boundary. We accept either.
-    expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(0,\s*128,\s*0\)|background-color:\s*rgb\(255,\s*107,\s*107\)/)
+    // theme.primary should resolve either directly to rgb() or via CSS variables.
+    expect(html.toLowerCase()).toMatch(
+      /background-color:\s*rgb\(0,\s*128,\s*0\)|background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/,
+    )
   })
 
   it('PortalProvider + PortalHost in layout does not error', async () => {
@@ -274,9 +274,13 @@ describe('E. Client provider receives server children payload', () => {
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('theme-boundary-content')
-    // Layout's ThemeProvider has theme.primary = rgb(255, 107, 107) and
-    // should resolve the color token through the boundary.
-    expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(255,\s*107,\s*107\)/)
+    expect(html).toContain('go-home')
+    // Validate theme token propagation for both container and nested Link styles.
+    expect(html.toLowerCase()).toMatch(/background-color:\s*#f8f8f8|background-color:\s*var\(--meonode-theme-base\)/)
+    expect(html.toLowerCase()).toMatch(/padding:\s*16(?:px)?|padding:\s*var\(--meonode-theme-spacing-md\)/)
+    expect(html.toLowerCase()).toMatch(/color:\s*#333333|color:\s*var\(--meonode-theme-base-content\)/)
+    expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/)
+    expect(html.toLowerCase()).toMatch(/color:\s*#ffffff|color:\s*var\(--meonode-theme-primary-content\)/)
   })
 })
 
@@ -316,6 +320,11 @@ describe('F. Regression guards', () => {
     }
     const unique = new Set(allIds)
     expect(unique.size).toBe(allIds.length)
+  })
+
+  it('no non-css artifacts in emitted style payload', async () => {
+    const { html } = await getPage('/next-link-inline')
+    expect(html).not.toContain('true.meonode-css-')
   })
 })
 
