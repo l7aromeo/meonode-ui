@@ -896,7 +896,6 @@ describe('Performance Testing', () => {
 
         const { getByTestId, unmount } = render(Node(RootComponent).render())
 
-        let currentMemory = 0
         const memorySnapshots: { cycle: number; page: string; memory: number }[] = []
 
         for (let i = 0; i < NUM_NAV_CYCLES; i++) {
@@ -906,7 +905,7 @@ describe('Performance Testing', () => {
           })
 
           await forceGC()
-          currentMemory = process.memoryUsage().heapUsed
+          const currentMemory = process.memoryUsage().heapUsed
           memorySnapshots.push({ cycle: i + 1, page: i % 2 === 0 ? 'page2' : 'page1', memory: currentMemory })
 
           // Add a small delay to allow potential async operations to complete
