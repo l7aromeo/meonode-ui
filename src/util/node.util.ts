@@ -26,6 +26,16 @@ const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSi
 export class NodeUtil {
   private constructor() {}
 
+  private static readBooleanFlag(value: unknown, key: '__meonodeAcceptsServerCss' | '__meonodeProvidesServerTheme'): boolean {
+    if (typeof value !== 'function') return false
+    try {
+      return (value as unknown as Record<string, unknown>)[key] === true
+    } catch {
+      // Some client references throw when arbitrary properties are accessed on the server.
+      return false
+    }
+  }
+
   // Determines if the current environment is server-side (Node.js) or client-side (browser).
   public static isServer = typeof window === 'undefined'
 
@@ -46,7 +56,11 @@ export class NodeUtil {
    */
   public static isClientReference(value: unknown): boolean {
     if (!value || (typeof value !== 'object' && typeof value !== 'function')) return false
-    return (value as { $$typeof?: symbol }).$$typeof === Symbol.for('react.client.reference')
+    try {
+      return (value as { $$typeof?: symbol }).$$typeof === Symbol.for('react.client.reference')
+    } catch {
+      return false
+    }
   }
 
   /**
@@ -54,16 +68,14 @@ export class NodeUtil {
    * `css` prop in server execution paths.
    */
   public static acceptsServerCss(value: unknown): boolean {
-    if (typeof value !== 'function') return false
-    return (value as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss === true
+    return NodeUtil.readBooleanFlag(value, '__meonodeAcceptsServerCss')
   }
 
   /**
    * Detects components that provide a theme scope for server-side style resolution.
    */
   public static providesServerTheme(value: unknown): boolean {
-    if (typeof value !== 'function') return false
-    return (value as { __meonodeProvidesServerTheme?: boolean }).__meonodeProvidesServerTheme === true
+    return NodeUtil.readBooleanFlag(value, '__meonodeProvidesServerTheme')
   }
 
   /**
