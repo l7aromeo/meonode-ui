@@ -91,11 +91,13 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
     return result as ReactNode
   }
   Renderer.displayName = `Renderer(${displayName})`
+  ;(Renderer as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true
 
   function Func(props: Partial<ComponentNodeProps<TProps>> = {}, deps?: DependencyList) {
     return Node(Renderer, props as never, deps).render()
   }
   Func.displayName = `Component(${displayName})`
+  ;(Func as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true
 
   return Func
 }

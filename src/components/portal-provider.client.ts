@@ -49,3 +49,5 @@ export default function PortalProvider({ children }: { children?: Children }): R
 
   return Node(PortalContext.Provider, { value, children }).render()
 }
+
+;(PortalProvider as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true

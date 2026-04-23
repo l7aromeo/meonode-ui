@@ -37,3 +37,6 @@ export default function ThemeProvider({ children, theme }: { children?: Children
 
   return Node(ThemeContext.Provider, { value: contextValue, children }).render()
 }
+
+;(ThemeProvider as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true
+;(ThemeProvider as { __meonodeProvidesServerTheme?: boolean }).__meonodeProvidesServerTheme = true

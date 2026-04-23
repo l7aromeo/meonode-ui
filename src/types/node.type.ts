@@ -119,6 +119,8 @@ export interface WorkItem {
   isProcessed: boolean
   /** Flag indicating if the node's children should be skipped (blocked) due to memoization. */
   blocked: boolean
+  /** Active inherited theme scope while traversing this subtree (server/runtime propagation). */
+  theme?: Theme
 }
 
 // ============================================================================

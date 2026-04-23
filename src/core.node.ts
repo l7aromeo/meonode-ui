@@ -19,6 +19,7 @@ import type {
   NodeInstance,
   NodeProps,
   PropsOf,
+  Theme,
   WorkItem,
 } from '@src/types/node.type.js'
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
@@ -29,6 +30,9 @@ import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { NodeUtil } from '@src/util/node.util.js'
+import { compileServerEmotionClassName } from '@src/util/server-emotion.util.js'
+import { getActiveServerTheme, replaceThemeTokensWithCssVars, registerServerThemeVariables, setActiveServerTheme } from '@src/util/server-theme.util.js'
+import { ThemeUtil } from '@src/util/theme.util.js'
 
 const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
 const NAVIGATION_STARTED_KEY = Symbol.for('@meonode/ui/BaseNode/navigationStarted')
@@ -114,6 +118,15 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     this.element = element
     this.rawProps = rawProps
     this._deps = deps
+
+    if (NodeUtil.isServer && NodeUtil.providesServerTheme(element)) {
+      const themeCandidate = (rawProps as { theme?: unknown }).theme
+      if (themeCandidate && typeof themeCandidate === 'object' && 'system' in (themeCandidate as object)) {
+        const resolvedTheme = themeCandidate as Theme
+        setActiveServerTheme(resolvedTheme)
+        registerServerThemeVariables(resolvedTheme)
+      }
+    }
 
     // Extract commonly handled props; the remaining `propsForSignature` are used to compute a stable hash.
     const { ref, children, ...props } = rawProps
@@ -281,6 +294,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
         node: this,
         isProcessed: false,
         blocked: childrenBlocked,
+        theme: undefined,
       }
 
       // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
@@ -290,12 +304,37 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           stackPointer--
           continue
         }
-        const { node, isProcessed, blocked } = currentWork
+        const { node, isProcessed, blocked, theme: inheritedTheme } = currentWork
+
+        const getActiveTheme = (props: FinalNodeProps, current?: Theme): Theme | undefined => {
+          const candidate = (props as { theme?: unknown }).theme
+          if (candidate && typeof candidate === 'object' && 'system' in (candidate as object)) {
+            return candidate as Theme
+          }
+          return current ?? getActiveServerTheme()
+        }
+        const hasThemeToken = (value: unknown): boolean => {
+          if (!value) return false
+          if (typeof value === 'string') return value.includes('theme.')
+          if (typeof value === 'function') return true
+          if (typeof value !== 'object') return false
+          if (Array.isArray(value)) {
+            for (const item of value) {
+              if (hasThemeToken(item)) return true
+            }
+            return false
+          }
+          for (const nested of Object.values(value as Record<string, unknown>)) {
+            if (hasThemeToken(nested)) return true
+          }
+          return false
+        }
 
         if (!isProcessed) {
           // Begin phase: mark processed and push child BaseNodes onto the stack (in reverse order)
           currentWork.isProcessed = true
           const children = node.props.children
+          const activeTheme = getActiveTheme(node.props, inheritedTheme)
 
           if (children) {
             // Only consider BaseNode children for further traversal; primitives and React elements are terminal.
@@ -331,6 +370,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
                 node: child,
                 isProcessed: false,
                 blocked: childBlocked,
+                theme: activeTheme,
               }
             }
           }
@@ -340,6 +380,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
           // Extract node props. Non-present props default to undefined via destructuring.
           const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
+          const activeTheme = getActiveTheme(node.props, inheritedTheme)
           let finalChildren: ReactNode[] = []
 
           if (childrenInProps) {
@@ -374,32 +415,29 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           if (node.element === Fragment || isFragment(node.element)) {
             element = createElement(node.element as ExoticComponent<FragmentProps>, { key }, ...finalChildren)
           } else {
-            if (NodeUtil.isServer && typeof node.element === 'function' && !NodeUtil.isClientReference(node.element)) {
-              const invocationChildren = finalChildren.length === 0 ? undefined : finalChildren.length === 1 ? finalChildren[0] : finalChildren
-              const invocationProps =
-                invocationChildren === undefined ? elementProps : ({ ...elementProps, children: invocationChildren } as ComponentProps<ElementType>)
-              const invocationResult = (node.element as (props: ComponentProps<ElementType>) => unknown)(invocationProps)
-
-              if (NodeUtil.isPromiseLike(invocationResult)) {
-                // React server can resolve thenables in the tree; wrap in Fragment to keep key support.
-                element = createElement(Fragment, { key }, invocationResult as any)
-              } else if (NodeUtil.isNodeInstance(invocationResult)) {
-                element = invocationResult.render()
-              } else {
-                element = createElement(Fragment, { key }, invocationResult as any)
-              }
-              renderedElements.set(node, element)
-              continue
-            }
-
             // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
             // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
             const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
+            const shouldBypassStyledRendererOnServer = NodeUtil.isServer && typeof node.element !== 'string'
+            const shouldUseRuntimeThemeOnServer =
+              isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element) && hasThemeToken(css)
 
-            if (isStyledComponent) {
+            if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
               element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
+            } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
+              const themedCss = ThemeUtil.resolveObjWithTheme(css, activeTheme, { processFunctions: true })
+              const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
+              const serverCssClassName = compileServerEmotionClassName(replaceThemeTokensWithCssVars(cssWithDefaults))
+              const mergedClassName = [elementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
+              const elementPropsWithClassName = mergedClassName ? { ...elementProps, className: mergedClassName } : elementProps
+              element = createElement(node.element, elementPropsWithClassName, ...finalChildren)
             } else {
-              element = createElement(node.element as ElementType, elementProps, ...finalChildren)
+              // On server function components, keep css support for true server components.
+              // For client references (e.g. next/link), do not forward css to avoid leaking
+              // unknown attributes like css="[object Object]" into HTML.
+              const shouldForwardCssDirectly = isStyledComponent && (!shouldBypassStyledRendererOnServer || NodeUtil.acceptsServerCss(node.element))
+              const elementPropsWithCss = shouldForwardCssDirectly ? { ...elementProps, css } : elementProps
+              element = createElement(node.element, elementPropsWithCss, ...finalChildren)
             }
           }
 

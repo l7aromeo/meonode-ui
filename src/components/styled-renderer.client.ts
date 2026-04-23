@@ -7,7 +7,7 @@ import { ThemeUtil } from '@src/util/theme.util.js'
 
 export interface StyledRendererProps<E extends NodeElement> {
   element: E
-  children?: ReactNode
+  children: ReactNode
   css: CssProp
 }
 
@@ -48,3 +48,4 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 }
 
 StyledRenderer.displayName = 'Styled'
+;(StyledRenderer as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true

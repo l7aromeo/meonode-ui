@@ -41,21 +41,29 @@ export class NodeUtil {
   private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
 
   /**
-   * Runtime type guard for Promise-like values.
-   * Useful for server-side component invocation paths where a function
-   * may return either a sync node/element or an async result.
-   */
-  public static isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
-    return !!value && (typeof value === 'object' || typeof value === 'function') && typeof (value as PromiseLike<T>).then === 'function'
-  }
-
-  /**
    * Detects React/Next client reference functions used by RSC.
    * These must not be invoked on the server.
    */
   public static isClientReference(value: unknown): boolean {
     if (!value || (typeof value !== 'object' && typeof value !== 'function')) return false
     return (value as { $$typeof?: symbol }).$$typeof === Symbol.for('react.client.reference')
+  }
+
+  /**
+   * Detects function components that explicitly opt in to receiving MeoNode
+   * `css` prop in server execution paths.
+   */
+  public static acceptsServerCss(value: unknown): boolean {
+    if (typeof value !== 'function') return false
+    return (value as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss === true
+  }
+
+  /**
+   * Detects components that provide a theme scope for server-side style resolution.
+   */
+  public static providesServerTheme(value: unknown): boolean {
+    if (typeof value !== 'function') return false
+    return (value as { __meonodeProvidesServerTheme?: boolean }).__meonodeProvidesServerTheme === true
   }
 
   /**
