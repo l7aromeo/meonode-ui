@@ -401,7 +401,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           } else {
             // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
             // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
-            const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
+            const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element)) && Object.keys(css || {}).length > 0
             const shouldBypassStyledRendererOnServer = NodeUtil.isServer && typeof node.element !== 'string'
             // Keep server/client on the same StyledRenderer path for client references.
             // This avoids Emotion hash drift not only for theme tokens, but also for raw

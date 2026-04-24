@@ -1,4 +1,8 @@
-const cssProperties = [
+/**
+ * A set of valid CSS property names in camelCase, including CSS custom properties, used for validation.
+ * This set contains all CSS properties including non-standard vendor prefixed properties.
+ */
+const CSSPropertySet: Set<string> = new Set([
   'MozAnimation',
   'MozAnimationDelay',
   'MozAnimationDirection',
@@ -687,6 +691,6 @@ const cssProperties = [
   'writingMode',
   'zIndex',
   'zoom',
-] as const
+])
 
-export default cssProperties
+export default CSSPropertySet

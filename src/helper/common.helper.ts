@@ -14,7 +14,7 @@ import {
   isSuspenseList,
 } from '@src/helper/react-is.helper.js'
 import type { FinalNodeProps, NodeElement, NodeInstance } from '@src/types/node.type.js'
-import cssProperties from '@src/constant/css-properties.const.js'
+import CSSPropertySet from '@src/constant/css-properties.const.js'
 import type { ComponentProps, CSSProperties, ElementType } from 'react'
 import { NO_STYLE_TAGS, noStyleTagsSet } from '@src/constant/common.const.js'
 
@@ -210,12 +210,6 @@ export function getElementTypeName(node: unknown): string {
       return `UnsupportedType<${type}>`
   }
 }
-
-/**
- * A set of valid CSS property names in camelCase, including CSS custom properties, used for validation.
- * This set contains all CSS properties including non-standard vendor prefixed properties.
- */
-export const CSSPropertySet: Set<string> = new Set(cssProperties)
 
 /**
  * Filters an object to only include valid CSS properties
