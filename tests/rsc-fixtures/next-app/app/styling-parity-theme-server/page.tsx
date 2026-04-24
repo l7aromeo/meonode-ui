@@ -6,14 +6,14 @@ const SRC =
 
 export default function Page() {
   return Div({
-    'data-testid': 'next-image-server-page',
+    'data-testid': 'styling-parity-theme-server-page',
     children: NextImage<{ 'data-testid': string }>({
       src: SRC,
-      alt: 'server-image',
+      alt: 'styling-parity-theme-server',
       width: 40,
       height: 40,
       backgroundColor: 'theme.primary',
-      'data-testid': 'next-image-shared',
+      'data-testid': 'styling-parity-theme-shared',
     }),
   }).render()
 }

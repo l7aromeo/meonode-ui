@@ -45,6 +45,11 @@ function assertNoObjectAttrLeaks(html: string) {
   expect(html).not.toMatch(/="?\[object Object\]"?/)
 }
 
+function assertNoNextHydrationErrorNotes(html: string) {
+  expect(html).not.toContain('id="nextjs__container_errors__notes"')
+  expect(html).not.toContain('A tree hydrated but some attributes of the server rendered HTML')
+}
+
 function getComputedStylesFromEmotionCss(html: string, testId: string, properties: readonly string[]): Record<string, string | null> {
   const imgTagRegex = new RegExp(`<img[^>]*data-testid=["']${testId}["'][^>]*>`, 'i')
   const imgTag = html.match(imgTagRegex)?.[0] ?? ''
@@ -74,6 +79,13 @@ function getComputedStylesFromEmotionCss(html: string, testId: string, propertie
   }
 
   return result
+}
+
+function getElementClassNameByTestId(html: string, testId: string): string | null {
+  const elementTagRegex = new RegExp(`<[^>]*data-testid=["']${testId}["'][^>]*>`, 'i')
+  const elementTag = html.match(elementTagRegex)?.[0]
+  if (!elementTag) return null
+  return elementTag.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? null
 }
 
 // ----- Category A -----
@@ -396,23 +408,54 @@ describe('I. Server calling Node(client third-party reference)', () => {
   })
 })
 
-describe('J. next/image style parity (server vs client)', () => {
-  it('emits matching Emotion width/height/background-color for shared NextImage wrapper', async () => {
-    const server = await getPage('/next-image-server')
-    const client = await getPage('/next-image-client')
+describe('J. styling parity routes (server vs client)', () => {
+  it('emits matching Emotion output for theme-token styling', async () => {
+    const server = await getPage('/styling-parity-theme-server')
+    const client = await getPage('/styling-parity-theme-client')
 
     expect(server.status).toBe(200)
     expect(client.status).toBe(200)
     assertNoRscErrors(server.html)
     assertNoRscErrors(client.html)
+    assertNoNextHydrationErrorNotes(client.html)
 
     const props = ['width', 'height', 'background-color'] as const
-    const serverStyles = getComputedStylesFromEmotionCss(server.html, 'next-image-shared', props)
-    const clientStyles = getComputedStylesFromEmotionCss(client.html, 'next-image-shared', props)
+    const serverStyles = getComputedStylesFromEmotionCss(server.html, 'styling-parity-theme-shared', props)
+    const clientStyles = getComputedStylesFromEmotionCss(client.html, 'styling-parity-theme-shared', props)
+    const serverClassName = getElementClassNameByTestId(server.html, 'styling-parity-theme-shared')
+    const clientClassName = getElementClassNameByTestId(client.html, 'styling-parity-theme-shared')
     console.log('[next-image-styles]', { serverStyles, clientStyles })
 
     expect(serverStyles.width).toBe('40px')
     expect(serverStyles.height).toBe('40px')
     expect(serverStyles).toEqual(clientStyles)
+    expect(serverClassName).toBeTruthy()
+    expect(clientClassName).toBeTruthy()
+    expect(serverClassName).toBe(clientClassName)
+  })
+
+  it('keeps matching Emotion output for raw CSS styling', async () => {
+    const server = await getPage('/styling-parity-raw-server')
+    const client = await getPage('/styling-parity-raw-client')
+
+    expect(server.status).toBe(200)
+    expect(client.status).toBe(200)
+    assertNoRscErrors(server.html)
+    assertNoRscErrors(client.html)
+    assertNoNextHydrationErrorNotes(client.html)
+
+    const props = ['width', 'height', 'background-color'] as const
+    const serverStyles = getComputedStylesFromEmotionCss(server.html, 'styling-parity-raw-shared', props)
+    const clientStyles = getComputedStylesFromEmotionCss(client.html, 'styling-parity-raw-shared', props)
+    const serverClassName = getElementClassNameByTestId(server.html, 'styling-parity-raw-shared')
+    const clientClassName = getElementClassNameByTestId(client.html, 'styling-parity-raw-shared')
+
+    expect(serverStyles.width).toBe('40px')
+    expect(serverStyles.height).toBe('40px')
+    expect(serverStyles['background-color']).toBe('red')
+    expect(serverStyles).toEqual(clientStyles)
+    expect(serverClassName).toBeTruthy()
+    expect(clientClassName).toBeTruthy()
+    expect(serverClassName).toBe(clientClassName)
   })
 })

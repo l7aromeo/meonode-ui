@@ -1,4 +1,3 @@
-'use client'
 import { Div } from '@meonode/ui'
 import { NextImage } from '../_components/image-factory-neutral'
 
@@ -7,14 +6,14 @@ const SRC =
 
 export default function Page() {
   return Div({
-    'data-testid': 'next-image-client-page',
+    'data-testid': 'styling-parity-raw-server-page',
     children: NextImage<{ 'data-testid': string }>({
       src: SRC,
-      alt: 'client-image',
+      alt: 'styling-parity-raw-server',
       width: 40,
       height: 40,
-      backgroundColor: 'theme.primary',
-      'data-testid': 'next-image-shared',
+      backgroundColor: 'red',
+      'data-testid': 'styling-parity-raw-shared',
     }),
   }).render()
 }
