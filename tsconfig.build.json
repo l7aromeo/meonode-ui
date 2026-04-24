@@ -12,12 +12,12 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
-    "outDir": "./dist/esm",
+    "outDir": "./dist/types",
     "rootDir": "./src",
     "paths": {
       "@src/*": ["./src/*"]
-    },
+    }
   },
   "include": ["src"],
-  "exclude": ["dist", "node_modules", "rollup.config.ts"]
+  "exclude": ["dist", "node_modules", "rollup.config.ts", "tests"]
 }

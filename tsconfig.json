@@ -4,7 +4,6 @@
     "target": "ESNext",
     "module": "preserve",
     "moduleResolution": "bundler",
-    "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "noEmit": true,
@@ -14,9 +13,11 @@
     "strict": true,
     "paths": {
       "@src/*": ["./src/*"],
-      "@tests/*": ["./tests/*"]
+      "@tests/*": ["./tests/*"],
+      "@meonode/ui": ["./src/main.ts"],
+      "@meonode/ui/nextjs-registry": ["./src/nextjs-registry/index.ts"]
     }
   },
   "include": ["src", "tests", "rollup.config.ts"],
-  "exclude": ["dist", "node_modules", "tests/rsc-fixtures"]
+  "exclude": ["dist", "node_modules"]
 }

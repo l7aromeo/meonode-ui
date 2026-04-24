@@ -2,7 +2,10 @@ import { execSync, spawn } from 'node:child_process'
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { createServer } from 'node:net'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..')
 const FIXTURE = path.resolve(ROOT, 'tests/rsc-fixtures/next-app')
 const PID_FILE = path.resolve(ROOT, 'tests/rsc-fixtures/.rsc-server-pid')

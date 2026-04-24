@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..')
 const PID_FILE = path.resolve(ROOT, 'tests/rsc-fixtures/.rsc-server-pid')
 const PORT_FILE = path.resolve(ROOT, 'tests/rsc-fixtures/.rsc-server-port')
