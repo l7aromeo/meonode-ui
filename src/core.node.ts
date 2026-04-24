@@ -31,7 +31,7 @@ import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { NodeUtil } from '@src/util/node.util.js'
 import { compileServerEmotionClassName } from '@src/util/server-emotion.util.js'
-import { getActiveServerTheme, replaceThemeTokensWithCssVars, registerServerThemeVariables, setActiveServerTheme } from '@src/util/server-theme.util.js'
+import { getActiveServerTheme, registerServerThemeVariables, replaceThemeTokensWithCssVars, setActiveServerTheme } from '@src/util/server-theme.util.js'
 import { ThemeUtil } from '@src/util/theme.util.js'
 
 const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
@@ -423,14 +423,32 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element) && hasThemeToken(css)
 
             if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
-              element = createElement(StyledRenderer, { element: node.element, ...elementProps, css, suppressHydrationWarning: true }, ...finalChildren)
+              // On the server, convert string theme tokens to `var(--meonode-theme-*)`
+              // before handing `css` to StyledRenderer. This is the SSR path for client
+              // references (e.g. next/image via RSC layer) — aligning the emitted CSS
+              // with the server-bypass path so both routes produce the same Emotion
+              // class hash for the same styled props.
+              const cssForRenderer = NodeUtil.isServer ? replaceThemeTokensWithCssVars(css) : css
+              element = createElement(
+                StyledRenderer,
+                { element: node.element, ...elementProps, css: cssForRenderer, suppressHydrationWarning: true },
+                ...finalChildren,
+              )
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
               const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
                 processFunctions: false,
               }) as ComponentProps<ElementType>
-              const themedCss = ThemeUtil.resolveObjWithTheme(css, activeTheme, { processFunctions: true })
+              // Emit `var(--meonode-theme-*)` on the server so the generated Emotion class
+              // matches the client runtime output — unifies the class hash across SSR/CSR.
+              // `replaceThemeTokensWithCssVars` runs even when activeTheme is undefined
+              // (e.g., RSC/SSR bundler-layer split where the layout-set global state does not
+              // carry into the client page's SSR pass), so string tokens still produce vars.
+              const themedCss = ThemeUtil.resolveObjWithTheme(replaceThemeTokensWithCssVars(css), activeTheme, {
+                processFunctions: true,
+                themeStringsMode: 'vars',
+              })
               const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
-              const serverCssClassName = compileServerEmotionClassName(replaceThemeTokensWithCssVars(cssWithDefaults))
+              const serverCssClassName = compileServerEmotionClassName(cssWithDefaults)
               const mergedClassName = [resolvedElementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
               const elementPropsWithClassName = mergedClassName ? { ...resolvedElementProps, className: mergedClassName } : resolvedElementProps
               element = createElement(node.element, elementPropsWithClassName, ...finalChildren)

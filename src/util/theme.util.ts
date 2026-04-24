@@ -75,8 +75,12 @@ export class ThemeUtil {
    * object references for unchanged parts of the tree, which is critical for
    * React's reconciliation and memoization.
    */
-  public static resolveObjWithTheme = <O extends Record<string, unknown>>(obj: O, theme?: Theme, options: { processFunctions?: boolean } = {}): O => {
-    const { processFunctions = false } = options
+  public static resolveObjWithTheme = <O extends Record<string, unknown>>(
+    obj: O,
+    theme?: Theme,
+    options: { processFunctions?: boolean; themeStringsMode?: 'resolve' | 'vars' } = {},
+  ): O => {
+    const { processFunctions = false, themeStringsMode = 'resolve' } = options
 
     if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || !obj || Object.keys(obj).length === 0) {
       return obj
@@ -90,10 +94,18 @@ export class ThemeUtil {
 
     const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
 
-    const processThemeString = (value: string) => {
+    const toThemeVarName = (p: string) => `--meonode-theme-${p.replace(/[^\w.-]/g, '-').replace(/\./g, '-')}`
+
+    // Keys (selectors, media queries) must always resolve to concrete values — CSS vars
+    // are invalid inside media features / selector text. Only values obey `themeStringsMode`.
+    const processThemeString = (value: string, asVar: boolean) => {
       themeRegex.lastIndex = 0
       let hasChanged = false
       const resolved = value.replace(themeRegex, (match, path: string) => {
+        if (asVar) {
+          hasChanged = true
+          return `var(${toThemeVarName(path)})`
+        }
         const themeValue = getValueByPath(themeSystem, path)
         if (themeValue !== undefined && themeValue !== null) {
           hasChanged = true
@@ -165,14 +177,15 @@ export class ThemeUtil {
 
               // Resolve theme variables in the key itself (e.g., media queries)
               if (typeof key === 'string' && key.includes('theme.')) {
-                newKey = processThemeString(key)
+                newKey = processThemeString(key, false)
               }
 
+              const valueAsVar = themeStringsMode === 'vars'
               if (typeof newValue === 'function' && processFunctions) {
                 const funcResult = (newValue as (theme: Theme) => unknown)(theme)
-                newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult) : funcResult
+                newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult, valueAsVar) : funcResult
               } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
-                newValue = processThemeString(newValue)
+                newValue = processThemeString(newValue, valueAsVar)
               }
 
               if (newValue !== value || newKey !== key) {
