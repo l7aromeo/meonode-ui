@@ -475,6 +475,24 @@ export class NodeUtil {
 
     // Handle standard React elements.
     if (isValidElement(node)) {
+      // React elements whose type is a client reference, lazy wrapper, or memo/forwardRef
+      // are already finalized output from an upstream render. Re-wrapping them routes
+      // through the core render branches again with the wrong element metadata (e.g. a
+      // lazy-wrapped client component fails isClientReference/acceptsServerCss checks),
+      // which produces a server-compiled className that diverges from the hash the
+      // underlying client component emits during hydration.
+      const elementType = node.type as unknown
+      if (elementType && typeof elementType === 'object') {
+        const typeSymbol = (elementType as { $$typeof?: symbol }).$$typeof
+        if (
+          typeSymbol === Symbol.for('react.client.reference') ||
+          typeSymbol === Symbol.for('react.lazy') ||
+          typeSymbol === Symbol.for('react.memo') ||
+          typeSymbol === Symbol.for('react.forward_ref')
+        ) {
+          return node
+        }
+      }
       // Only extract style if it's a DOM element (string type)
       // For components, treat style as a normal prop
       if (typeof node.type === 'string') {
