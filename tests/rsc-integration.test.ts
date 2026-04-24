@@ -45,6 +45,37 @@ function assertNoObjectAttrLeaks(html: string) {
   expect(html).not.toMatch(/="?\[object Object\]"?/)
 }
 
+function getComputedStylesFromEmotionCss(html: string, testId: string, properties: readonly string[]): Record<string, string | null> {
+  const imgTagRegex = new RegExp(`<img[^>]*data-testid=["']${testId}["'][^>]*>`, 'i')
+  const imgTag = html.match(imgTagRegex)?.[0] ?? ''
+  const classAttr = imgTag.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? ''
+  const classes = classAttr.split(/\s+/).filter(Boolean)
+
+  const styleBlocks = [...html.matchAll(/<style[^>]*data-emotion="[^"]*"[^>]*>([\s\S]*?)<\/style>/gi)]
+  const cssText = styleBlocks.map(m => m[1]).join('\n')
+
+  const result: Record<string, string | null> = {}
+  for (const p of properties) result[p] = null
+
+  for (const cls of classes) {
+    const safeCls = cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const classRule = new RegExp(`\\.${safeCls}\\{([^}]*)\\}`, 'i')
+    const ruleBody = cssText.match(classRule)?.[1]
+    if (!ruleBody) continue
+    for (const prop of properties) {
+      if (result[prop] !== null) continue
+      const safeProp = prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      // Anchor to start-of-body or `;` so `width` does not match `min-width`, etc.
+      const propRegex = new RegExp(`(?:^|;)\\s*${safeProp}\\s*:\\s*([^;]+?)\\s*(?:;|$)`, 'i')
+      const v = ruleBody.match(propRegex)?.[1]
+      if (v) result[prop] = v.trim()
+    }
+    if (properties.every(p => result[p] !== null)) break
+  }
+
+  return result
+}
+
 // ----- Category A -----
 
 describe('A. Server-only rendering', () => {
@@ -362,5 +393,26 @@ describe('I. Server calling Node(client third-party reference)', () => {
     assertNoRscErrors(html)
     expect(html).toContain('ga-node-mounted')
     expect(html).toMatch(/data-testid="ga-node-page"/)
+  })
+})
+
+describe('J. next/image style parity (server vs client)', () => {
+  it('emits matching Emotion width/height/background-color for shared NextImage wrapper', async () => {
+    const server = await getPage('/next-image-server')
+    const client = await getPage('/next-image-client')
+
+    expect(server.status).toBe(200)
+    expect(client.status).toBe(200)
+    assertNoRscErrors(server.html)
+    assertNoRscErrors(client.html)
+
+    const props = ['width', 'height', 'background-color'] as const
+    const serverStyles = getComputedStylesFromEmotionCss(server.html, 'next-image-shared', props)
+    const clientStyles = getComputedStylesFromEmotionCss(client.html, 'next-image-shared', props)
+    console.log('[next-image-styles]', { serverStyles, clientStyles })
+
+    expect(serverStyles.width).toBe('40px')
+    expect(serverStyles.height).toBe('40px')
+    expect(serverStyles).toEqual(clientStyles)
   })
 })
