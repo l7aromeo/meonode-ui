@@ -1,3 +1,5 @@
+import { chromium, type Browser, type BrowserContext } from '@playwright/test'
+
 /**
  * RSC boundary integration tests.
  *
@@ -13,6 +15,8 @@
 
 const getPort = () => process.env.__RSC_FIXTURE_PORT__ as string
 const base = () => `http://localhost:${getPort()}`
+let browser: Browser | null = null
+let browserContext: BrowserContext | null = null
 
 const ERROR_MARKERS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /Hydration failed/i, label: 'Hydration failed' },
@@ -23,12 +27,65 @@ const ERROR_MARKERS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /A component was suspended by an uncached promise/i, label: 'suspended uncached promise' },
 ]
 
+const HYDRATION_RUNTIME_MARKERS: RegExp[] = [/A tree hydrated but some attributes of the server rendered HTML/i, /Hydration failed/i, /did not match/i]
+
+beforeAll(async () => {
+  try {
+    browser = await chromium.launch({ headless: true })
+    browserContext = await browser.newContext()
+  } catch (error) {
+    throw new Error(`Failed to launch Playwright Chromium. Run "bunx playwright install chromium" and retry.\n${String(error)}`, { cause: error })
+  }
+})
+
+afterAll(async () => {
+  await browserContext?.close()
+  await browser?.close()
+  browserContext = null
+  browser = null
+})
+
 async function getPage(pathname: string): Promise<{ status: number; html: string }> {
-  const res = await fetch(`${base()}${pathname}`, {
-    headers: { Accept: 'text/html' },
+  if (!browserContext) {
+    throw new Error('Playwright browser context is not initialized')
+  }
+
+  const page = await browserContext.newPage()
+  const runtimeMessages: string[] = []
+  page.on('console', msg => {
+    runtimeMessages.push(msg.text())
   })
-  const html = await res.text()
-  return { status: res.status, html }
+  page.on('pageerror', error => {
+    runtimeMessages.push(error.message)
+  })
+  try {
+    const response = await page.goto(`${base()}${pathname}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle')
+    await page.waitForFunction(() => document.readyState === 'complete')
+    await page.evaluate(
+      () =>
+        new Promise<void>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        }),
+    )
+    const html = await page.content()
+    const status = response?.status() ?? 0
+
+    if (status === 200) {
+      const hydrationRuntimeError = runtimeMessages.find(message => HYDRATION_RUNTIME_MARKERS.some(pattern => pattern.test(message)))
+      if (hydrationRuntimeError) {
+        throw new Error(
+          `Hydration runtime warning/error found for "${pathname}".\n` +
+            `Matched message:\n${hydrationRuntimeError}\n\n` +
+            `First 2KB of hydrated HTML:\n${html.slice(0, 2048)}`,
+        )
+      }
+    }
+
+    return { status, html }
+  } finally {
+    await page.close()
+  }
 }
 
 function assertNoRscErrors(html: string) {
@@ -51,9 +108,9 @@ function assertNoNextHydrationErrorNotes(html: string) {
 }
 
 function getComputedStylesFromEmotionCss(html: string, testId: string, properties: readonly string[]): Record<string, string | null> {
-  const imgTagRegex = new RegExp(`<img[^>]*data-testid=["']${testId}["'][^>]*>`, 'i')
-  const imgTag = html.match(imgTagRegex)?.[0] ?? ''
-  const classAttr = imgTag.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? ''
+  const elementTagRegex = new RegExp(`<[^>]*data-testid=["']${testId}["'][^>]*>`, 'i')
+  const elementTag = html.match(elementTagRegex)?.[0] ?? ''
+  const classAttr = elementTag.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? ''
   const classes = classAttr.split(/\s+/).filter(Boolean)
 
   const styleBlocks = [...html.matchAll(/<style[^>]*data-emotion="[^"]*"[^>]*>([\s\S]*?)<\/style>/gi)]

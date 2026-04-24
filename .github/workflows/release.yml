@@ -73,6 +73,9 @@ jobs:
         run: bun install
         working-directory: tests/rsc-fixtures/next-app
 
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
       - name: Run RSC tests
         run: bun run test:rsc
 
