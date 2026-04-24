@@ -24,13 +24,16 @@ export default function Page() {
           Node(Grid, {
             size: { xs: 12, md: 6 },
             children: Node(Card, {
+              backgroundColor: 'theme.secondary',
+              border: '1px solid theme.neutral',
+              borderRadius: 8,
               sx: {
-                backgroundColor: 'theme.secondary',
-                border: '1px solid theme.neutral',
-                borderRadius: 8,
+                backgroundColor: 'theme.primary',
               },
               children: Node(CardContent, {
-                sx: { display: 'flex', flexDirection: 'column', gap: 1 },
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
                 children: [
                   Div({ children: title }),
                   Node(Button, {

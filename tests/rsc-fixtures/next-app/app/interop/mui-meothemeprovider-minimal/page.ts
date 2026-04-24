@@ -70,8 +70,13 @@ export default function Page() {
                 backgroundColor: 'theme.secondary',
                 border: '1px solid theme.neutral',
                 borderRadius: 8,
+                sx: {
+                  backgroundColor: 'theme.primary',
+                },
                 children: Node(CardContent, {
-                  sx: { display: 'flex', flexDirection: 'column', gap: 1 },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
                   children: [
                     Div({ children: title }),
                     Node(Button, {

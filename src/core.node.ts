@@ -420,6 +420,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
               const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
                 processFunctions: false,
+                themeStringsMode: 'vars',
               }) as ComponentProps<ElementType>
               // Emit `var(--meonode-theme-*)` on the server so the generated Emotion class
               // matches the client runtime output — unifies the class hash across SSR/CSR.
