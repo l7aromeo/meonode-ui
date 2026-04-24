@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Install fixture dependencies
+        run: bun install
+        working-directory: tests/rsc-fixtures/next-app
+
       - name: Run lint
         run: bun run lint
 
