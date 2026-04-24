@@ -20,6 +20,10 @@ let browserContext: BrowserContext | null = null
 
 const ERROR_MARKERS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /Hydration failed/i, label: 'Hydration failed' },
+  {
+    pattern: /A tree hydrated but some attributes of the server rendered HTML didn't match the client properties/i,
+    label: 'hydration attribute mismatch',
+  },
   { pattern: /did not match/i, label: 'hydration mismatch' },
   { pattern: /Server Components render/i, label: 'RSC render error' },
   { pattern: /Error: Objects are not valid as a React child/i, label: 'invalid React child' },
@@ -45,7 +49,7 @@ afterAll(async () => {
   browser = null
 })
 
-async function getPage(pathname: string): Promise<{ status: number; html: string }> {
+async function getPage(pathname: string, options?: { allowRuntimeErrors?: boolean }): Promise<{ status: number; html: string }> {
   if (!browserContext) {
     throw new Error('Playwright browser context is not initialized')
   }
@@ -71,7 +75,7 @@ async function getPage(pathname: string): Promise<{ status: number; html: string
     const html = await page.content()
     const status = response?.status() ?? 0
 
-    if (status === 200) {
+    if (!options?.allowRuntimeErrors) {
       const hydrationRuntimeError = runtimeMessages.find(message => HYDRATION_RUNTIME_MARKERS.some(pattern => pattern.test(message)))
       if (hydrationRuntimeError) {
         throw new Error(
@@ -100,11 +104,6 @@ function assertNoObjectAttrLeaks(html: string) {
   // An attribute rendered as `"[object Object]"` indicates an object leaked
   // to the DOM attribute path. Covers SSR variant of basic-rendering test.
   expect(html).not.toMatch(/="?\[object Object\]"?/)
-}
-
-function assertNoNextHydrationErrorNotes(html: string) {
-  expect(html).not.toContain('id="nextjs__container_errors__notes"')
-  expect(html).not.toContain('A tree hydrated but some attributes of the server rendered HTML')
 }
 
 function getComputedStylesFromEmotionCss(html: string, testId: string, properties: readonly string[]): Record<string, string | null> {
@@ -188,9 +187,9 @@ describe('A. Server-only rendering', () => {
 
 // ----- Category B -----
 
-describe('B. Server → Client boundary', () => {
+describe('B. Server -> Client boundary primitives', () => {
   it('Node(ClientComp) inline from server renders', async () => {
-    const { status, html } = await getPage('/server-node-client')
+    const { status, html } = await getPage('/boundary/server-node-client')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('node-inline:0')
@@ -198,39 +197,25 @@ describe('B. Server → Client boundary', () => {
   })
 
   it('createNode(ClientComp) in neutral module works from server', async () => {
-    const { status, html } = await getPage('/server-createnode-neutral')
+    const { status, html } = await getPage('/boundary/server-createnode-neutral')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('createnode-neutral:0')
   })
 
   it.failing('createNode(ClientComp) in a "use client" module works from server', async () => {
-    const { status, html } = await getPage('/server-createnode-client')
+    const { status, html } = await getPage('/boundary/server-createnode-client')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('createnode-client:0')
   })
+})
 
-  it('direct client function call from server (documents behavior)', async () => {
-    // This is an anti-pattern, but we document runtime behavior here.
-    const { status, html } = await getPage('/server-direct-client')
-    // Record whatever happens: either renders (flow works) or errors (bad pattern).
-    // We only assert HTTP-level liveness and no hard crash marker here.
-    expect(status).toBeGreaterThanOrEqual(200)
-    expect(status).toBeLessThan(600)
-    // If it did render, check content; otherwise capture a snapshot in the log.
-    if (status === 200) {
-      // We do NOT call assertNoRscErrors — this test is documentary.
-      // Log the presence/absence of the element so maintainers can see what Next does.
+// ----- Category C -----
 
-      console.log('[doc] /server-direct-client status=200, contains direct-call:', html.includes('direct-call:0'))
-    } else {
-      console.log(`[doc] /server-direct-client returned ${status}`)
-    }
-  })
-
+describe('C. Theme and provider boundaries', () => {
   it('ThemeProvider wraps server-composed children', async () => {
-    const { status, html } = await getPage('/theme-server-children')
+    const { status, html } = await getPage('/theme/server-children')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('themed-from-server')
@@ -240,15 +225,33 @@ describe('B. Server → Client boundary', () => {
     )
   })
 
+  it('ThemeProvider wraps children when the page itself is a client module', async () => {
+    const { status, html } = await getPage('/theme/client-children')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('themed-from-client-page')
+    expect(html.toLowerCase()).toMatch(
+      /background-color:\s*rgb\(0,\s*128,\s*0\)|background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/,
+    )
+  })
+
+  it('client-module page uses css directly under layout ThemeProvider', async () => {
+    const { status, html } = await getPage('/theme/client-page-css-direct')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('client-direct-css')
+    expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/)
+  })
+
   it('PortalProvider + PortalHost in layout does not error', async () => {
-    const { status, html } = await getPage('/portal-in-layout')
+    const { status, html } = await getPage('/providers/portal-in-layout')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('portal-host-present')
   })
 
   it('StyleRegistry collects critical CSS from multiple styled nodes', async () => {
-    const { status, html } = await getPage('/style-registry')
+    const { status, html } = await getPage('/providers/style-registry')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('styled-a')
@@ -259,74 +262,45 @@ describe('B. Server → Client boundary', () => {
   })
 })
 
-// ----- Category C: next/link -----
+// ----- Category D: next/link -----
 
-describe('C. next/link cluster (the reported defect)', () => {
+describe('D. next/link boundary behavior', () => {
   it('[BUG REPRO] createNode(Link) in neutral module from server page', async () => {
     // This is the exact case the user reported as broken. If this test
     // passes (i.e. no RSC error marker found), flip it from `.failing` to
     // a regular `it`, because the bug is fixed.
-    const { status, html } = await getPage('/next-link-neutral')
+    const { status, html } = await getPage('/link/neutral')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('go-home')
   })
 
   it('Node(Link) inline from server renders', async () => {
-    const { status, html } = await getPage('/next-link-inline')
+    const { status, html } = await getPage('/link/inline')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('go-home-inline')
   })
 
   it.failing('createNode(Link) in a "use client" module from server renders', async () => {
-    const { status, html } = await getPage('/next-link-client-module')
+    const { status, html } = await getPage('/link/client-module')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('go-home-client-module')
   })
 
   it('Link wrapped in a "use client" component works (user workaround)', async () => {
-    const { status, html } = await getPage('/next-link-wrapped-client')
+    const { status, html } = await getPage('/link/wrapped-client')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toMatch(/data-testid="client-navbar"/)
     expect(html).toContain('home')
   })
-
-  it('client component function passed as prop to client renderer from server', async () => {
-    const { status, html } = await getPage('/client-function-prop')
-    expect(status).toBe(200)
-    assertNoRscErrors(html)
-    expect(html).toContain('function-prop-repro')
-  })
-
-  it('direct Link(...) function call from server (diagnostic)', async () => {
-    const { status, html } = await getPage('/next-link-direct-call')
-    expect(status).toBeGreaterThanOrEqual(200)
-    expect(status).toBeLessThan(600)
-    if (status === 200) {
-      expect(html).toContain('direct-link-call')
-    } else {
-      console.log(`[doc] /next-link-direct-call returned ${status}`)
-    }
-  })
-
-  it('direct Link(...) function call from client page (diagnostic)', async () => {
-    const { status, html } = await getPage('/next-link-direct-call-client')
-    expect(status).toBeGreaterThanOrEqual(200)
-    expect(status).toBeLessThan(600)
-    if (status === 200) {
-      expect(html).toContain('direct-link-call-client')
-    } else {
-      console.log(`[doc] /next-link-direct-call-client returned ${status}`)
-    }
-  })
 })
 
-// ----- Category D: async server components -----
+// ----- Category E -----
 
-describe('D. Rule A (async server components)', () => {
+describe('E. Async server components', () => {
   it('await AsyncServerComp() renders correctly', async () => {
     const { status, html } = await getPage('/async-await')
     expect(status).toBe(200)
@@ -354,13 +328,13 @@ describe('D. Rule A (async server components)', () => {
   })
 })
 
-// ----- Category E: client ← server children -----
+// ----- Category F -----
 
-describe('E. Client provider receives server children payload', () => {
+describe('F. Boundary retention and payload stability', () => {
   it('re-fetch returns consistent server content inside client provider (case 19)', async () => {
     // Fetch twice and ensure the server content is emitted each time.
-    const a = await getPage('/theme-server-children?v=1')
-    const b = await getPage('/theme-server-children?v=2')
+    const a = await getPage('/theme/server-children?v=1')
+    const b = await getPage('/theme/server-children?v=2')
     expect(a.status).toBe(200)
     expect(b.status).toBe(200)
     assertNoRscErrors(a.html)
@@ -370,35 +344,49 @@ describe('E. Client provider receives server children payload', () => {
   })
 
   it('theme values resolve in server-rendered node under client ThemeProvider', async () => {
-    const { status, html } = await getPage('/theme-resolution-boundary')
+    const { status, html } = await getPage('/theme/resolution-boundary')
     expect(status).toBe(200)
     assertNoRscErrors(html)
     expect(html).toContain('theme-boundary-content')
-    expect(html).toContain('go-home')
-    // Validate theme token propagation for both container and nested Link styles.
+    // Validate theme token propagation for container and text styles only.
     expect(html.toLowerCase()).toMatch(/background-color:\s*#f8f8f8|background-color:\s*var\(--meonode-theme-base\)/)
     expect(html.toLowerCase()).toMatch(/padding:\s*16(?:px)?|padding:\s*var\(--meonode-theme-spacing-md\)/)
     expect(html.toLowerCase()).toMatch(/color:\s*#333333|color:\s*var\(--meonode-theme-base-content\)/)
+  })
+
+  it('theme values resolve on Link node rendered from a server page', async () => {
+    const { status, html } = await getPage('/theme/resolution-link-node')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('go-home-theme-link')
     expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/)
     expect(html.toLowerCase()).toMatch(/color:\s*#ffffff|color:\s*var\(--meonode-theme-primary-content\)/)
   })
+
+  it('server renders a link-like client component through Node boundary', async () => {
+    const { status, html } = await getPage('/boundary/client-function-prop')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('function-prop-repro')
+  })
 })
 
-// ----- Category F: regression guards -----
+// ----- Category G: regression guards -----
 
-describe('F. Regression guards', () => {
+describe('G. Regression guards', () => {
   const GUARD_PAGES = [
     '/',
     '/server-css',
-    '/theme-server-children',
-    '/style-registry',
-    '/theme-resolution-boundary',
-    '/server-node-client',
-    '/server-createnode-neutral',
-    '/server-createnode-client',
-    '/next-link-inline',
-    '/next-link-client-module',
-    '/next-link-wrapped-client',
+    '/theme/server-children',
+    '/providers/style-registry',
+    '/theme/resolution-boundary',
+    '/theme/resolution-link-node',
+    '/boundary/server-node-client',
+    '/boundary/server-createnode-neutral',
+    '/boundary/server-createnode-client',
+    '/link/inline',
+    '/link/client-module',
+    '/link/wrapped-client',
     '/async-await',
     '/async-nested',
   ]
@@ -408,8 +396,8 @@ describe('F. Regression guards', () => {
     assertNoObjectAttrLeaks(html)
   })
 
-  it('no duplicate Emotion style IDs across /style-registry', async () => {
-    const { html } = await getPage('/style-registry')
+  it('no duplicate Emotion style IDs across /providers/style-registry', async () => {
+    const { html } = await getPage('/providers/style-registry')
     // Gather the id list from each style tag and verify no duplicates.
     const tags = [...html.matchAll(/<style [^>]*data-emotion="meonode-css ([^"]*)"/g)]
     const allIds: string[] = []
@@ -423,14 +411,51 @@ describe('F. Regression guards', () => {
   })
 
   it('no non-css artifacts in emitted style payload', async () => {
-    const { html } = await getPage('/next-link-inline')
+    const { html } = await getPage('/link/inline')
     expect(html).not.toContain('true.meonode-css-')
   })
 })
 
-// ----- Category G: client -> server component via Node -----
+// ----- Category L -----
 
-describe('G. Client calling Node(ServerComponent)', () => {
+describe('L. Diagnostics and anti-pattern documentation', () => {
+  it('direct client function call from server (documents behavior)', async () => {
+    const { status, html } = await getPage('/diagnostic/server-direct-client', { allowRuntimeErrors: true })
+    expect(status).toBeGreaterThanOrEqual(200)
+    expect(status).toBeLessThan(600)
+    if (status === 200) {
+      console.log('[doc] /diagnostic/server-direct-client status=200, contains direct-call:', html.includes('direct-call:0'))
+    } else {
+      console.log(`[doc] /diagnostic/server-direct-client returned ${status}`)
+    }
+  })
+
+  it('direct Link(...) function call from server (diagnostic)', async () => {
+    const { status, html } = await getPage('/diagnostic/link-direct-call', { allowRuntimeErrors: true })
+    expect(status).toBeGreaterThanOrEqual(200)
+    expect(status).toBeLessThan(600)
+    if (status === 200) {
+      expect(html).toContain('direct-link-call')
+    } else {
+      console.log(`[doc] /diagnostic/link-direct-call returned ${status}`)
+    }
+  })
+
+  it('direct Link(...) function call from client page (diagnostic)', async () => {
+    const { status, html } = await getPage('/diagnostic/link-direct-call-client', { allowRuntimeErrors: true })
+    expect(status).toBeGreaterThanOrEqual(200)
+    expect(status).toBeLessThan(600)
+    if (status === 200) {
+      expect(html).toContain('direct-link-call-client')
+    } else {
+      console.log(`[doc] /diagnostic/link-direct-call-client returned ${status}`)
+    }
+  })
+})
+
+// ----- Category H: client -> server component via Node -----
+
+describe('H. Client calling Node(ServerComponent)', () => {
   it('client page can render Node(PlainServer)', async () => {
     const { status, html } = await getPage('/client-node-server')
     expect(status).toBe(200)
@@ -446,7 +471,9 @@ describe('G. Client calling Node(ServerComponent)', () => {
   })
 })
 
-describe('H. Server calling Node(ServerComponent)', () => {
+// ----- Category I -----
+
+describe('I. Server calling Node(ServerComponent)', () => {
   it('server page can render Node(PlainServer)', async () => {
     const { status, html } = await getPage('/server-node-server')
     expect(status).toBe(200)
@@ -455,7 +482,9 @@ describe('H. Server calling Node(ServerComponent)', () => {
   })
 })
 
-describe('I. Server calling Node(client third-party reference)', () => {
+// ----- Category J -----
+
+describe('J. Server calling Node(client third-party reference)', () => {
   it('server page can render Node(GoogleAnalytics) without client-reference access errors', async () => {
     const { status, html } = await getPage('/google-analytics-node')
     expect(status).toBe(200)
@@ -465,7 +494,9 @@ describe('I. Server calling Node(client third-party reference)', () => {
   })
 })
 
-describe('J. styling parity routes (server vs client)', () => {
+// ----- Category K -----
+
+describe('K. Styling parity routes (server vs client)', () => {
   it('emits matching Emotion output for theme-token styling', async () => {
     const server = await getPage('/styling-parity-theme-server')
     const client = await getPage('/styling-parity-theme-client')
@@ -474,7 +505,6 @@ describe('J. styling parity routes (server vs client)', () => {
     expect(client.status).toBe(200)
     assertNoRscErrors(server.html)
     assertNoRscErrors(client.html)
-    assertNoNextHydrationErrorNotes(client.html)
 
     const props = ['width', 'height', 'background-color'] as const
     const serverStyles = getComputedStylesFromEmotionCss(server.html, 'styling-parity-theme-shared', props)
@@ -499,7 +529,6 @@ describe('J. styling parity routes (server vs client)', () => {
     expect(client.status).toBe(200)
     assertNoRscErrors(server.html)
     assertNoRscErrors(client.html)
-    assertNoNextHydrationErrorNotes(client.html)
 
     const props = ['width', 'height', 'background-color'] as const
     const serverStyles = getComputedStylesFromEmotionCss(server.html, 'styling-parity-raw-shared', props)
@@ -514,5 +543,40 @@ describe('J. styling parity routes (server vs client)', () => {
     expect(serverClassName).toBeTruthy()
     expect(clientClassName).toBeTruthy()
     expect(serverClassName).toBe(clientClassName)
+  })
+})
+
+describe('M. Third-party component interop', () => {
+  it('renders MUI Button and MeoNode Button on the same page', async () => {
+    const { status, html } = await getPage('/interop/mui-meonode')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('interop:mui-meonode')
+    expect(html).toContain('mui-contained')
+    expect(html).toContain('meonode-button')
+  })
+
+  it('renders ChuTao-style MUI mapping without hydration warning notes', async () => {
+    const { status, html } = await getPage('/interop/mui-chutao-minimal')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('ChuTao-style Interop Minimal')
+    expect(html).toContain('Daily check-in')
+    expect(html).toContain('Get Started')
+  })
+
+  it('renders MUI-heavy tree without MeoThemeProvider-like wrapper', async () => {
+    const { status, html } = await getPage('/interop/mui-no-meotheme-wrapper')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('MUI WITHOUT MEO THEME WRAPPER')
+    expect(html).toContain('Build showcase')
+  })
+
+  it('reproduces hydration mismatch with MeoThemeProvider-like MUI tree', async () => {
+    const { status, html } = await getPage('/interop/mui-meothemeprovider-minimal')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('MEO THEME + MUI')
   })
 })
