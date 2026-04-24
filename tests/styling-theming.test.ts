@@ -42,6 +42,30 @@ describe('Styling and Theming', () => {
     expect(element).toHaveStyleRule('padding', '10px')
   })
 
+  it('should keep raw css string values unchanged inside ThemeProvider', () => {
+    const myTheme: Theme = {
+      mode: 'light',
+      system: {
+        colors: { primary: '#3b82f6' },
+      },
+    }
+
+    const App = ThemeProvider({
+      theme: myTheme,
+      children: Div({
+        children: 'Raw Value Content',
+        backgroundColor: 'red',
+        color: '#ff0000',
+      }),
+    })
+
+    const { getByText } = render(App.render())
+    const element = getByText('Raw Value Content')
+
+    expect(element).toHaveStyleRule('background-color', 'red')
+    expect(element).toHaveStyleRule('color', '#ff0000')
+  })
+
   it('should propagate theme to children', () => {
     // Define a sample theme object.
     const myTheme: Theme = {
