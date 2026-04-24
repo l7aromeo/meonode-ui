@@ -1,6 +1,5 @@
 import type { CSSProperties } from '@emotion/serialize'
 import type { CssProp, Theme } from '@src/types/node.type.js'
-import { getValueByPath } from '@src/helper/common.helper.js'
 
 interface FlexComponents {
   grow: number
@@ -75,18 +74,12 @@ export class ThemeUtil {
    * object references for unchanged parts of the tree, which is critical for
    * React's reconciliation and memoization.
    */
-  public static resolveObjWithTheme = <O extends Record<string, unknown>>(
-    obj: O,
-    theme?: Theme,
-    options: { processFunctions?: boolean; themeStringsMode?: 'resolve' | 'vars' } = {},
-  ): O => {
-    const { processFunctions = false, themeStringsMode = 'resolve' } = options
+  public static resolveObjWithTheme = <O extends Record<string, unknown>>(obj: O, theme?: Theme, options: { processFunctions?: boolean } = {}): O => {
+    const { processFunctions = false } = options
 
     if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || !obj || Object.keys(obj).length === 0) {
       return obj
     }
-
-    const themeSystem = theme.system
 
     const workStack: { value: unknown; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
     const resolvedValues = new Map<unknown, unknown>()
@@ -98,26 +91,12 @@ export class ThemeUtil {
 
     // Keys (selectors, media queries) must always resolve to concrete values — CSS vars
     // are invalid inside media features / selector text. Only values obey `themeStringsMode`.
-    const processThemeString = (value: string, asVar: boolean) => {
+    const processThemeString = (value: string) => {
       themeRegex.lastIndex = 0
       let hasChanged = false
-      const resolved = value.replace(themeRegex, (match, path: string) => {
-        if (asVar) {
-          hasChanged = true
-          return `var(${toThemeVarName(path)})`
-        }
-        const themeValue = getValueByPath(themeSystem, path)
-        if (themeValue !== undefined && themeValue !== null) {
-          hasChanged = true
-          if (typeof themeValue === 'object') {
-            if (!Array.isArray(themeValue) && 'default' in themeValue) {
-              return themeValue.default as string
-            }
-            throw new Error('The provided theme path is invalid!')
-          }
-          return themeValue
-        }
-        return match
+      const resolved = value.replace(themeRegex, (_, path: string) => {
+        hasChanged = true
+        return `var(${toThemeVarName(path)})`
       })
       return hasChanged ? resolved : value
     }
@@ -177,15 +156,14 @@ export class ThemeUtil {
 
               // Resolve theme variables in the key itself (e.g., media queries)
               if (typeof key === 'string' && key.includes('theme.')) {
-                newKey = processThemeString(key, false)
+                newKey = processThemeString(key)
               }
 
-              const valueAsVar = themeStringsMode === 'vars'
               if (typeof newValue === 'function' && processFunctions) {
                 const funcResult = (newValue as (theme: Theme) => unknown)(theme)
-                newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult, valueAsVar) : funcResult
+                newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult) : funcResult
               } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
-                newValue = processThemeString(newValue, valueAsVar)
+                newValue = processThemeString(newValue)
               }
 
               if (newValue !== value || newKey !== key) {

@@ -36,10 +36,10 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   if (theme) {
     // Process `css` prop in "aggressive" mode, allowing functions
-    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true, themeStringsMode: 'vars' })
+    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true })
 
     // Process all other props in "safe" mode, ignoring functions
-    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false, themeStringsMode: 'vars' })
+    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false })
   }
 
   const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)

@@ -420,7 +420,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
               const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
                 processFunctions: false,
-                themeStringsMode: 'vars',
               }) as ComponentProps<ElementType>
               // Emit `var(--meonode-theme-*)` on the server so the generated Emotion class
               // matches the client runtime output — unifies the class hash across SSR/CSR.
@@ -429,7 +428,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               // carry into the client page's SSR pass), so string tokens still produce vars.
               const themedCss = ThemeUtil.resolveObjWithTheme(replaceThemeTokensWithCssVars(css), activeTheme, {
                 processFunctions: true,
-                themeStringsMode: 'vars',
               })
               const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
               const serverCssClassName = compileServerEmotionClassName(cssWithDefaults)

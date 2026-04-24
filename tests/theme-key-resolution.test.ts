@@ -33,10 +33,9 @@ describe('Theme Key Resolution', () => {
     const { getByText } = render(App.render())
     const element = getByText('Media Query Content')
 
-    // We expect the media query to be resolved to '@media (max-width: 1024px)'
-    // The matcher `toHaveStyleRule` supports media options.
+    // Keys resolve to CSS variables just like values, for deterministic SSR/CSR parity.
     expect(element).toHaveStyleRule('color', 'red', {
-      media: '(max-width: 1024px)',
+      media: '(max-width: var(--meonode-theme-breakpoint-lg))',
     })
   })
 
@@ -75,22 +74,21 @@ describe('Theme Key Resolution', () => {
     const { getByText } = render(App.render())
     const element = getByText('Complex Media Query Content')
 
-    // String theme tokens in values emit as CSS variables; keys (media queries) still
-    // resolve to concrete values since CSS variables are invalid inside media conditions.
+    // Keys and values both emit as CSS variables for deterministic SSR/CSR parity.
     expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
 
     // Check media query resolutions
     expect(element).toHaveStyleRule('color', 'blue', {
-      media: '(max-width: 1024px)',
+      media: '(max-width: var(--meonode-theme-breakpoint-lg))',
     })
     expect(element).toHaveStyleRule('font-size', '18px', {
-      media: '(max-width: 1024px)',
+      media: '(max-width: var(--meonode-theme-breakpoint-lg))',
     })
     expect(element).toHaveStyleRule('color', 'green', {
-      media: '(max-width: 640px)',
+      media: '(max-width: var(--meonode-theme-breakpoint-sm))',
     })
     expect(element).toHaveStyleRule('font-size', '14px', {
-      media: '(max-width: 640px)',
+      media: '(max-width: var(--meonode-theme-breakpoint-sm))',
     })
   })
 })
