@@ -313,22 +313,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           }
           return current ?? getActiveServerTheme()
         }
-        const hasThemeToken = (value: unknown): boolean => {
-          if (!value) return false
-          if (typeof value === 'string') return value.includes('theme.')
-          if (typeof value === 'function') return true
-          if (typeof value !== 'object') return false
-          if (Array.isArray(value)) {
-            for (const item of value) {
-              if (hasThemeToken(item)) return true
-            }
-            return false
-          }
-          for (const nested of Object.values(value as Record<string, unknown>)) {
-            if (hasThemeToken(nested)) return true
-          }
-          return false
-        }
 
         if (!isProcessed) {
           // Begin phase: mark processed and push child BaseNodes onto the stack (in reverse order)
@@ -419,8 +403,11 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
             const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element))
             const shouldBypassStyledRendererOnServer = NodeUtil.isServer && typeof node.element !== 'string'
-            const shouldUseRuntimeThemeOnServer =
-              isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element) && hasThemeToken(css)
+            // Keep server/client on the same StyledRenderer path for client references.
+            // This avoids Emotion hash drift not only for theme tokens, but also for raw
+            // CSS values (e.g. "red", "#ff0000") that would otherwise use different
+            // server vs client compilation routes.
+            const shouldUseRuntimeThemeOnServer = isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element)
 
             if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
               // On the server, convert string theme tokens to `var(--meonode-theme-*)`
