@@ -36,7 +36,7 @@
     "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 --experimental-vm-modules run $(bun pm bin)/jest --ci --verbose --testPathIgnorePatterns=\"tests/rsc-integration.test.ts\" --testPathIgnorePatterns=\"tests/build-output.test.ts\"",
     "test:rsc": "NODE_OPTIONS='--experimental-vm-modules' node $(bun pm bin)/jest --config jest.integration.config.ts --ci --verbose --runInBand",
     "prepare:rsc-fixture": "cd tests/rsc-fixtures/next-app && bun install",
-    "verify": "bun run lint && bun run tsc --noEmit && bun run test && bun run prepare:rsc-fixture && bun run test:rsc",
+    "verify": "bun run prepare:rsc-fixture && bun run lint && bun run tsc --noEmit && bun run test && bun run test:rsc",
     "build": "rm -rf ./dist && rollup -c rollup.config.ts --configPlugin typescript && tsc -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "semantic-release": "semantic-release",
     "release": "semantic-release",
