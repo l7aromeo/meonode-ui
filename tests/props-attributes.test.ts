@@ -109,8 +109,8 @@ describe('Props and Attributes', () => {
     expect(elementOne).toBeInTheDocument()
     // Assert that ChildOne is rendered inside the first wrapper.
     expect(elementOne.parentElement).toBe(wrappers[0])
-    // Assert that ChildOne's color is resolved correctly from the theme.
-    expect(window.getComputedStyle(elementOne).color).toBe('rgb(255, 0, 0)')
+    // String theme tokens emit as CSS variables (resolved by the browser at paint time).
+    expect(window.getComputedStyle(elementOne).color).toBe('var(--meonode-theme-colors-primary)')
 
     // Check ChildTwo:
     const elementTwo = getByText('Child Two')
@@ -118,8 +118,7 @@ describe('Props and Attributes', () => {
     expect(elementTwo).toBeInTheDocument()
     // Assert that ChildTwo is rendered inside the second wrapper.
     expect(elementTwo.parentElement).toBe(wrappers[1])
-    // Assert that ChildTwo's color is resolved correctly from the theme.
-    expect(window.getComputedStyle(elementTwo).color).toBe('rgb(0, 0, 255)')
+    expect(window.getComputedStyle(elementTwo).color).toBe('var(--meonode-theme-colors-secondary)')
   })
 
   it('should pass native HTML attributes through the props object even if they conflict with CSS property names', () => {

@@ -72,9 +72,10 @@ describe('Styling and Theming', () => {
     const element = getByText('Themed Content')
     // Get the computed styles of the element.
     const computedStyles = window.getComputedStyle(element)
-    // Assert that theme values are correctly applied to CSS properties.
+    // String theme tokens now emit as CSS variables (see RSC hydration-parity fix).
+    // Function callbacks still return their concrete value directly.
     expect(computedStyles.backgroundColor).toBe('rgb(255, 255, 255)')
-    expect(computedStyles.padding).toBe('16px')
+    expect(computedStyles.padding).toBe('var(--meonode-theme-spacing-md)')
   })
 
   it('should propagate multiple theme values to children', () => {
@@ -105,10 +106,10 @@ describe('Styling and Theming', () => {
     const element = getByText('Themed Content')
     // Get the computed styles of the element.
     const computedStyles = window.getComputedStyle(element)
-    // Assert that all specified theme values are correctly applied to their respective CSS properties.
-    expect(computedStyles.padding).toBe('16px')
-    expect(computedStyles.margin).toBe('24px')
-    expect(computedStyles.color).toBe('rgb(59, 130, 246)')
+    // String theme tokens emit as CSS variables.
+    expect(computedStyles.padding).toBe('var(--meonode-theme-spacing-md)')
+    expect(computedStyles.margin).toBe('var(--meonode-theme-spacing-lg)')
+    expect(computedStyles.color).toBe('var(--meonode-theme-colors-primary)')
   })
 
   it('should resolve theme values from strings and functions in the css prop', () => {
@@ -143,8 +144,8 @@ describe('Styling and Theming', () => {
     const element = getByText('Themed Function Content')
     // Get the computed styles of the element.
     const computedStyles = window.getComputedStyle(element)
-    // Assert that theme values are correctly resolved and applied from both string paths and functions.
-    expect(computedStyles.padding).toBe('10px')
+    // String paths emit CSS vars; function callbacks still return concrete values.
+    expect(computedStyles.padding).toBe('var(--meonode-theme-spacing-md)')
     expect(computedStyles.color).toBe('rgb(255, 0, 0)')
   })
 

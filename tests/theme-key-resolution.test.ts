@@ -75,8 +75,9 @@ describe('Theme Key Resolution', () => {
     const { getByText } = render(App.render())
     const element = getByText('Complex Media Query Content')
 
-    // Check base styles
-    expect(element).toHaveStyleRule('padding', '16px')
+    // String theme tokens in values emit as CSS variables; keys (media queries) still
+    // resolve to concrete values since CSS variables are invalid inside media conditions.
+    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
 
     // Check media query resolutions
     expect(element).toHaveStyleRule('color', 'blue', {
