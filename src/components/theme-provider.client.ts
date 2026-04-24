@@ -1,7 +1,8 @@
 'use client'
-import { createContext, type ReactNode, useState } from 'react'
+import { createContext, type ReactNode, useInsertionEffect, useState } from 'react'
 import type { Children, Theme } from '@src/types/node.type.js'
 import { Node } from '@src/core.node.js'
+import { buildThemeVariablesCss } from '@src/util/server-theme.util.js'
 
 export interface ThemeContextValue {
   theme: Theme
@@ -34,6 +35,20 @@ export default function ThemeProvider({ children, theme }: { children?: Children
       setTheme(theme)
     },
   }
+
+  useInsertionEffect(() => {
+    const cssText = buildThemeVariablesCss(currentTheme)
+    if (!cssText) return
+
+    const style = document.createElement('style')
+    style.setAttribute('data-meonode-theme-vars', '')
+    style.textContent = cssText
+    document.head.appendChild(style)
+
+    return () => {
+      style.remove()
+    }
+  }, [currentTheme])
 
   return Node(ThemeContext.Provider, { value: contextValue, children }).render()
 }

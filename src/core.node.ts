@@ -429,11 +429,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               // with the server-bypass path so both routes produce the same Emotion
               // class hash for the same styled props.
               const cssForRenderer = NodeUtil.isServer ? replaceThemeTokensWithCssVars(css) : css
-              element = createElement(
-                StyledRenderer,
-                { element: node.element, ...elementProps, css: cssForRenderer, suppressHydrationWarning: true },
-                ...finalChildren,
-              )
+              element = createElement(StyledRenderer, { element: node.element, ...elementProps, css: cssForRenderer }, ...finalChildren)
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
               const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
                 processFunctions: false,

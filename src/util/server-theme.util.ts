@@ -71,6 +71,48 @@ export function consumeServerThemeVariablesCss(): { id: string; cssText: string 
   return { id: 'theme-vars', cssText: `:root{${declarations}}` }
 }
 
+/**
+ * Builds the `:root{--meonode-theme-*: …}` CSS text directly from a Theme without
+ * touching the server-only variable store. Safe to call on the client for pure
+ * SPA flows (Vite/CRA) where there is no SSR emission to pick up.
+ */
+export function buildThemeVariablesCss(theme: Theme): string {
+  if (!theme?.system || typeof theme.system !== 'object') return ''
+  const entries: Array<[string, string]> = []
+  const stack: Array<{ path: string; value: unknown }> = [{ path: '', value: theme.system }]
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current || !current.value || typeof current.value !== 'object') continue
+    const record = current.value as Record<string, unknown>
+
+    for (const [key, rawValue] of Object.entries(record)) {
+      const path = current.path ? `${current.path}.${key}` : key
+      if (rawValue === null || rawValue === undefined) continue
+
+      if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
+        entries.push([toThemeVarName(path), String(rawValue)])
+        continue
+      }
+
+      if (typeof rawValue === 'object') {
+        const maybeDefault = (rawValue as Record<string, unknown>).default
+        if (typeof maybeDefault === 'string' || typeof maybeDefault === 'number' || typeof maybeDefault === 'boolean') {
+          entries.push([toThemeVarName(path), String(maybeDefault)])
+        }
+        stack.push({ path, value: rawValue })
+      }
+    }
+  }
+
+  if (entries.length === 0) return ''
+  const declarations = entries
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => `${name}:${value};`)
+    .join('')
+  return `:root{${declarations}}`
+}
+
 export function replaceThemeTokensWithCssVars<T>(value: T): T {
   const replaceString = (input: string) => input.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (_, path: string) => `var(${toThemeVarName(path)})`)
 
