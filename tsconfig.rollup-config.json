@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "types": ["node"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["rollup.config.ts"],
+  "exclude": ["dist", "node_modules", "tests"]
+}

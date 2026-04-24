@@ -37,7 +37,7 @@
     "test:rsc": "NODE_OPTIONS='--experimental-vm-modules' node $(bun pm bin)/jest --config jest.integration.config.ts --ci --verbose --runInBand",
     "prepare:rsc-fixture": "cd tests/rsc-fixtures/next-app && bun install",
     "verify": "bun run prepare:rsc-fixture && bun run lint && bun run tsc --noEmit && bun run test && bun run test:rsc",
-    "build": "rm -rf ./dist && rollup -c rollup.config.ts --configPlugin typescript && tsc -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
+    "build": "rm -rf ./dist && rollup -c rollup.config.ts --configPlugin 'typescript={tsconfig:\"./tsconfig.rollup-config.json\"}' && tsc -p tsconfig.build.json --diagnostics && tsc-alias -p tsconfig.build.json",
     "semantic-release": "semantic-release",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run",
