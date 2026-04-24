@@ -70,7 +70,7 @@ export default async function globalSetup() {
 
   console.log(`[rsc-setup] spawning next dev on :${port}…`)
 
-  const proc = spawn('bunx', ['next', 'dev', '--webpack', '-p', String(port)], {
+  const proc = spawn('bunx', ['next', 'dev', '-p', String(port)], {
     cwd: FIXTURE,
     stdio: ['ignore', 'inherit', 'inherit'],
     detached: true,

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
-    "start": "next start --webpack"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
