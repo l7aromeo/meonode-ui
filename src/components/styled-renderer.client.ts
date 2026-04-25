@@ -31,23 +31,16 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   const { css, ...otherProps } = props
 
-  let finalCss: CssProp = css
-  let finalOtherProps: Record<string, unknown> = otherProps
-
-  if (theme) {
-    // Process `css` prop in "aggressive" mode, allowing functions
-    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true, themeStringsMode: 'vars' })
-
-    // Process all other props (e.g. MUI `sx`, `style`) in vars mode too so the
-    // rendered output matches the server's `replaceThemeTokensWithCssVars`
-    // pass — both sides emit `var(--meonode-theme-*)` for the same input,
-    // which keeps Emotion class hashes identical across SSR/CSR.
-    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false, themeStringsMode: 'vars' })
-  }
+  // `otherProps` arrive already var-converted from `core.node.ts`
+  // (`replaceThemeTokensWithCssVars` runs on every node's `elementProps`),
+  // so no further processing is needed here. `css` still needs resolution
+  // to execute any callable theme refs and to expand string tokens that
+  // may have been provided directly via `css` rather than via `elementProps`.
+  const finalCss: CssProp = theme ? ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true, themeStringsMode: 'vars' }) : css
 
   const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)
 
-  return jsx(element as keyof JSX.IntrinsicElements, { ...finalOtherProps, css: cssForEmotion }, children)
+  return jsx(element as keyof JSX.IntrinsicElements, { ...otherProps, css: cssForEmotion }, children)
 }
 
 StyledRenderer.displayName = 'Styled'

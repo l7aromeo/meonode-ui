@@ -426,21 +426,19 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               const cssForRenderer = NodeUtil.isServer ? replaceThemeTokensWithCssVars(css) : css
               element = createElement(StyledRenderer, { element: node.element, ...elementProps, css: cssForRenderer }, ...finalChildren)
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
-              const resolvedElementProps = ThemeUtil.resolveObjWithTheme(elementProps as Record<string, unknown>, activeTheme, {
-                processFunctions: false,
-              }) as ComponentProps<ElementType>
               // Emit `var(--meonode-theme-*)` on the server so the generated Emotion class
               // matches the client runtime output — unifies the class hash across SSR/CSR.
               // `replaceThemeTokensWithCssVars` runs even when activeTheme is undefined
               // (e.g., RSC/SSR bundler-layer split where the layout-set global state does not
               // carry into the client page's SSR pass), so string tokens still produce vars.
+              // `processFunctions: true` executes any callable theme refs in `css`.
               const themedCss = ThemeUtil.resolveObjWithTheme(replaceThemeTokensWithCssVars(css), activeTheme, {
                 processFunctions: true,
               })
               const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
               const serverCssClassName = compileServerEmotionClassName(cssWithDefaults)
-              const mergedClassName = [resolvedElementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
-              const elementPropsWithClassName = mergedClassName ? { ...resolvedElementProps, className: mergedClassName } : resolvedElementProps
+              const mergedClassName = [elementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
+              const elementPropsWithClassName = mergedClassName ? { ...elementProps, className: mergedClassName } : elementProps
               element = createElement(node.element, elementPropsWithClassName, ...finalChildren)
             } else {
               // On server function components, keep css support for true server components.
