@@ -114,6 +114,15 @@ export function buildThemeVariablesCss(theme: Theme): string {
 }
 
 /**
+ * Module-level cache so repeat conversions of the same input object/array
+ * return their previously-computed output in O(1). The cache stores both
+ * `input → output` and `output → output` so that re-running the function
+ * on an already-converted value short-circuits without re-walking. WeakMap
+ * lets entries be reclaimed automatically when their keys are GC'd.
+ */
+const conversionCache = new WeakMap<object, unknown>()
+
+/**
  * Replaces `theme.*` token strings with `var(--meonode-theme-*)` references,
  * walking arbitrary structures iteratively with copy-on-write semantics.
  *
@@ -127,6 +136,8 @@ export function buildThemeVariablesCss(theme: Theme): string {
  * - Detects cycles via a path Set.
  * - Replaces tokens inside object keys too (e.g. nested selectors/media
  *   queries that embed `theme.*` references).
+ * - Memoized via a module-level WeakMap so the same input reference (e.g.
+ *   a `sx` object defined outside a render body) is converted at most once.
  */
 export function replaceThemeTokensWithCssVars<T>(value: T): T {
   const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
@@ -150,6 +161,10 @@ export function replaceThemeTokensWithCssVars<T>(value: T): T {
 
   if (typeof value === 'string') return replaceString(value) as unknown as T
   if (!isPlainObject(value) && !Array.isArray(value)) return value
+
+  // WeakMap fast-path: previously-converted inputs (and their outputs) hit O(1).
+  const cached = conversionCache.get(value as object)
+  if (cached !== undefined) return cached as T
 
   const workStack: { value: unknown; isProcessed: boolean }[] = [{ value, isProcessed: false }]
   const resolvedValues = new Map<unknown, unknown>()
@@ -233,5 +248,12 @@ export function replaceThemeTokensWithCssVars<T>(value: T): T {
     }
   }
 
-  return (resolvedValues.get(value) ?? value) as T
+  const result = (resolvedValues.get(value) ?? value) as T
+  conversionCache.set(value as object, result)
+  // Also map the output to itself so re-converting an already-var-form value
+  // (e.g. props that round-trip through this function) short-circuits.
+  if (result !== (value as unknown) && typeof result === 'object' && result !== null) {
+    conversionCache.set(result as unknown as object, result)
+  }
+  return result
 }
