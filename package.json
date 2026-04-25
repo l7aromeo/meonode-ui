@@ -9,17 +9,17 @@
     ".": {
       "import": "./dist/esm/main.js",
       "require": "./dist/cjs/main.cjs",
-      "types": "./dist/esm/main.d.ts"
+      "types": "./dist/types/main.d.ts"
     },
     "./client": {
       "import": "./dist/esm/client.js",
       "require": "./dist/cjs/client.cjs",
-      "types": "./dist/esm/client.d.ts"
+      "types": "./dist/types/client.d.ts"
     },
     "./nextjs-registry": {
       "import": "./dist/esm/nextjs-registry/index.js",
       "require": "./dist/cjs/nextjs-registry/index.cjs",
-      "types": "./dist/esm/nextjs-registry/index.d.ts"
+      "types": "./dist/types/nextjs-registry/index.d.ts"
     }
   },
   "files": [
