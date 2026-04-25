@@ -8,6 +8,7 @@ const theme = {
     primary: { default: 'rgb(255, 107, 107)', content: '#FFFFFF' },
     base: { default: '#F8F8F8', content: '#333333' },
     spacing: { sm: 8, md: 16, lg: 24 },
+    breakpoint: { md: '1024px' },
   },
 }
 

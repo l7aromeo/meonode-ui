@@ -271,6 +271,25 @@ describe('C. Theme and provider boundaries', () => {
     expect(html.toLowerCase()).toMatch(/background-color:\s*rgb\(255,\s*107,\s*107\)|background-color:\s*var\(--meonode-theme-primary\)/)
   })
 
+  it('media-query keys with theme tokens stay hash-stable across SSR/CSR', async () => {
+    // CSS variables are invalid inside media features, so a key like
+    // `'@media (max-width: theme.breakpoint.md)'` must resolve to a concrete
+    // value (e.g. `1024px`) on both server and client. Otherwise the
+    // server-emitted Emotion class hash diverges from the client's, causing
+    // a hydration mismatch on every styled component that uses media-query
+    // keys with theme tokens.
+    const { status, html } = await getPage('/theme/media-query-key')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    expect(html).toContain('media-query-key fixture')
+    // No raw `theme.*` literals leaked into emitted CSS.
+    const unresolvedThemeTokens = [...html.matchAll(/:\s*(theme\.[a-z0-9_.-]+)/gi)].map(m => m[1])
+    expect(unresolvedThemeTokens).toEqual([])
+    // Media-query key must resolve to the concrete pixel value, not a var().
+    expect(html).toMatch(/@media\s*\(max-width:\s*1024px\)/)
+    expect(html).not.toMatch(/@media\s*\(max-width:\s*var\(/)
+  })
+
   it('PortalProvider + PortalHost in layout does not error', async () => {
     const { status, html } = await getPage('/providers/portal-in-layout')
     expect(status).toBe(200)

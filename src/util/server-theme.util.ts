@@ -134,8 +134,11 @@ const conversionCache = new WeakMap<object, unknown>()
  *   matters when forwarding props to memoized components.
  * - Iterative with a manual work stack — safe for deeply nested trees.
  * - Detects cycles via a path Set.
- * - Replaces tokens inside object keys too (e.g. nested selectors/media
- *   queries that embed `theme.*` references).
+ * - Only transforms string **values**, never object keys. Keys that hold
+ *   theme tokens (e.g. `'@media (max-width: theme.breakpoint.md)'`) must
+ *   resolve to concrete values, since CSS variables are invalid inside
+ *   media features and selector text. Key resolution is left to
+ *   `ThemeUtil.resolveObjWithTheme`, which has access to the live theme.
  * - Memoized via a module-level WeakMap so the same input reference (e.g.
  *   a `sx` object defined outside a render body) is converted at most once.
  */
@@ -223,10 +226,7 @@ export function replaceThemeTokensWithCssVars<T>(value: T): T {
         for (const key in obj) {
           if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const v = obj[key]
-            let newKey = key
             let newValue: unknown = v
-
-            if (key.includes('theme.')) newKey = replaceString(key)
 
             if (typeof v === 'string') {
               newValue = replaceString(v)
@@ -234,10 +234,9 @@ export function replaceThemeTokensWithCssVars<T>(value: T): T {
               newValue = resolvedValues.get(v) ?? v
             }
 
-            if (newValue !== v || newKey !== key) {
+            if (newValue !== v) {
               if (newObj === null) newObj = { ...obj }
-              if (newKey !== key) delete newObj[key]
-              newObj[newKey] = newValue
+              newObj[key] = newValue
             }
           }
         }
