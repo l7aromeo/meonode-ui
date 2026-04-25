@@ -49,7 +49,34 @@ afterAll(async () => {
   browser = null
 })
 
-async function getPage(pathname: string, options?: { allowRuntimeErrors?: boolean }): Promise<{ status: number; html: string }> {
+async function getComputedStylesFromPage(
+  page: import('@playwright/test').Page,
+  requests: readonly { testId: string; properties: readonly string[] }[],
+): Promise<Record<string, Record<string, string>>> {
+  return await page.evaluate(
+    requests => {
+      const out: Record<string, Record<string, string>> = {}
+      for (const { testId, properties } of requests) {
+        const el = document.querySelector(`[data-testid="${testId}"]`)
+        if (!el) throw new Error(`element not found: ${testId}`)
+        const style = window.getComputedStyle(el)
+        const row: Record<string, string> = {}
+        for (const p of properties) row[p] = style.getPropertyValue(p).trim()
+        out[testId] = row
+      }
+      return out
+    },
+    requests.map(r => ({ testId: r.testId, properties: [...r.properties] })),
+  )
+}
+
+async function getPage(
+  pathname: string,
+  options?: {
+    allowRuntimeErrors?: boolean
+    computedStyles?: readonly { testId: string; properties: readonly string[] }[]
+  },
+): Promise<{ status: number; html: string; computedStyles: Record<string, Record<string, string>> }> {
   if (!browserContext) {
     throw new Error('Playwright browser context is not initialized')
   }
@@ -74,6 +101,7 @@ async function getPage(pathname: string, options?: { allowRuntimeErrors?: boolea
     )
     const html = await page.content()
     const status = response?.status() ?? 0
+    const computedStyles = options?.computedStyles ? await getComputedStylesFromPage(page, options.computedStyles) : {}
 
     if (!options?.allowRuntimeErrors) {
       const hydrationRuntimeError = runtimeMessages.find(message => HYDRATION_RUNTIME_MARKERS.some(pattern => pattern.test(message)))
@@ -86,7 +114,7 @@ async function getPage(pathname: string, options?: { allowRuntimeErrors?: boolea
       }
     }
 
-    return { status, html }
+    return { status, html, computedStyles }
   } finally {
     await page.close()
   }
@@ -571,6 +599,31 @@ describe('M. Third-party component interop', () => {
     assertNoRscErrors(html)
     expect(html).toContain('MUI WITHOUT MEO THEME WRAPPER')
     expect(html).toContain('Build showcase')
+  })
+
+  it('resolves theme tokens inside MUI sx prop', async () => {
+    // theme.primary is defined in app/layout.ts as rgb(255, 107, 107).
+    // Both chip and card set background-color via sx. Whether meonode
+    // resolves to a CSS variable or the raw rgb(), the computed style
+    // should match the theme value — not the browser default caused by
+    // MUI receiving the literal string "theme.primary".
+    // allowRuntimeErrors: a hydration mismatch on MUI's Paper classes is a
+    // separate bug tracked elsewhere; for this test we only care about the
+    // resolved computed styles reaching the assertions.
+    const { status, html, computedStyles } = await getPage('/interop/mui-no-meotheme-wrapper', {
+      allowRuntimeErrors: true,
+      computedStyles: [
+        { testId: 'interop-mui-no-wrapper-chip', properties: ['background-color'] },
+        { testId: 'interop-mui-no-wrapper-card', properties: ['background-color'] },
+      ],
+    })
+    expect(status).toBe(200)
+    // Guard: no unresolved `theme.*` literals in emitted CSS. Extract matches
+    // so the failure message is small instead of dumping the entire HTML.
+    const unresolvedThemeTokens = [...html.matchAll(/:\s*(theme\.[a-z0-9_.-]+)/gi)].map(m => m[1])
+    expect(unresolvedThemeTokens).toEqual([])
+    expect(computedStyles['interop-mui-no-wrapper-chip']['background-color']).toBe('rgb(255, 107, 107)')
+    expect(computedStyles['interop-mui-no-wrapper-card']['background-color']).toBe('rgb(255, 107, 107)')
   })
 
   it('reproduces hydration mismatch with MeoThemeProvider-like MUI tree', async () => {

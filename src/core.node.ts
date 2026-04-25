@@ -392,7 +392,16 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           }
 
           // Merge element props: explicit other props + DOM native props + React key.
-          const elementProps = { ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps }
+          // Then convert any string `theme.*` tokens carried by props (e.g. MUI
+          // `sx`, `style`, third-party CSS-bearing props) to
+          // `var(--meonode-theme-*)` references. Applied on both server and
+          // client so the DOM is identical post-hydration: client-side paths
+          // that don't go through StyledRenderer (e.g. components with `sx`
+          // but no `css`) would otherwise leak `theme.*` literals into the
+          // live DOM. The util preserves reference identity for untouched
+          // subtrees and skips non-plain objects (refs, class instances), so
+          // this is safe to apply unconditionally.
+          const elementProps = replaceThemeTokensWithCssVars({ ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps })
           let element: ReactElement<FinalNodeProps>
 
           // Handle fragments specially: create fragment element with key and children.
@@ -410,11 +419,10 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             const shouldUseRuntimeThemeOnServer = isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element)
 
             if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
-              // On the server, convert string theme tokens to `var(--meonode-theme-*)`
-              // before handing `css` to StyledRenderer. This is the SSR path for client
-              // references (e.g. next/image via RSC layer) — aligning the emitted CSS
-              // with the server-bypass path so both routes produce the same Emotion
-              // class hash for the same styled props.
+              // `elementProps` was already pre-processed above, so only `css`
+              // needs the var conversion here on the server. Aligning with the
+              // client runtime's vars-mode resolution keeps the Emotion class
+              // hash identical across SSR/CSR.
               const cssForRenderer = NodeUtil.isServer ? replaceThemeTokensWithCssVars(css) : css
               element = createElement(StyledRenderer, { element: node.element, ...elementProps, css: cssForRenderer }, ...finalChildren)
             } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {

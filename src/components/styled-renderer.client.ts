@@ -36,10 +36,13 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   if (theme) {
     // Process `css` prop in "aggressive" mode, allowing functions
-    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true })
+    finalCss = ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true, themeStringsMode: 'vars' })
 
-    // Process all other props in "safe" mode, ignoring functions
-    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false })
+    // Process all other props (e.g. MUI `sx`, `style`) in vars mode too so the
+    // rendered output matches the server's `replaceThemeTokensWithCssVars`
+    // pass — both sides emit `var(--meonode-theme-*)` for the same input,
+    // which keeps Emotion class hashes identical across SSR/CSR.
+    finalOtherProps = ThemeUtil.resolveObjWithTheme(otherProps, theme, { processFunctions: false, themeStringsMode: 'vars' })
   }
 
   const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)

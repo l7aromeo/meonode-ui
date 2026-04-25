@@ -11,7 +11,8 @@ export default function Page() {
     padding: 20,
     gap: 16,
     children: [
-      Node(Chip, {
+      Node<{ 'data-testid': string }, typeof Chip>(Chip, {
+        'data-testid': 'interop-mui-no-wrapper-chip',
         label: 'MUI WITHOUT MEO THEME WRAPPER',
         sx: { backgroundColor: 'theme.primary', color: 'theme.primary.content', fontWeight: 700 },
       }),
@@ -20,11 +21,11 @@ export default function Page() {
           container: true,
         },
         spacing: 2,
-        children: features.map(title =>
+        children: features.map((title, index) =>
           Node(Grid, {
             size: { xs: 12, md: 6 },
-            children: Node(Card, {
-              backgroundColor: 'theme.secondary',
+            children: Node<{ 'data-testid'?: string }, typeof Card>(Card, {
+              'data-testid': index === 0 ? 'interop-mui-no-wrapper-card' : undefined,
               border: '1px solid theme.neutral',
               borderRadius: 8,
               sx: {

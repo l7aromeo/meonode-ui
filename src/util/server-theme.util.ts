@@ -113,21 +113,125 @@ export function buildThemeVariablesCss(theme: Theme): string {
   return `:root{${declarations}}`
 }
 
+/**
+ * Replaces `theme.*` token strings with `var(--meonode-theme-*)` references,
+ * walking arbitrary structures iteratively with copy-on-write semantics.
+ *
+ * Mirrors `ThemeUtil.resolveObjWithTheme`'s traversal contract:
+ * - Only descends into plain objects and arrays. Class instances (refs,
+ *   Date, RegExp, MUI internals, React elements, etc.) are passed through
+ *   untouched so their identity and prototype chain are preserved.
+ * - Copy-on-write: untouched subtrees keep their original reference, which
+ *   matters when forwarding props to memoized components.
+ * - Iterative with a manual work stack — safe for deeply nested trees.
+ * - Detects cycles via a path Set.
+ * - Replaces tokens inside object keys too (e.g. nested selectors/media
+ *   queries that embed `theme.*` references).
+ */
 export function replaceThemeTokensWithCssVars<T>(value: T): T {
-  const replaceString = (input: string) => input.replace(/theme\.([a-zA-Z0-9_.-]+)/g, (_, path: string) => `var(${toThemeVarName(path)})`)
+  const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
 
-  const walk = (input: unknown): unknown => {
-    if (typeof input === 'string') return replaceString(input)
-    if (!input || typeof input !== 'object') return input
-    if (Array.isArray(input)) return input.map(item => walk(item))
-
-    const next: Record<string, unknown> = {}
-    for (const [key, nested] of Object.entries(input as Record<string, unknown>)) {
-      const nextKey = replaceString(key)
-      next[nextKey] = walk(nested)
-    }
-    return next
+  const replaceString = (input: string): string => {
+    if (!input.includes('theme.')) return input
+    themeRegex.lastIndex = 0
+    let hasChanged = false
+    const next = input.replace(themeRegex, (_, path: string) => {
+      hasChanged = true
+      return `var(${toThemeVarName(path)})`
+    })
+    return hasChanged ? next : input
   }
 
-  return walk(value) as T
+  const isPlainObject = (v: unknown): v is Record<string, unknown> => {
+    if (typeof v !== 'object' || v === null) return false
+    const proto = Object.getPrototypeOf(v)
+    return proto === null || proto === Object.prototype
+  }
+
+  if (typeof value === 'string') return replaceString(value) as unknown as T
+  if (!isPlainObject(value) && !Array.isArray(value)) return value
+
+  const workStack: { value: unknown; isProcessed: boolean }[] = [{ value, isProcessed: false }]
+  const resolvedValues = new Map<unknown, unknown>()
+  const path = new Set<unknown>()
+
+  while (workStack.length > 0) {
+    const currentWork = workStack[workStack.length - 1]
+    const currentValue = currentWork.value
+
+    if (!isPlainObject(currentValue) && !Array.isArray(currentValue)) {
+      workStack.pop()
+      continue
+    }
+
+    if (resolvedValues.has(currentValue)) {
+      workStack.pop()
+      continue
+    }
+
+    if (!currentWork.isProcessed) {
+      currentWork.isProcessed = true
+      path.add(currentValue)
+
+      const children = Array.isArray(currentValue) ? currentValue : Object.values(currentValue)
+      for (let i = children.length - 1; i >= 0; i--) {
+        const child = children[i]
+        if ((isPlainObject(child) || Array.isArray(child)) && !path.has(child)) {
+          workStack.push({ value: child, isProcessed: false })
+        }
+      }
+    } else {
+      workStack.pop()
+      path.delete(currentValue)
+
+      let finalValue: unknown = currentValue
+
+      if (Array.isArray(currentValue)) {
+        let newArray: unknown[] | null = null
+        for (let i = 0; i < currentValue.length; i++) {
+          const item = currentValue[i]
+          let newItem: unknown = item
+          if (typeof item === 'string') {
+            newItem = replaceString(item)
+          } else if (isPlainObject(item) || Array.isArray(item)) {
+            newItem = resolvedValues.get(item) ?? item
+          }
+          if (newItem !== item) {
+            if (newArray === null) newArray = [...currentValue]
+            newArray[i] = newItem
+          }
+        }
+        if (newArray !== null) finalValue = newArray
+      } else {
+        let newObj: Record<string, unknown> | null = null
+        const obj = currentValue as Record<string, unknown>
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const v = obj[key]
+            let newKey = key
+            let newValue: unknown = v
+
+            if (key.includes('theme.')) newKey = replaceString(key)
+
+            if (typeof v === 'string') {
+              newValue = replaceString(v)
+            } else if (isPlainObject(v) || Array.isArray(v)) {
+              newValue = resolvedValues.get(v) ?? v
+            }
+
+            if (newValue !== v || newKey !== key) {
+              if (newObj === null) newObj = { ...obj }
+              if (newKey !== key) delete newObj[key]
+              newObj[newKey] = newValue
+            }
+          }
+        }
+        if (newObj !== null) finalValue = newObj
+      }
+
+      resolvedValues.set(currentValue, finalValue)
+    }
+  }
+
+  return (resolvedValues.get(value) ?? value) as T
 }
