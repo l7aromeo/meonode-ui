@@ -29,6 +29,7 @@ const eslintConfig = [
       'prettier/prettier': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-function-type': 'error',
+      '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/consistent-type-definitions': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
