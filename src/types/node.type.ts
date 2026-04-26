@@ -185,9 +185,9 @@ export interface ThemeSystem {
     | boolean
     | null
     | undefined
-    | any
     | ThemeSystem
     | Record<string, ThemeSystem | string | number | boolean | null | undefined | any>
+    | any
 }
 
 /**
@@ -208,7 +208,7 @@ export interface ThemeSystem {
 export interface MeoTheme {}
 
 /** Resolved system shape — user-augmented if provided, else the loose default. */
-export type ResolvedThemeSystem = MeoTheme extends { system: infer S } ? S : ThemeSystem
+export type ResolvedThemeSystem = MeoTheme extends { system: infer S extends Record<string, any> } ? S : ThemeSystem
 
 /** Resolved mode type — user-augmented if provided, else the loose default. */
 export type ResolvedThemeMode = MeoTheme extends { mode: infer M } ? M : ThemeMode
@@ -220,24 +220,19 @@ export type ResolvedThemeMode = MeoTheme extends { mode: infer M } ? M : ThemeMo
  */
 type _DepthTick = [1, 2, 3, 4, 5, 6, 7, 8, never]
 type _IsPlainRecord<T> = T extends readonly any[] ? false : T extends (...args: any) => any ? false : T extends object ? true : false
-export type DeepPaths<T, D extends number = 0> = [D] extends [never]
+type _StringKeyOf<T> = Extract<keyof T, string>
+export type DeepPaths<T extends Record<string, any>, D extends number = 0> = [D] extends [never]
   ? never
-  : T extends object
-    ? {
-        [K in Extract<keyof T, string>]: _IsPlainRecord<T[K]> extends true ? K | `${K}.${DeepPaths<T[K], _DepthTick[D]>}` : K
-      }[Extract<keyof T, string>]
-    : never
+  : {
+      [K in _StringKeyOf<T>]: _IsPlainRecord<T[K]> extends true ? K | `${K}.${DeepPaths<Extract<T[K], Record<string, any>>, _DepthTick[D]>}` : K
+    }[_StringKeyOf<T>]
 
 /**
  * String form of a theme token (e.g. `'theme.colors.primary'`).
  * Becomes a literal union when `MeoTheme` is augmented, or `\`theme.${string}\``
  * (accepts any string, no autocomplete) when left as the loose default.
  */
-export type ThemeToken = ResolvedThemeSystem extends ThemeSystem
-  ? ThemeSystem extends ResolvedThemeSystem
-    ? `theme.${string}`
-    : `theme.${DeepPaths<ResolvedThemeSystem>}`
-  : `theme.${DeepPaths<ResolvedThemeSystem>}`
+export type ThemeToken = MeoTheme extends { system: infer S extends Record<string, any> } ? `theme.${DeepPaths<S>}` : `theme.${string}`
 
 /**
  * Widens a CSS value type with `ThemeToken` for string-valued properties.
