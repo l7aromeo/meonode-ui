@@ -191,6 +191,62 @@ export interface ThemeSystem {
 }
 
 /**
+ * User-augmentable theme registry. Declare your token shape via module augmentation
+ * to enable autocomplete and type-checking on `'theme.…'` strings:
+ *
+ * ```ts
+ * declare module '@meonode/ui' {
+ *   interface MeoTheme {
+ *     system: { colors: { primary: string; bg: string }; space: { sm: number } }
+ *   }
+ * }
+ * ```
+ *
+ * If left un-augmented, falls back to the loose `ThemeSystem` shape and any
+ * `'theme.<anything>'` string is accepted (current behavior).
+ */
+export interface MeoTheme {}
+
+/** Resolved system shape — user-augmented if provided, else the loose default. */
+export type ResolvedThemeSystem = MeoTheme extends { system: infer S } ? S : ThemeSystem
+
+/** Resolved mode type — user-augmented if provided, else the loose default. */
+export type ResolvedThemeMode = MeoTheme extends { mode: infer M } ? M : ThemeMode
+
+/**
+ * Recursively builds dotted paths from an object type, stopping at primitives.
+ * Bounded depth prevents pathological recursion. Falls back to `string` when
+ * the type is the un-augmented loose `ThemeSystem`.
+ */
+type _DepthTick = [1, 2, 3, 4, 5, 6, 7, 8, never]
+type _IsPlainRecord<T> = T extends readonly any[] ? false : T extends (...args: any) => any ? false : T extends object ? true : false
+export type DeepPaths<T, D extends number = 0> = [D] extends [never]
+  ? never
+  : T extends object
+    ? {
+        [K in Extract<keyof T, string>]: _IsPlainRecord<T[K]> extends true ? K | `${K}.${DeepPaths<T[K], _DepthTick[D]>}` : K
+      }[Extract<keyof T, string>]
+    : never
+
+/**
+ * String form of a theme token (e.g. `'theme.colors.primary'`).
+ * Becomes a literal union when `MeoTheme` is augmented, or `\`theme.${string}\``
+ * (accepts any string, no autocomplete) when left as the loose default.
+ */
+export type ThemeToken = ResolvedThemeSystem extends ThemeSystem
+  ? ThemeSystem extends ResolvedThemeSystem
+    ? `theme.${string}`
+    : `theme.${DeepPaths<ResolvedThemeSystem>}`
+  : `theme.${DeepPaths<ResolvedThemeSystem>}`
+
+/**
+ * Widens a CSS value type with `ThemeToken` for string-valued properties.
+ * Preserves existing literal-union autocomplete (e.g. `'block' | 'flex' | …`)
+ * by appending the token union rather than collapsing to plain `string`.
+ */
+export type WithThemeToken<V> = V extends string ? V | ThemeToken : V extends string | undefined ? V | ThemeToken | undefined : V
+
+/**
  * Theme configuration object.
  * Requires `mode` and `system` as core theme properties, with support for
  * unlimited nested theme properties for complex styling systems:
@@ -200,14 +256,12 @@ export interface ThemeSystem {
  * - Custom theme variables and tokens
  * Used for consistent styling and dynamic theme application.
  */
-export type Theme = {
+export interface Theme {
   /** Current theme mode (light/dark) */
-  mode: ThemeMode
+  mode: ResolvedThemeMode
   /** System theme configuration with colors and tokens */
-  system: ThemeSystem
-} & Partial<{
-  [key: string]: string | number | boolean | null | undefined | any | Theme | Record<string, Theme | string | number | boolean | null | undefined | any>
-}>
+  system: ResolvedThemeSystem
+}
 
 /**
  * A value that can be a direct value or a function of the theme.
@@ -215,10 +269,11 @@ export type Theme = {
 export type ThemedValue<T> = T | ((theme: Theme) => T)
 
 /**
- * A themed version of CSSProperties where each property can be a theme-dependent function.
+ * A themed version of CSSProperties where each property can be a theme-dependent function
+ * or a `'theme.<path>'` token string for any string-valued property.
  */
 export type ThemedCSSProperties = {
-  [P in keyof CSSProperties]: ThemedValue<CSSProperties[P]>
+  [P in keyof CSSProperties]: ThemedValue<WithThemeToken<CSSProperties[P]>>
 }
 
 /**
@@ -238,11 +293,11 @@ export type ThemedCSSProperties = {
  */
 export type ThemedCSSObject = {
   // Standard CSS properties from CSSObject with themed values
-  [P in keyof CSSProperties]?: ThemedValue<CSSProperties[P]>
+  [P in keyof CSSProperties]?: ThemedValue<WithThemeToken<CSSProperties[P]>>
 } & {
   // Index signature for nested selectors (pseudo-classes, media queries, child selectors)
   // This allows arbitrary string keys like '&:hover', '@media...', '& .child', etc.
-  [key: string]: ThemedValue<ThemedCSSObject> | ThemedValue<CSSProperties[keyof CSSProperties]> | undefined
+  [key: string]: ThemedValue<ThemedCSSObject> | ThemedValue<WithThemeToken<CSSProperties[keyof CSSProperties]>> | undefined
 }
 
 /**
