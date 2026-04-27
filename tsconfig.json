@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["jest", "@testing-library/jest-dom", "@types/node"],
+    "types": ["vitest/globals", "@testing-library/jest-dom", "@types/node"],
     "target": "ESNext",
     "module": "preserve",
     "moduleResolution": "bundler",

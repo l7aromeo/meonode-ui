@@ -3,6 +3,7 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { createServer } from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import globalTeardown from './globalTeardown.rsc.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -58,7 +59,7 @@ async function waitForReady(port: number, timeoutMs: number): Promise<void> {
   throw new Error(`next dev did not become ready on :${port} within ${timeoutMs}ms. Last error: ${lastErr}`)
 }
 
-export default async function globalSetup() {
+export async function setup() {
   killStaleServer()
 
   console.log('[rsc-setup] building @meonode/ui dist (bun run build)…')
@@ -89,3 +90,5 @@ export default async function globalSetup() {
 
   console.log('[rsc-setup] next dev ready')
 }
+
+export const teardown = globalTeardown
