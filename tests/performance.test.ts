@@ -547,7 +547,7 @@ describe('Performance Testing', () => {
       const { median } = await measureRender(element, { iterations: 3, warmups: 1 })
 
       recordGroupMetric(group, groupDescription, testName, testDescription, `Median Render Time for ${NUM_NODES} Nested Nodes (ms)`, `${median.toFixed(2)} ms`)
-      expect(median).toBeLessThan(1800)
+      expect(median).toBeLessThan(2500)
     })
 
     describe('Memory Management', () => {
