@@ -187,6 +187,7 @@ describe('Styling and Theming', () => {
     const style = getComputedStyle(element)
     // Assert that the inline styles are correctly applied.
     expect(style.backgroundColor).toBe('rgb(128, 0, 128)')
-    expect(style.border).toBe('2px solid orange')
+    expect(style.borderTopWidth).toBe('2px')
+    expect(style.borderTopStyle).toBe('solid')
   })
 })

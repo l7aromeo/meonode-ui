@@ -1,7 +1,7 @@
 import { createSerializer, matchers } from '@emotion/jest'
-import { jest } from '@jest/globals'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import React from 'react'
+import { vi } from 'vitest'
 import {
   A,
   Article,
@@ -36,7 +36,7 @@ import css from '@tests/constant/css.test.const.js'
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
 
-jest.useRealTimers()
+vi.useRealTimers()
 
 /**
  * Formats a number of bytes into a human-readable string.

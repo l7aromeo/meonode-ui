@@ -18,10 +18,13 @@ export const useTheme = () => {
   const { theme } = context
 
   useEffect(() => {
-    // Sync theme mode with localStorage
-    const currentTheme = localStorage.getItem('theme')
-    if (!currentTheme || currentTheme !== theme.mode) {
-      localStorage.setItem('theme', theme.mode)
+    // Guard non-browser-like runtimes where localStorage can be undefined or non-WebStorage.
+    const storage = globalThis.localStorage
+    if (storage && typeof storage.getItem === 'function' && typeof storage.setItem === 'function') {
+      const currentTheme = storage.getItem('theme')
+      if (!currentTheme || currentTheme !== theme.mode) {
+        storage.setItem('theme', theme.mode)
+      }
     }
 
     // Apply theme to document root

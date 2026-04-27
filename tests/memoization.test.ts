@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals'
 import { Div, H1, Node, P, setDebugMode, Span } from '@src/main.js'
 import { act, cleanup, render } from '@testing-library/react'
 import { StrictMode, useEffect, useState } from 'react'
@@ -7,6 +6,7 @@ import { createSerializer, matchers } from '@emotion/jest'
 import { BaseNode, createNode } from '@src/core.node.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { FormControlLabel, Radio, RadioGroup } from '@mui/material'
+import { type Mock, vi } from 'vitest'
 
 expect.extend(matchers)
 expect.addSnapshotSerializer(createSerializer())
@@ -24,7 +24,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     '2': { name: 'Bob', email: 'bob@example.com' },
   }
   const userService = {
-    fetchUser: jest.fn(async (userId: keyof typeof mockUsers) => {
+    fetchUser: vi.fn(async (userId: keyof typeof mockUsers) => {
       await new Promise(resolve => setTimeout(resolve, 50)) // Simulate network delay
       return mockUsers[userId]
     }),
@@ -32,7 +32,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
   // A reusable UserProfile component that fetches and displays user data.
   // It is designed to be memoized based on the userId.
-  let userProfileRenderCount: jest.Mock
+  let userProfileRenderCount: Mock
   const UserProfile = ({ userId }: { userId: keyof typeof mockUsers }) => {
     userProfileRenderCount()
     const [user, setUser] = useState<{ name: string; email: string } | null>(null)
@@ -76,7 +76,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
   beforeEach(() => {
     // Reset mocks and spies before each test in this suite.
-    userProfileRenderCount = jest.fn()
+    userProfileRenderCount = vi.fn()
     userProfileRenderCount.mockClear()
     userService.fetchUser.mockClear()
   })
@@ -327,7 +327,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
 
   // Test to ensure no cache collision occurs between different components with identical props
   it('prevents cache collision between different components with identical props', () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const CompA = () => Div({ children: 'A', color: 'red' }).render()
     const CompB = () => Div({ children: 'B', color: 'red' }).render()
 
@@ -635,8 +635,8 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     expect((window as any).__MEONODE_CLEANUP_REGISTERED).toBe(true)
 
     // Verify beforeunload listener works
-    const clearSpy = jest.spyOn(BaseNode, 'clearCaches')
-    const stopSpy = jest.spyOn(NavigationCacheManagerUtil.getInstance() as any, '_stop')
+    const clearSpy = vi.spyOn(BaseNode, 'clearCaches')
+    const stopSpy = vi.spyOn(NavigationCacheManagerUtil.getInstance() as any, '_stop')
 
     window.dispatchEvent(new Event('beforeunload'))
 
@@ -651,7 +651,7 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     delete (window as any).__MEONODE_CLEANUP_REGISTERED
     ;(NavigationCacheManagerUtil as any)._instance = null
 
-    jest.useFakeTimers()
+    vi.useFakeTimers()
 
     // Start manager first
     NavigationCacheManagerUtil.getInstance().start()
@@ -669,12 +669,12 @@ describe('Dependency and Memoization in a Real-World Scenario', () => {
     history.pushState({}, '', '/test')
 
     // Let debounced cleanup run
-    jest.advanceTimersByTime(150)
+    vi.advanceTimersByTime(150)
 
     // Cache should be cleaned (unmounted entries removed)
     expect(BaseNode.elementCache.size).toBeLessThan(initialCacheSize)
 
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   // Regression test for MeoNodeUnmounter swallowing props injected via React.cloneElement

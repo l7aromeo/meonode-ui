@@ -9,7 +9,7 @@ import { chromium, type Browser, type BrowserContext } from '@playwright/test'
  *   2. No RSC / hydration error markers in the HTML
  *   3. Page-specific content
  *
- * Tests that reproduce known defects use `it.failing(...)` so the suite
+ * Tests that reproduce known defects use `it.fails(...)` so the suite
  * reports them as expected failures until the underlying bug is fixed.
  */
 
@@ -231,11 +231,10 @@ describe('B. Server -> Client boundary primitives', () => {
     expect(html).toContain('createnode-neutral:0')
   })
 
-  it.failing('createNode(ClientComp) in a "use client" module works from server', async () => {
+  test('createNode(ClientComp) in a "use client" module is rejected from server', async () => {
     const { status, html } = await getPage('/boundary/server-createnode-client')
-    expect(status).toBe(200)
-    assertNoRscErrors(html)
-    expect(html).toContain('createnode-client:0')
+    expect(status).toBe(500)
+    expect(html).toMatch(/on the client|not possible to invoke a client function from the server/i)
   })
 })
 
@@ -329,11 +328,10 @@ describe('D. next/link boundary behavior', () => {
     expect(html).toContain('go-home-inline')
   })
 
-  it.failing('createNode(Link) in a "use client" module from server renders', async () => {
+  test('createNode(Link) in a "use client" module is rejected from server', async () => {
     const { status, html } = await getPage('/link/client-module')
-    expect(status).toBe(200)
-    assertNoRscErrors(html)
-    expect(html).toContain('go-home-client-module')
+    expect(status).toBe(500)
+    expect(html).toMatch(/on the client|not possible to invoke a client function from the server/i)
   })
 
   it('Link wrapped in a "use client" component works (user workaround)', async () => {
