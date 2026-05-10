@@ -71,6 +71,7 @@ const CSSPropertySet: Set<string> = new Set([
   'WebkitAnimationPlayState',
   'WebkitAnimationTimingFunction',
   'WebkitAppearance',
+  'WebkitAppRegion',
   'WebkitBackdropFilter',
   'WebkitBackfaceVisibility',
   'WebkitBackgroundClip',
