@@ -43,7 +43,7 @@ When reporting a bug, please include:
 - A short, descriptive title.
 - A clear description of the problem and expected behavior.
 - Steps to reproduce the issue (minimal reproduction preferred).
-- Environment details: Node.js version, Yarn (berry) or npm, OS.
+- Environment details: Node.js version, Bun (or npm), OS.
 - If applicable, a small code sample or link to a minimal repository that reproduces the issue.
 - Any error messages or stack traces.
 
@@ -57,7 +57,7 @@ Body:
     1. Create a Button with prop `color: "red"`.
     2. Observe styles not applied.
 - Expected behavior: Color prop should apply to the rendered element.
-- Environment: Node 22.17.1, Yarn 4.9.1 (stable), macOS 26
+- Environment: Node 22.17.1, Bun latest stable, macOS 26
 
 ### Suggesting enhancements
 
@@ -80,7 +80,7 @@ helps get feedback before investing implementation time.
 Prerequisites
 
 - Node.js (LTS recommended; >= 22)
-- Yarn (Berry/Plug'n'Play recommended since the repository includes .yarnrc.yml), or use npm if you prefer.
+- Bun (since the repository uses bun.lock), or use npm if you prefer.
 
 Quick start
 
@@ -89,7 +89,7 @@ Quick start
 git clone https://github.com/l7aromeo/meonode-ui.git
 cd meonode-ui
 
-# install dependencies (using Yarn)
+# install dependencies
 bun install
 
 # build the project
@@ -133,10 +133,10 @@ Notes
 
 ### Tests and linting
 
-- Add tests for new behavior or bug fixes. Unit tests use Jest.
-- Run test suite locally: `yarn test`
-- Run lint and format: `yarn lint` and `yarn format` (or `yarn format:check` if available)
-- Ensure types compile: `yarn build` or `yarn tsgo -p tsconfig.build.json`
+- Add tests for new behavior or bug fixes. Unit tests use Vitest.
+- Run test suite locally: `bun run test`
+- Run lint: `bun run lint`
+- Ensure types compile: `bun run build`
 
 ### PR checklist
 
@@ -147,7 +147,7 @@ Before requesting a review, ensure:
 - [ ] TypeScript types are correct and compile.
 - [ ] The PR description explains the rationale and any backward compatibility impacts.
 - [ ] Update docs/README if public APIs changed.
-- [ ] Add changelog entry if it's a user-facing change (see CHANGELOG.md conventions).
+- [ ] Use conventional commit format for user-facing changes (release notes are auto-generated).
 
 ---
 
@@ -162,11 +162,12 @@ Before requesting a review, ensure:
 
 ## Releasing & changelog
 
-Releases should follow semantic versioning. The repository contains a CHANGELOG.md — update it for user-facing changes.
-Maintainers can use `prepublish.sh` and the release automation configured for publishing.
+Releases follow semantic versioning via `semantic-release`, triggered on pushes to `main`, `beta`, or `alpha` branches.
+Release notes are auto-generated from conventional commit messages and published to
+[GitHub Releases](https://github.com/l7aromeo/meonode-ui/releases).
 
-If you contribute a user-facing change, leave a short changelog entry in your PR or mention the relevant entry in the
-issue.
+If you contribute a user-facing change, use [Conventional Commits](#branching-and-commit-messages) format — the release
+notes will include your change automatically.
 
 ---
 
