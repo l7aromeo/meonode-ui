@@ -209,10 +209,13 @@ const knownValidSymbols = new Set([
  * Checks if a type is a valid React element type that can be rendered.
  * This includes strings (for DOM elements), functions (for components),
  * and various React-specific types like Fragment, Context, etc.
- * @param {any} type The type to validate
+ *
+ * Acts as a type guard so callers can narrow an `unknown`/`any` candidate to
+ * `ElementType` without casting (e.g. resolving the polymorphic `as` target).
+ * @param {unknown} type The type to validate
  * @returns {boolean} - True if the type can be rendered as a React element
  */
-export const isValidElementType = <T>(type: T): boolean => {
+export const isValidElementType = (type: unknown): type is React.ElementType => {
   if (typeof type === 'string' || typeof type === 'number' || typeof type === 'bigint' || typeof type === 'function') return true
   if (knownValidSymbols.has(type as symbol)) return true
   if (typeof type === 'object' && type !== null) {

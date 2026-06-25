@@ -402,6 +402,46 @@ export type MergedProps<E extends NodeElementType, AdditionalProps, ExactProps> 
   ValidateComponentProps<E, ExactProps> &
   (AdditionalProps extends undefined ? ValidateComponentProps<E, ExactProps> : AdditionalProps)
 
+/**
+ * The polymorphic `as` key (Emotion-style element polymorphism).
+ *
+ * `as` lets a node render a different element while keeping its styles. It is
+ * GATED OFF for `NO_STYLE_TAGS` — mirroring how the `css` prop is gated in
+ * {@link NodeProps} — so structural tags like `script`/`link`/`head` never accept
+ * `as`. For style-capable elements, `As` carries the resolved target so the rest
+ * of the props (DOM attributes, event handlers) narrow to it.
+ * @template E - The base element type of the factory
+ * @template As - The resolved polymorphic target (inferred from the `as` value)
+ */
+export type AsKey<E extends NodeElementType, As extends NodeElementType> = HasNoStyleProp<E> extends true ? { as?: never } : { as?: As }
+
+/**
+ * Props for a polymorphic node call.
+ *
+ * - When `as` is omitted, `As` defaults to the base element `E`, making this
+ *   byte-identical to `MergedProps<E, …>` (zero change to existing typing/behavior).
+ * - When `as` is an intrinsic tag (e.g. `'a'`), DOM attributes and event handlers
+ *   narrow to that element while `meonode` props (`css`, `children`, …) are preserved.
+ *
+ * `As` is inferred from the `as` value; when `as` is omitted it falls back to `E`,
+ * which is why the no-`as` form stays identical to `MergedProps<E, …>`.
+ *
+ * Intrinsic tags only. Custom React components are intentionally NOT supported as
+ * `as` targets: `As` is inferred from the same object literal that the free
+ * `AdditionalProps` slot captures, and for components that double-inference
+ * collapses `As` to `never`. Every isolation attempt either breaks the
+ * `AdditionalProps` extra-props mechanism (`Omit` makes it `unknown`) or is
+ * circular (deriving `As` from `AdditionalProps`). Intrinsic tags survive only
+ * because their prop validation is permissive. Call the component's own factory
+ * (e.g. `MyComp({ … })`) instead of `as: MyComp`.
+ * @template E - The base element type of the factory
+ * @template As - The resolved polymorphic target
+ * @template AdditionalProps - Extra props merged in (mirrors {@link MergedProps})
+ * @template ExactProps - Strict prop validation set (mirrors {@link MergedProps})
+ */
+export type PolymorphicProps<E extends NodeElementType, As extends NodeElementType, AdditionalProps, ExactProps extends object> = AsKey<E, As> &
+  MergedProps<As, AdditionalProps, ExactProps>
+
 // ============================================================================
 // FUNCTION CHILDREN
 // ============================================================================

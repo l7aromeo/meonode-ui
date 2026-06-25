@@ -1,9 +1,10 @@
 'use client'
-import { type JSX, type ReactNode, useContext } from 'react'
+import { type ElementType, type JSX, type ReactNode, useContext } from 'react'
 import { jsx } from '@emotion/react'
 import type { CssProp, NodeElement } from '@src/types/node.type.js'
 import { ThemeContext } from '@src/components/theme-provider.client.js'
 import { ThemeUtil } from '@src/util/theme.util.js'
+import { isValidElementType } from '@src/helper/react-is.helper.js'
 
 export interface StyledRendererProps<E extends NodeElement> {
   element: E
@@ -29,7 +30,16 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
   const context = useContext(ThemeContext)
   const theme = context?.theme
 
-  const { css, ...otherProps } = props
+  // `as` is consumed (never spread onto the DOM). It swaps the render target,
+  // mirroring the swap done in `core.node.ts`. This is belt-and-braces: the core
+  // path already strips `as` and forwards the resolved element, but if `as` ever
+  // reaches here we honor it instead of leaking it as a bogus attribute.
+  // `isValidElementType` narrows `asTarget` to `ElementType`, so no cast is needed there.
+  const { css, as: asTarget, ...otherProps } = props
+  let renderTarget = element as ElementType
+  if (asTarget != null && isValidElementType(asTarget)) {
+    renderTarget = asTarget
+  }
 
   // `otherProps` arrive already var-converted from `core.node.ts`
   // (`replaceThemeTokensWithCssVars` runs on every node's `elementProps`),
@@ -40,7 +50,7 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
 
   const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)
 
-  return jsx(element as keyof JSX.IntrinsicElements, { ...otherProps, css: cssForEmotion }, children)
+  return jsx(renderTarget, { ...otherProps, css: cssForEmotion }, children)
 }
 
 StyledRenderer.displayName = 'Styled'

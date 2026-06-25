@@ -211,6 +211,25 @@ describe('A. Server-only rendering', () => {
     expect(html).toContain('hoc-rendered')
     expect(html).toMatch(/data-testid="hoc-label"/)
   })
+
+  it('`as` swaps the render target on the server while keeping Emotion CSS', async () => {
+    const { status, html } = await getPage('/as-swap')
+    expect(status).toBe(200)
+    assertNoRscErrors(html)
+    assertNoObjectAttrLeaks(html)
+    expect(html).toContain('as-swap from server')
+
+    // The styled node must render as an <a> (the `as` target), not a <div>.
+    const elementTag = html.match(/<[^>]*data-testid=["']as-swap["'][^>]*>/i)?.[0] ?? ''
+    expect(elementTag.toLowerCase()).toMatch(/^<a\b/)
+    expect(elementTag).toMatch(/href=["']\/home["']/)
+    // `as` must be consumed, never emitted as a DOM attribute.
+    expect(elementTag).not.toMatch(/\bas=/)
+
+    // Emotion critical CSS still emitted via the same server path.
+    expect(html).toMatch(/data-emotion="meonode-css[^"]*"/)
+    expect(html.toLowerCase()).toMatch(/color:\s*rgb\(255,\s*0,\s*0\)|color:\s*#ff0000|color:red/)
+  })
 })
 
 // ----- Category B -----

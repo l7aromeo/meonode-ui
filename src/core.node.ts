@@ -18,6 +18,7 @@ import type {
   NodeElementType,
   NodeInstance,
   NodeProps,
+  PolymorphicProps,
   PropsOf,
   Theme,
   WorkItem,
@@ -363,8 +364,22 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           stackPointer--
 
           // Extract node props. Non-present props default to undefined via destructuring.
-          const { children: childrenInProps, key, css, nativeProps, disableEmotion, ...otherProps } = node.props
+          // `as` is the Emotion-style polymorphic target: it is consumed here (never
+          // forwarded to the DOM) and only used to swap the rendered element below.
+          const { children: childrenInProps, key, css, nativeProps, disableEmotion, as: asTarget, ...otherProps } = node.props
           const activeTheme = getActiveTheme(node.props, inheritedTheme)
+
+          // Resolve the element to actually render. `as` swaps the render target
+          // ("render this other tag/component, keep the styles") while reusing the
+          // exact same Emotion compilation path, so SSR/CSR hashing is unchanged.
+          // Falls back to the base element when `as` is absent or not a valid type.
+          // `node.element` is the broad `NodeElementType` (includes node-function forms);
+          // `createElement` wants `ElementType`, so the base assignment narrows it once.
+          // The `as` swap itself is cast-free: `isValidElementType` narrows `asTarget`.
+          let renderTarget = node.element as ElementType
+          if (asTarget != null && isValidElementType(asTarget)) {
+            renderTarget = asTarget
+          }
           let finalChildren: ReactNode[] = []
 
           if (childrenInProps) {
@@ -410,13 +425,14 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           } else {
             // StyledRenderer for emotion-based styling unless explicitly disabled or no styles are present.
             // StyledRenderer handles SSR hydration and emotion CSS injection when css prop exists or element has style tags.
-            const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(node.element)) && Object.keys(css || {}).length > 0
-            const shouldBypassStyledRendererOnServer = NodeUtil.isServer && typeof node.element !== 'string'
+            // All element-shape decisions use `renderTarget` so an `as` swap is honored consistently.
+            const isStyledComponent = !disableEmotion && (css || !hasNoStyleTag(renderTarget)) && Object.keys(css || {}).length > 0
+            const shouldBypassStyledRendererOnServer = NodeUtil.isServer && typeof renderTarget !== 'string'
             // Keep server/client on the same StyledRenderer path for client references.
             // This avoids Emotion hash drift not only for theme tokens, but also for raw
             // CSS values (e.g. "red", "#ff0000") that would otherwise use different
             // server vs client compilation routes.
-            const shouldUseRuntimeThemeOnServer = isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(node.element)
+            const shouldUseRuntimeThemeOnServer = isStyledComponent && shouldBypassStyledRendererOnServer && NodeUtil.isClientReference(renderTarget)
 
             if ((isStyledComponent && !shouldBypassStyledRendererOnServer) || shouldUseRuntimeThemeOnServer) {
               // `elementProps` was already pre-processed above, so only `css`
@@ -424,8 +440,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               // client runtime's vars-mode resolution keeps the Emotion class
               // hash identical across SSR/CSR.
               const cssForRenderer = NodeUtil.isServer ? replaceThemeTokensWithCssVars(css) : css
-              element = createElement(StyledRenderer, { element: node.element, ...elementProps, css: cssForRenderer }, ...finalChildren)
-            } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(node.element)) {
+              element = createElement(StyledRenderer, { element: renderTarget, ...elementProps, css: cssForRenderer }, ...finalChildren)
+            } else if (isStyledComponent && shouldBypassStyledRendererOnServer && !NodeUtil.acceptsServerCss(renderTarget)) {
               // Emit `var(--meonode-theme-*)` on the server so the generated Emotion class
               // matches the client runtime output — unifies the class hash across SSR/CSR.
               // `replaceThemeTokensWithCssVars` runs even when activeTheme is undefined
@@ -439,14 +455,14 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               const serverCssClassName = compileServerEmotionClassName(cssWithDefaults)
               const mergedClassName = [elementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined
               const elementPropsWithClassName = mergedClassName ? { ...elementProps, className: mergedClassName } : elementProps
-              element = createElement(node.element, elementPropsWithClassName, ...finalChildren)
+              element = createElement(renderTarget, elementPropsWithClassName, ...finalChildren)
             } else {
               // On server function components, keep css support for true server components.
               // For client references (e.g. next/link), do not forward css to avoid leaking
               // unknown attributes like css="[object Object]" into HTML.
-              const shouldForwardCssDirectly = isStyledComponent && (!shouldBypassStyledRendererOnServer || NodeUtil.acceptsServerCss(node.element))
+              const shouldForwardCssDirectly = isStyledComponent && (!shouldBypassStyledRendererOnServer || NodeUtil.acceptsServerCss(renderTarget))
               const elementPropsWithCss = shouldForwardCssDirectly ? { ...elementProps, css } : elementProps
-              element = createElement(node.element, elementPropsWithCss, ...finalChildren)
+              element = createElement(renderTarget, elementPropsWithCss, ...finalChildren)
             }
           }
 
@@ -588,12 +604,12 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
  * It's the simplest way to wrap a component or element.
  * @function Node
  */
-function Node<AdditionalProps, E extends NodeElementType, ExactProps extends object = object>(
+function Node<AdditionalProps, E extends NodeElementType, ExactProps extends object = object, As extends NodeElementType = E>(
   element: E,
-  props: MergedProps<E, AdditionalProps, ExactProps> = {} as any,
+  props: PolymorphicProps<E, As, AdditionalProps, ExactProps> = {} as any,
   deps?: DependencyList,
-): NodeInstance<E> {
-  return new BaseNode(element, props as NodeProps<E>, deps)
+): NodeInstance<NoInfer<As>> {
+  return new BaseNode(element, props as NodeProps<E>, deps) as unknown as NodeInstance<NoInfer<As>>
 }
 
 /**
@@ -624,10 +640,16 @@ export function createNode<AdditionalInitialProps, E extends NodeElementType, Ex
   element: E,
   initialProps?: MergedProps<E, AdditionalInitialProps, ExactInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps, ExactProps extends object = object>(props: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) => NodeInstance<E>) & {
+  ? (<AdditionalProps, ExactProps extends object = object, As extends NodeElementType = E>(
+      props: PolymorphicProps<E, As, AdditionalProps, ExactProps>,
+      deps?: DependencyList,
+    ) => NodeInstance<NoInfer<As>>) & {
       element: E
     }
-  : (<AdditionalProps, ExactProps extends object = object>(props?: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) => NodeInstance<E>) & {
+  : (<AdditionalProps, ExactProps extends object = object, As extends NodeElementType = E>(
+      props?: PolymorphicProps<E, As, AdditionalProps, ExactProps>,
+      deps?: DependencyList,
+    ) => NodeInstance<NoInfer<As>>) & {
       element: E
     } {
   const Instance = <AdditionalProps, ExactProps extends object = object>(props?: MergedProps<E, AdditionalProps, ExactProps>, deps?: DependencyList) =>
@@ -645,16 +667,16 @@ export function createChildrenFirstNode<AdditionalInitialProps, E extends NodeEl
   element: E,
   initialProps?: MergedProps<E, AdditionalInitialProps, ExactInitialProps>,
 ): HasRequiredProps<PropsOf<E>> extends true
-  ? (<AdditionalProps = undefined, ExactProps extends object = object>(
+  ? (<AdditionalProps = undefined, ExactProps extends object = object, As extends NodeElementType = E>(
       children: Children,
-      props: MergedProps<E, AdditionalProps, ExactProps> & { children?: never },
+      props: PolymorphicProps<E, As, AdditionalProps, ExactProps> & { children?: never },
       deps?: DependencyList,
-    ) => NodeInstance<E>) & { element: E }
-  : (<AdditionalProps = undefined, ExactProps extends object = object>(
+    ) => NodeInstance<NoInfer<As>>) & { element: E }
+  : (<AdditionalProps = undefined, ExactProps extends object = object, As extends NodeElementType = E>(
       children?: Children,
-      props?: MergedProps<E, AdditionalProps, ExactProps> & { children?: never },
+      props?: PolymorphicProps<E, As, AdditionalProps, ExactProps> & { children?: never },
       deps?: DependencyList,
-    ) => NodeInstance<E>) & {
+    ) => NodeInstance<NoInfer<As>>) & {
       element: E
     } {
   const Instance = <AdditionalProps = undefined, ExactProps extends object = object>(
