@@ -12,7 +12,7 @@ import React, {
 } from 'react'
 import type { NO_STYLE_TAGS } from '@src/constant/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
-import type { CSSInterpolation } from '@emotion/serialize'
+import type { ComponentSelector, Keyframes, SerializedStyles } from '@emotion/serialize'
 import { BaseNode } from '@src/core.node.js'
 
 // ============================================================================
@@ -271,6 +271,34 @@ export type ThemedCSSProperties = {
   [P in keyof CSSProperties]: ThemedValue<WithThemeToken<CSSProperties[P]>>
 }
 
+/** Optional themed CSS properties (mapped); base layer for {@link ThemedCSSObject}. */
+type ThemedCSSValue<P extends keyof CSSProperties> = ThemedValue<
+  WithThemeToken<CSSProperties[P] | (CSSProperties[P] extends string | undefined ? string : never)>
+>
+
+type ThemedCSSPropertiesPartial = {
+  [P in keyof CSSProperties]?: ThemedCSSValue<P>
+}
+
+/**
+ * Values allowed under arbitrary string keys (`&:hover`, `@media …`, etc.) and as
+ * {@link CssPropNonObject} branches. Includes plain `string` so nested literals
+ * are not forced through `CSSProperties[keyof CSSProperties]` (which rejects widened
+ * `string` unless `as const`). Mirrors Emotion's permissive `CSSInterpolation` index.
+ */
+type ThemedCSSInterpolation =
+  | ThemedCSSObject
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | ComponentSelector
+  | Keyframes
+  | SerializedStyles
+  | readonly ThemedCSSInterpolation[]
+  | ((theme: Theme) => ThemedCSSInterpolation)
+
 /**
  * A themed version of Emotion's `CSSObject` type. It allows property values to be
  * functions that receive the theme. This is applied recursively to handle
@@ -279,27 +307,27 @@ export type ThemedCSSProperties = {
  * Supports theme functions at any nesting level:
  * ```ts
  * css: {
- *   backgroundColor: theme => theme.colors.primary,  // ✓ Top level
+ *   backgroundColor: theme => theme.system.primary.default,  // ✓ Top level
  *   '&:hover': {
- *     backgroundColor: theme => theme.colors.hover,  // ✓ Nested level
+ *     backgroundColor: theme => theme.system.primary.hover,  // ✓ Nested level
  *   }
  * }
  * ```
  */
-export type ThemedCSSObject = {
-  // Standard CSS properties from CSSObject with themed values
-  [P in keyof CSSProperties]?: ThemedValue<WithThemeToken<CSSProperties[P]>>
-} & {
-  // Index signature for nested selectors (pseudo-classes, media queries, child selectors)
-  // This allows arbitrary string keys like '&:hover', '@media...', '& .child', etc.
-  [key: string]: ThemedValue<ThemedCSSObject> | ThemedValue<WithThemeToken<CSSProperties[keyof CSSProperties]>> | undefined
+export type ThemedCSSObject = ThemedCSSPropertiesPartial & {
+  [key: string]: ThemedCSSInterpolation | undefined
 }
 
 /**
- * The complete type for the `css` prop, combining Emotion's `CSSInterpolation`
- * with a themed version (`ThemedCSSObject`) to support theme-aware styling functions.
+ * Non-object shapes accepted by the `css` prop (strings, arrays, keyframes, …).
+ * Object literals use {@link ThemedCSSObject} for contextual typing.
  */
-export type CssProp = ThemedCSSObject | CSSInterpolation
+type CssPropNonObject = Exclude<ThemedCSSInterpolation, ThemedCSSObject>
+
+/**
+ * The complete type for the `css` prop.
+ */
+export type CssProp = ThemedCSSObject | CssPropNonObject
 
 // ============================================================================
 // NODE PROPS TYPES
