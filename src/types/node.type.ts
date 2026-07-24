@@ -10,7 +10,7 @@ import React, {
   type ExoticComponent,
   type ReactElement,
 } from 'react'
-import type { NO_STYLE_TAGS } from '@src/constant/common.const.js'
+import type { NO_STYLE_TAGS, COMPILED_MARKER } from '@src/constant/common.const.js'
 import type { ComponentNodeProps } from '@src/hoc/component.hoc.js'
 import type { ComponentSelector, Keyframes, SerializedStyles } from '@emotion/serialize'
 import { BaseNode } from '@src/core.node.js'
@@ -151,7 +151,8 @@ export type PropsOf<E extends NodeElementType> = E extends keyof JSX.IntrinsicEl
  * @template P - The props object of a component (e.g., PropsOf<E>)
  */
 export type HasCSSCompatibleStyleProp<P> = P extends { style?: infer S } // Does P have a 'style' prop (even optional)?
-  ? S extends CSSProperties | Record<string, unknown> | undefined // Is the type of that 'style' prop (S) assignable to CSSProperties or undefined?
+  ? S extends
+      CSSProperties | Record<string, unknown> | undefined // Is the type of that 'style' prop (S) assignable to CSSProperties or undefined?
     ? true // Yes, it's CSS compatible
     : false // No, 'style' exists but is not CSSProperties (e.g., style: string)
   : false // No, P does not have a 'style' prop at all
@@ -180,14 +181,7 @@ export type ThemeMode = 'light' | 'dark' | string
  */
 export interface ThemeSystem {
   [key: string]:
-    | string
-    | number
-    | boolean
-    | null
-    | undefined
-    | ThemeSystem
-    | Record<string, ThemeSystem | string | number | boolean | null | undefined | any>
-    | any
+    string | number | boolean | null | undefined | ThemeSystem | Record<string, ThemeSystem | string | number | boolean | null | undefined | any> | any
 }
 
 /**
@@ -407,10 +401,48 @@ export type BaseNodeProps<E extends NodeElementType> = Partial<{
 }>
 
 /**
+ * Shape of the pre-partitioned props object emitted by the build-time SWC compiler
+ * for a given call site (schema version 1).
+ *
+ * This is the **compiler-emit contract**, not part of the public props API: user
+ * source code never writes these fields directly (they are injected by the SWC
+ * transform into compiled output), so this type is intentionally NOT mixed into
+ * {@link NodeProps}. It exists for internal runtime consumption (casting
+ * `rawProps` to check for marker fields) and for tests that hand-write compiled
+ * marker shapes.
+ * - `[COMPILED_MARKER]`: integer schema version identifying the marker contract in use.
+ * - `c`: props pre-classified as CSS properties.
+ * - `d`: props pre-classified as DOM props.
+ * - `k`: call-site stable key hash.
+ * - `dyn`: names of props whose values are dynamic (non-literal) at the call site.
+ *
+ * Special keys (`css`, `props`, `ref`, `key`, `children`, `as`, `theme`, `disableEmotion`)
+ * remain top-level and are never nested inside `c`/`d`.
+ */
+export interface CompiledMarkerProps {
+  /** Integer schema version of the compiled marker contract (currently `1`). */
+  [COMPILED_MARKER]?: number
+  /** Props pre-classified as CSS properties. */
+  c?: Record<string, unknown>
+  /** Props pre-classified as DOM props. */
+  d?: Record<string, unknown>
+  /** Call-site stable key hash. */
+  k?: string
+  /** Names of props whose values are dynamic (non-literal). */
+  dyn?: string[]
+}
+
+/**
  * Public API for node creation props, providing a flexible and type-safe interface:
  * - Preserves original component props while allowing direct style properties (conditionally)
  * - Supports both single and array children
  * - Maintains React's key prop for reconciliation
+ *
+ * Note: this intentionally does NOT include {@link CompiledMarkerProps}. Marker
+ * fields are emitted by the SWC compiler into transformed JS at bundle time —
+ * user source never contains them and `tsc` never sees them — so mixing them
+ * into the public prop surface would only risk collapsing a user's own `c`/`d`/`k`/`dyn`
+ * prop names into an unsatisfiable type.
  * @template E - The element type these props apply to
  */
 export type NodeProps<E extends NodeElementType = NodeElementType> = Omit<PropsOf<E>, keyof CSSProperties | 'children' | 'props' | 'key'> &
