@@ -41,7 +41,8 @@
     "semantic-release": "semantic-release",
     "release": "semantic-release",
     "release:dry": "semantic-release --dry-run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "export:css-props": "bun scripts/export-css-properties.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
