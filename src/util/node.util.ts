@@ -9,10 +9,11 @@ import type {
   DependencyList,
   FinalNodeProps,
   Children,
+  CompiledMarkerProps,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
 import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined, getGlobalState } from '@src/helper/common.helper.js'
-import { __DEBUG__ } from '@src/constant/common.const.js'
+import { __DEBUG__, COMPILED_MARKER, SUPPORTED_COMPILER_SCHEMAS } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 
 const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSignatureCache')
@@ -46,6 +47,9 @@ export class NodeUtil {
 
   // Critical props for signature generation and shallow comparison
   private static readonly CRITICAL_PROPS = new Set(['css', 'className', 'disableEmotion', 'props'])
+
+  // Keys that stay top-level and must never be shadowed by a marker's c/d bucket
+  private static readonly MARKER_SPECIAL_KEYS = new Set(['css', 'props', 'ref', 'key', 'children', 'as', 'theme', 'disableEmotion'])
 
   // Cache for function prop toString() hashes to avoid repeated expensive serialization
   private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
@@ -300,6 +304,45 @@ export class NodeUtil {
    */
   public static processProps(rawProps: Partial<NodeProps> = {}, stableKey?: string): FinalNodeProps {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
+
+    // --- Compiled Marker Fast Path ---
+    // Trusts the compiler's `c`/`d` contract keys and skips getCSSProps/getDOMProps entirely.
+    // Non-contract top-level keys (e.g. `as`, `theme`) pass through unchanged, mirroring legacy's domProps spread.
+    const compiledSchema = (restRawProps as CompiledMarkerProps)[COMPILED_MARKER]
+    if (typeof compiledSchema === 'number' && SUPPORTED_COMPILER_SCHEMAS.has(compiledSchema)) {
+      // `k`/`dyn` are consumed by the upcoming stable-key fast path (compiler contract, Task 3) — stripped here, not forwarded.
+      const {
+        c: markerCssProps,
+        d: markerDomProps,
+        [COMPILED_MARKER]: _schema,
+        k: _k,
+        dyn: _dyn,
+        ...passthrough
+      } = restRawProps as CompiledMarkerProps & Record<string, unknown>
+      const finalCssProps = { ...markerCssProps, ...css }
+
+      if (__DEBUG__) {
+        // A `c`/`d` bucket containing a special key (e.g. `ref`, `children`) would silently
+        // override the real top-level value via the spread below.
+        const reservedInBuckets = [...Object.keys(markerCssProps ?? {}), ...Object.keys(markerDomProps ?? {})].filter(k => NodeUtil.MARKER_SPECIAL_KEYS.has(k))
+        if (reservedInBuckets.length > 0) {
+          console.warn(
+            `MeoNode: Compiled marker c/d buckets contain reserved key(s) that override top-level values via spread: ${reservedInBuckets.join(', ')}.`,
+          )
+        }
+      }
+
+      return omitUndefined({
+        ref,
+        key,
+        css: finalCssProps,
+        ...passthrough,
+        ...markerDomProps,
+        disableEmotion,
+        nativeProps: omitUndefined(nativeProps),
+        children: NodeUtil._processChildren(children, disableEmotion, stableKey),
+      })
+    }
 
     // --- Fast Path Optimization ---
     if (Object.keys(restRawProps).length === 0 && !css) {
