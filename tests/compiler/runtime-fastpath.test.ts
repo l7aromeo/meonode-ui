@@ -58,6 +58,49 @@ describe('NodeUtil.processProps — compiled marker fast path', () => {
     expect(markerResult.theme).toBe(theme)
   })
 
+  it('classifies runtime-merged passthrough props like legacy (createNode initialProps merge)', () => {
+    // createNode() merges initialProps with call-site props at RUNTIME, after the compiler
+    // already rewrote the call site — so the compiler never saw `borderRadius`. It lands as
+    // a plain top-level key in restRawProps, not inside `c`/`d`, and must still be classified
+    // as CSS (not dumped into DOM props) exactly like the legacy pipeline would.
+    const legacyProps = {
+      borderRadius: 8,
+      padding: '8px',
+      backgroundColor: '#fff',
+      id: 'card-1',
+    } as unknown as Partial<NodeProps>
+
+    const markerProps = {
+      borderRadius: 8,
+      padding: '8px',
+      [COMPILED_MARKER]: 1,
+      c: { backgroundColor: '#fff' },
+      d: { id: 'card-1' },
+    } as unknown as Partial<NodeProps>
+
+    const legacyResult = NodeUtil.processProps(legacyProps)
+    const markerResult = NodeUtil.processProps(markerProps)
+
+    expect(markerResult).toEqual(legacyResult)
+    expect(markerResult.css).toEqual({ borderRadius: 8, padding: '8px', backgroundColor: '#fff' })
+    expect(markerResult.css).not.toHaveProperty('id')
+    expect(markerResult.id).toBe('card-1')
+    expect((markerResult as Record<string, unknown>).borderRadius).toBeUndefined()
+  })
+
+  it('precedence: explicit css prop wins, then c bucket, then top-level passthrough', () => {
+    const markerProps = {
+      padding: '1px', // top-level passthrough (e.g. runtime-merged initialProps)
+      [COMPILED_MARKER]: 1,
+      c: { padding: '2px' }, // compiler-classified call-site prop
+      css: { padding: '3px' }, // explicit css prop
+    } as unknown as Partial<NodeProps>
+
+    const result = NodeUtil.processProps(markerProps)
+
+    expect(result.css).toEqual({ padding: '3px' })
+  })
+
   it('merge order preserved: explicit css prop overrides partitioned c bucket', () => {
     const markerProps = {
       [COMPILED_MARKER]: 1,

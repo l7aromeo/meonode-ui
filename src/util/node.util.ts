@@ -380,8 +380,8 @@ export class NodeUtil {
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
     // --- Compiled Marker Fast Path ---
-    // Trusts the compiler's `c`/`d` contract keys and skips getCSSProps/getDOMProps entirely.
-    // Non-contract top-level keys (e.g. `as`, `theme`) pass through unchanged, mirroring legacy's domProps spread.
+    // Trusts the compiler's `c`/`d` contract keys, skipping getCSSProps/getDOMProps for them.
+    // Non-contract top-level keys still go through classification below (see passthrough).
     const compiledSchema = NodeUtil.getCompiledSchema(restRawProps as Record<string, unknown>)
     if (compiledSchema !== undefined) {
       // `k`/`dyn` are consumed by the upcoming stable-key fast path (compiler contract, Task 3) — stripped here, not forwarded.
@@ -393,7 +393,15 @@ export class NodeUtil {
         dyn: _dyn,
         ...passthrough
       } = restRawProps as CompiledMarkerProps & Record<string, unknown>
-      const finalCssProps = { ...markerCssProps, ...css }
+
+      // `passthrough` may hold props the compiler never saw — e.g. createNode() merges
+      // initialProps with call-site props at runtime, after the compiler already rewrote
+      // the call site — so these must be classified like legacy, not assumed to be DOM props.
+      const passthroughCssProps = getCSSProps(passthrough)
+      const passthroughDomProps = getDOMProps(passthrough)
+      // Precedence mirrors legacy's "call props override initial props" merge: top-level
+      // passthrough < compiler-classified `c`/`d` < explicit `css` prop.
+      const finalCssProps = { ...passthroughCssProps, ...markerCssProps, ...css }
 
       if (__DEBUG__) {
         // A `c`/`d` bucket containing a special key (e.g. `ref`, `children`) would silently
@@ -410,7 +418,7 @@ export class NodeUtil {
         ref,
         key,
         css: finalCssProps,
-        ...passthrough,
+        ...passthroughDomProps,
         ...markerDomProps,
         disableEmotion,
         nativeProps: omitUndefined(nativeProps),
