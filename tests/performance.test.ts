@@ -30,6 +30,7 @@ import {
   Ul,
 } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
+import { COMPILED_MARKER } from '@src/constant/common.const.js'
 import Table from 'cli-table3'
 import css from '@tests/constant/css.test.const.js'
 
@@ -1045,6 +1046,151 @@ describe('Performance Testing', () => {
         recordGroupMetric(group, groupDescription, testName, testDescription, `Duration`, `${duration.toFixed(2)} ms`)
         recordGroupMetric(group, groupDescription, testName, testDescription, 'Nodes Processed', NUM_NODES)
         expect(duration).toBeLessThan(300)
+      })
+    })
+
+    // Compiled Marker Fast Path vs Legacy Group
+    // Compares the compiler-marker fast path (pre-partitioned `c`/`d` props + `k`/`dyn` stable-key
+    // hash, see src/util/node.util.ts `getCompiledSchema`/`processProps` and src/core.node.ts
+    // `_getStableKey`) against the legacy path (per-key CSS/DOM classification + full
+    // `createPropSignature`) for an identical component tree built both ways.
+    //
+    // Env note: this suite runs under vitest.perf.config.ts, which inherits `environment: 'jsdom'`
+    // from vitest.config.ts (not overridden). Under jsdom, `window` is defined, so
+    // `NodeUtil.isServer` is `false` and the stableKey fast path in `_getStableKey` is exercised
+    // (that path is skipped entirely in a server/node environment). Both node construction
+    // (stableKey, computed synchronously in the BaseNode constructor) and `.props` access
+    // (processProps, lazy) are forced for every node in the tree, so both fast paths are measured.
+    describe('Compiled Marker vs Legacy Fast Path', () => {
+      const group = 'Compiled Marker vs Legacy Fast Path'
+      const groupDescription =
+        'Compares the compiled-marker fast path (pre-partitioned c/d props + k/dyn stable-key hash) against the legacy per-key CSS/DOM classification + full createPropSignature path, for an identical component tree'
+
+      // Tree shape: depth 3, breadth 4 => 1 + 4 + 16 + 64 = 85 nodes/tree, ~9 props/node (6 CSS + 3 DOM/event).
+      const TREE_DEPTH = 3
+      const TREE_BREADTH = 4
+      const ITERATIONS = 150
+      const WARMUP_ITERATIONS = 10
+
+      function countTreeNodes(depth: number, breadth: number): number {
+        let total = 0
+        for (let i = 0; i <= depth; i++) total += breadth ** i
+        return total
+      }
+      const NODES_PER_TREE = countTreeNodes(TREE_DEPTH, TREE_BREADTH)
+
+      // Raw-props tree, e.g. Div({ padding: '20px', backgroundColor: 'red', onClick, id: 'x', children: [...] })
+      // built recursively so every node in the tree gets its own distinct props (~9/node: 6 CSS-ish + 3 DOM/event).
+      function buildLegacyTree(depth: number, breadth: number, path: string): BaseNode {
+        const children: Array<BaseNode | string> =
+          depth > 0 ? Array.from({ length: breadth }, (_, i) => buildLegacyTree(depth - 1, breadth, `${path}-${i}`)) : [`Leaf ${path}`]
+
+        return Div({
+          id: `node-${path}`,
+          'data-testid': `node-${path}`,
+          padding: '20px',
+          backgroundColor: path.length % 2 === 0 ? 'red' : 'blue',
+          margin: '4px',
+          borderRadius: '4px',
+          display: 'flex',
+          color: '#333',
+          onClick: () => {},
+          children,
+        } as any)
+      }
+
+      // Equivalent pre-partitioned marker-props tree: same CSS/DOM props split into `c`/`d`
+      // buckets ahead of time, `k` standing in for the compiler's call-site stable-key hash, and
+      // `dyn` naming the one prop whose value is not literal at the call site (the click handler).
+      function buildMarkerTree(depth: number, breadth: number, path: string): BaseNode {
+        const children: Array<BaseNode | string> =
+          depth > 0 ? Array.from({ length: breadth }, (_, i) => buildMarkerTree(depth - 1, breadth, `${path}-${i}`)) : [`Leaf ${path}`]
+
+        return Div({
+          [COMPILED_MARKER]: 1,
+          c: {
+            padding: '20px',
+            backgroundColor: path.length % 2 === 0 ? 'red' : 'blue',
+            margin: '4px',
+            borderRadius: '4px',
+            display: 'flex',
+            color: '#333',
+          },
+          d: {
+            id: `node-${path}`,
+            'data-testid': `node-${path}`,
+            onClick: () => {},
+          },
+          k: `bench-${path}`,
+          dyn: ['onClick'],
+          children,
+        } as any)
+      }
+
+      // Walks the raw (pre-processed) children tree and forces `.props` (processProps) on every
+      // node, so the benchmark exercises processProps for the whole tree, not just the root
+      // (construction alone already exercises stableKey for every node via the constructor).
+      function forceProps(node: BaseNode): number {
+        let count = 1
+        void node.props
+        const children = (node.rawProps as { children?: unknown }).children
+        if (children) {
+          const childArray = Array.isArray(children) ? children : [children]
+          for (const child of childArray) {
+            if (child && (child as BaseNode).isBaseNode) {
+              count += forceProps(child as BaseNode)
+            }
+          }
+        }
+        return count
+      }
+
+      function runBench(build: (i: number) => BaseNode): number {
+        const t0 = performance.now()
+        for (let i = 0; i < ITERATIONS; i++) {
+          forceProps(build(i))
+        }
+        return performance.now() - t0
+      }
+
+      it('should process compiled-marker props at least as fast as legacy per-key classification', () => {
+        const testName = 'Tree Construction + Props Processing + StableKey'
+        const testDescription = `Builds an identical ${NODES_PER_TREE}-node component tree (depth ${TREE_DEPTH}, breadth ${TREE_BREADTH}, ~9 props/node) ${ITERATIONS} times via the legacy per-key CSS/DOM classification path and via the pre-partitioned compiled-marker (c/d/k/dyn) fast path, forcing both node construction (stableKey) and .props access (processProps) for every node`
+
+        const forceGC = () => {
+          if (global.gc) global.gc()
+        }
+
+        // Warm up both paths together (interleaved) so JIT warmup/GC timing doesn't
+        // systematically favor whichever path is measured first.
+        for (let i = 0; i < WARMUP_ITERATIONS; i++) {
+          forceProps(buildLegacyTree(TREE_DEPTH, TREE_BREADTH, `warmup-legacy-${i}`))
+          forceProps(buildMarkerTree(TREE_DEPTH, TREE_BREADTH, `warmup-marker-${i}`))
+        }
+
+        forceGC()
+        const legacyDuration = runBench(i => buildLegacyTree(TREE_DEPTH, TREE_BREADTH, `legacy-${i}`))
+
+        forceGC()
+        const markerDuration = runBench(i => buildMarkerTree(TREE_DEPTH, TREE_BREADTH, `marker-${i}`))
+
+        const legacyOpsPerSec = (ITERATIONS / legacyDuration) * 1000
+        const markerOpsPerSec = (ITERATIONS / markerDuration) * 1000
+        const ratio = markerOpsPerSec / legacyOpsPerSec
+
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Nodes Per Tree', NODES_PER_TREE)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Iterations (Trees Built)', ITERATIONS)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Legacy Path Duration', `${legacyDuration.toFixed(2)} ms`)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Marker Path Duration', `${markerDuration.toFixed(2)} ms`)
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Legacy Path Ops/Sec (trees/sec)', legacyOpsPerSec.toFixed(1))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Marker Path Ops/Sec (trees/sec)', markerOpsPerSec.toFixed(1))
+        recordGroupMetric(group, groupDescription, testName, testDescription, 'Marker/Legacy Ops Ratio', ratio.toFixed(2))
+
+        // Soft guard only: the compiled fast path must not regress meaningfully below legacy.
+        // Not a hard "must be faster" assertion — direct-loop timing in jsdom has enough jitter
+        // that a tight bound would be flaky; a 0.9 floor only catches a real regression (marker
+        // meaningfully SLOWER than legacy), not ordinary noise.
+        expect(ratio).toBeGreaterThanOrEqual(0.9)
       })
     })
 
