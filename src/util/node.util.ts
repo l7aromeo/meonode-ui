@@ -161,6 +161,19 @@ export class NodeUtil {
   }
 
   /**
+   * Detects the compiled marker's schema version, if present and supported.
+   * Single source of truth for the marker-detection predicate shared by
+   * `processProps` and `BaseNode._getStableKey`, so both stay in lockstep on
+   * what counts as "a compiled call site".
+   * @param props The raw props object to inspect.
+   * @returns The schema version number, or undefined if absent/unsupported.
+   */
+  public static getCompiledSchema(props: Record<string, unknown>): number | undefined {
+    const schema = props[COMPILED_MARKER]
+    return typeof schema === 'number' && SUPPORTED_COMPILER_SCHEMAS.has(schema) ? schema : undefined
+  }
+
+  /**
    * Creates a unique, stable signature from the element type and props.
    * This signature includes the element's type to prevent collisions between different components
    * and handles primitive values in arrays and objects for better caching.
@@ -191,49 +204,110 @@ export class NodeUtil {
     }
 
     for (const key of keys) {
-      const val = props[key]
-      let valStr: string
-
-      const valType = typeof val
-      if (valType === 'string' || valType === 'number' || valType === 'boolean') {
-        valStr = `${key}:${val};`
-      } else if (val === null) {
-        valStr = `${key}:null;`
-      } else if (val === undefined) {
-        valStr = `${key}:undefined;`
-      } else if (key === 'css' && typeof val === 'object') {
-        valStr = `css:${this.hashCSS(val as Record<string, unknown>)};`
-      } else if (Array.isArray(val)) {
-        // Hash primitive values in arrays for better cache hits
-        const primitives = val.filter(v => {
-          const t = typeof v
-          return t === 'string' || t === 'number' || t === 'boolean' || v === null
-        })
-        if (primitives.length === val.length) {
-          // All primitives - use actual values
-          valStr = `${key}:[${primitives.join(',')}];`
-        } else {
-          // Mixed or all non-primitives - use structure only
-          valStr = `${key}:[${val.length}];`
-        }
-      } else if (val && (val as NodeInstance).isBaseNode) {
-        valStr = `${key}:${(val as NodeInstance).stableKey};`
-      } else if (valType === 'function') {
-        let hash = NodeUtil._propFuncCache.get(val as (...args: any[]) => any)
-        if (!hash) {
-          hash = NodeUtil.hashString(val.toString())
-          NodeUtil._propFuncCache.set(val as (...args: any[]) => any, hash)
-        }
-        valStr = `${key}:${hash};`
-      } else {
-        // Include sorted keys for object structure signature
-        const objKeys = Object.keys(val as Record<string, unknown>).sort()
-        valStr = `${key}:{${objKeys.join(',')}};`
-      }
-      signatureParts.push(valStr)
+      signatureParts.push(NodeUtil._serializePropValue(key, props[key]))
     }
 
     return NodeUtil.hashString(signatureParts.join(','))
+  }
+
+  /**
+   * Serializes a single prop value into its `key:value;` signature fragment,
+   * using the same per-type rules everywhere a prop value needs hashing
+   * (full signatures via `createPropSignature`, and the compiled marker's
+   * dyn-value hashing via `hashDynamicValues`). Kept as a single source of
+   * truth so both call sites stay byte-identical for the same value.
+   * @param key The prop name.
+   * @param val The prop value.
+   * @returns The `key:value;`-style signature fragment for this prop.
+   */
+  private static _serializePropValue(key: string, val: unknown): string {
+    const valType = typeof val
+    if (valType === 'string' || valType === 'number' || valType === 'boolean') {
+      return `${key}:${val};`
+    } else if (val === null) {
+      return `${key}:null;`
+    } else if (val === undefined) {
+      return `${key}:undefined;`
+    } else if (key === 'css' && typeof val === 'object') {
+      return `css:${NodeUtil.hashCSS(val as Record<string, unknown>)};`
+    } else if (Array.isArray(val)) {
+      // Hash primitive values in arrays for better cache hits
+      const primitives = val.filter(v => {
+        const t = typeof v
+        return t === 'string' || t === 'number' || t === 'boolean' || v === null
+      })
+      if (primitives.length === val.length) {
+        // All primitives - use actual values
+        return `${key}:[${primitives.join(',')}];`
+      }
+      // Mixed or all non-primitives - use structure only
+      return `${key}:[${val.length}];`
+    } else if (val && (val as NodeInstance).isBaseNode) {
+      return `${key}:${(val as NodeInstance).stableKey};`
+    } else if (valType === 'function') {
+      let hash = NodeUtil._propFuncCache.get(val as (...args: any[]) => any)
+      if (!hash) {
+        hash = NodeUtil.hashString(val.toString())
+        NodeUtil._propFuncCache.set(val as (...args: any[]) => any, hash)
+      }
+      return `${key}:${hash};`
+    } else {
+      // Include sorted keys for object structure signature
+      const objKeys = Object.keys(val as Record<string, unknown>).sort()
+      return `${key}:{${objKeys.join(',')}};`
+    }
+  }
+
+  /**
+   * Resolves the value of a `dyn`-named prop for the compiled marker contract.
+   * Compiler-partitioned values live nested under `c` (CSS bucket) or `d` (DOM
+   * bucket) rather than at the top level of `props` — this mirrors that
+   * partitioning, falling back to a top-level lookup for special keys (e.g.
+   * `theme`) that stay outside `c`/`d`.
+   *
+   * Uses `in` checks (not truthiness) at each bucket so a prop legitimately
+   * set to `undefined` doesn't get mistaken for "not found" — only a name
+   * absent as an own key everywhere counts as unresolved, which in debug mode
+   * logs a warning: an unresolved dyn name means the emitted `k`/`dyn` pair
+   * doesn't match the actual props shape, silently producing a stable-but-wrong
+   * key (a masked compiler bug).
+   * @param props The marker props object (containing `c`/`d` buckets).
+   * @param name The dyn prop name to resolve.
+   * @returns The resolved value for the named prop.
+   */
+  private static _resolveDynPropValue(props: Record<string, unknown>, name: string): unknown {
+    const c = props.c as Record<string, unknown> | undefined
+    if (c && name in c) return c[name]
+    const d = props.d as Record<string, unknown> | undefined
+    if (d && name in d) return d[name]
+    if (name in props) return props[name]
+
+    if (__DEBUG__) {
+      console.warn(`MeoNode: Compiled marker "dyn" names prop "${name}" but it isn't present in c, d, or top-level props. StableKey may be stale.`)
+    }
+    return undefined
+  }
+
+  /**
+   * Hashes only the values of props named in `dyn` — the compiled marker's list
+   * of props whose values are not literal at the call site. Used by
+   * `BaseNode._getStableKey`'s compiled fast path in place of a full
+   * `createPropSignature` call: the call-site hash `k` already accounts for
+   * everything static, so only dynamic values need representing here.
+   * Serializes each value with the same per-type rules as `createPropSignature`
+   * (via `_serializePropValue`) and joins them in `dyn`'s given order (stable
+   * per call site — the compiler emits it consistently) before hashing.
+   * @param props The marker props object (containing `c`/`d` buckets).
+   * @param dyn Names of props whose values are dynamic.
+   * @returns A hash string representing the dynamic prop values.
+   */
+  public static hashDynamicValues(props: Record<string, unknown>, dyn: string[]): string {
+    const parts: string[] = new Array(dyn.length)
+    for (let i = 0; i < dyn.length; i++) {
+      const name = dyn[i]
+      parts[i] = NodeUtil._serializePropValue(name, NodeUtil._resolveDynPropValue(props, name))
+    }
+    return NodeUtil.hashString(parts.join(','))
   }
 
   /**
@@ -308,8 +382,8 @@ export class NodeUtil {
     // --- Compiled Marker Fast Path ---
     // Trusts the compiler's `c`/`d` contract keys and skips getCSSProps/getDOMProps entirely.
     // Non-contract top-level keys (e.g. `as`, `theme`) pass through unchanged, mirroring legacy's domProps spread.
-    const compiledSchema = (restRawProps as CompiledMarkerProps)[COMPILED_MARKER]
-    if (typeof compiledSchema === 'number' && SUPPORTED_COMPILER_SCHEMAS.has(compiledSchema)) {
+    const compiledSchema = NodeUtil.getCompiledSchema(restRawProps as Record<string, unknown>)
+    if (compiledSchema !== undefined) {
       // `k`/`dyn` are consumed by the upcoming stable-key fast path (compiler contract, Task 3) — stripped here, not forwarded.
       const {
         c: markerCssProps,

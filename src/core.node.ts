@@ -10,6 +10,7 @@ import {
 } from 'react'
 import type {
   Children,
+  CompiledMarkerProps,
   DependencyList,
   ElementCacheEntry,
   FinalNodeProps,
@@ -186,6 +187,20 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
     this.lastPropsObj = props
 
+    // --- Compiled Marker Fast Path ---
+    // Trusts the compiler's call-site hash `k` instead of recomputing a full signature.
+    // Skips createPropSignature entirely, so no element.toString() hashing on this path.
+    const compiledSchema = NodeUtil.getCompiledSchema(props)
+    if (compiledSchema !== undefined) {
+      const k = (props as CompiledMarkerProps).k
+      if (typeof k === 'string' && k.length > 0) {
+        const dyn = (props as CompiledMarkerProps).dyn
+        this.lastSignature = dyn && dyn.length > 0 ? `${k}:${NodeUtil.hashDynamicValues(props, dyn)}` : k
+        return this._withKeyPrefix(key, this.lastSignature)
+      }
+      // Marker present but `k` missing/invalid — fall through to the legacy path below as a safe fallback.
+    }
+
     const keys = Object.keys(props)
     const keyCount = keys.length
 
@@ -201,7 +216,20 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       this.lastSignature = NodeUtil.createPropSignature(this.element, props)
     }
 
-    return key !== undefined && key !== null ? `${String(key)}:${this.lastSignature}` : this.lastSignature
+    return this._withKeyPrefix(key, this.lastSignature)
+  }
+
+  /**
+   * Prefixes a signature with the user-supplied `key` prop, mirroring React's
+   * own key semantics (`0`/`''` are valid keys, only `undefined`/`null` opt out).
+   * Shared by both the compiled-marker fast path and the legacy signature path
+   * in `_getStableKey` so the prefix rule can't drift between them.
+   * @param key The user-supplied `key` prop value (already destructured off props).
+   * @param signature The computed signature to prefix.
+   * @returns The key-prefixed signature, or the signature unchanged if no key was given.
+   */
+  private _withKeyPrefix(key: unknown, signature: string | undefined): string | undefined {
+    return key !== undefined && key !== null ? `${String(key)}:${signature}` : signature
   }
 
   /**
