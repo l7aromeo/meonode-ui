@@ -32,12 +32,16 @@ const ThemeSwitcher = createNode(function ThemeSwitcher() {
 })
 
 function getThemeStyleTag(): HTMLStyleElement | null {
-  return document.head.querySelector('style[data-meonode-theme-vars]')
+  // The tag is rendered by ThemeProvider as part of its own subtree (so it is
+  // emitted during SSR and torn down with the provider), rather than being
+  // imperatively appended to <head>. CSS is document-global, so `:root` applies
+  // either way — query the whole document.
+  return document.querySelector('style[data-meonode-theme-vars]')
 }
 
 afterEach(() => {
   cleanup()
-  document.head.querySelectorAll('style[data-meonode-theme-vars]').forEach(node => node.remove())
+  document.querySelectorAll('style[data-meonode-theme-vars]').forEach(node => node.remove())
 })
 
 describe('ThemeProvider client CSS vars', () => {
@@ -65,7 +69,7 @@ describe('ThemeProvider client CSS vars', () => {
     const { getByTestId } = render(App.render())
     fireEvent.click(getByTestId('theme-switch'))
 
-    const styleTags = document.head.querySelectorAll('style[data-meonode-theme-vars]')
+    const styleTags = document.querySelectorAll('style[data-meonode-theme-vars]')
     expect(styleTags).toHaveLength(1)
     expect(styleTags[0]?.textContent).toContain('--meonode-theme-spacing-md:20px;')
     expect(styleTags[0]?.textContent).toContain('--meonode-theme-colors-primary:rgb(0, 0, 255);')

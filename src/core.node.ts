@@ -32,7 +32,7 @@ import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
 import { NodeUtil } from '@src/util/node.util.js'
 import { compileServerEmotionClassName } from '@src/util/server-emotion.util.js'
-import { getActiveServerTheme, registerServerThemeVariables, replaceThemeTokensWithCssVars, setActiveServerTheme } from '@src/util/server-theme.util.js'
+import { getActiveServerTheme, replaceThemeTokensWithCssVars, setActiveServerTheme } from '@src/util/server-theme.util.js'
 import { ThemeUtil } from '@src/util/theme.util.js'
 
 const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
@@ -124,8 +124,12 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       const themeCandidate = (rawProps as { theme?: unknown }).theme
       if (themeCandidate && typeof themeCandidate === 'object' && 'system' in (themeCandidate as object)) {
         const resolvedTheme = themeCandidate as Theme
+        // Only the *active theme* is tracked globally, for server-side
+        // `theme.*` token -> `var(--meonode-theme-*)` resolution. The variable
+        // definitions themselves are emitted by ThemeProvider's own render
+        // output; they are deliberately not accumulated here, since a
+        // process-global map is shared across concurrent SSR requests.
         setActiveServerTheme(resolvedTheme)
-        registerServerThemeVariables(resolvedTheme)
       }
     }
 

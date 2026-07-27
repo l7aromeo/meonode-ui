@@ -5,7 +5,6 @@ import createCache from '@emotion/cache'
 import { Node } from '@src/core.node.js'
 import { useServerInsertedHTML } from 'next/navigation.js'
 import { consumeServerEmotionRules, getServerEmotionCache } from '@src/util/server-emotion.util.js'
-import { consumeServerThemeVariablesCss } from '@src/util/server-theme.util.js'
 
 // Emotion cache setup
 function createEmotionCache() {
@@ -40,21 +39,19 @@ export default function StyleRegistry({ children }: { children: ReactElement }) 
     const newIds = ids.filter(id => !inserted.has(id) && typeof cache.inserted[id] === 'string')
     const serverCompiledRules = consumeServerEmotionRules()
     const freshServerRules = serverCompiledRules.filter(rule => !inserted.has(rule.id))
-    const themeVariablesRule = consumeServerThemeVariablesCss()
-    const freshThemeRule = themeVariablesRule && !inserted.has(themeVariablesRule.id) ? [themeVariablesRule] : []
-
-    if (newIds.length === 0 && freshServerRules.length === 0 && freshThemeRule.length === 0) {
+    // Theme variables are emitted by ThemeProvider itself (a hoisted, deduped
+    // `<style href precedence>`), not consumed from global state here.
+    if (newIds.length === 0 && freshServerRules.length === 0) {
       return null
     }
 
     // Mark IDs as inserted
     newIds.forEach(id => inserted.add(id))
     freshServerRules.forEach(rule => inserted.add(rule.id))
-    freshThemeRule.forEach(rule => inserted.add(rule.id))
 
     // Ensure deterministic output by sorting ids.
-    const sortedIds = Array.from(new Set([...newIds, ...freshServerRules.map(rule => rule.id), ...freshThemeRule.map(rule => rule.id)])).sort()
-    const serverRuleById = new Map([...freshServerRules, ...freshThemeRule].map(rule => [rule.id, rule.cssText]))
+    const sortedIds = Array.from(new Set([...newIds, ...freshServerRules.map(rule => rule.id)])).sort()
+    const serverRuleById = new Map(freshServerRules.map(rule => [rule.id, rule.cssText]))
     const styles = sortedIds
       .map(id => {
         const serverRule = serverRuleById.get(id)
