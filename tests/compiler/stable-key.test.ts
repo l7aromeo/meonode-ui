@@ -179,3 +179,61 @@ describe('BaseNode._getStableKey — compiled marker fast path', () => {
     expect(nodeA2.stableKey).toBe(expected)
   })
 })
+
+describe('BaseNode._getStableKey — schema 2 (namespaced marker keys)', () => {
+  it('schema 2 empty dyn: stableKey equals __meo$k', () => {
+    const node = new BaseNode('div', {
+      [COMPILED_MARKER]: 2,
+      __meo$k: 'k-schema2',
+      __meo$c: { padding: '1px' },
+    } as unknown as Partial<NodeProps>)
+
+    expect(node.stableKey).toBe('k-schema2')
+  })
+
+  it('schema 2 resolves dyn values through the namespaced buckets', () => {
+    const build = (color: string) =>
+      new BaseNode('div', {
+        [COMPILED_MARKER]: 2,
+        __meo$k: 'k-schema2-dyn',
+        __meo$c: { backgroundColor: color },
+        __meo$dyn: ['backgroundColor'],
+      } as unknown as Partial<NodeProps>)
+
+    const red = build('red')
+    const blue = build('blue')
+
+    expect(red.stableKey).not.toBe(blue.stableKey)
+    expect(red.stableKey).toBe(build('red').stableKey)
+  })
+
+  it('schema 2 dyn resolution is unaffected by same-named user props at top level', () => {
+    // A user prop named `c` must not be mistaken for the schema 2 CSS bucket.
+    const node = new BaseNode('div', {
+      [COMPILED_MARKER]: 2,
+      __meo$k: 'k-schema2-nocollide',
+      __meo$c: { backgroundColor: 'red' },
+      __meo$dyn: ['backgroundColor'],
+      c: { backgroundColor: 'blue' },
+    } as unknown as Partial<NodeProps>)
+
+    const control = new BaseNode('div', {
+      [COMPILED_MARKER]: 2,
+      __meo$k: 'k-schema2-nocollide',
+      __meo$c: { backgroundColor: 'red' },
+      __meo$dyn: ['backgroundColor'],
+    } as unknown as Partial<NodeProps>)
+
+    expect(node.stableKey).toBe(control.stableKey)
+  })
+
+  it('schema 2 marker without __meo$k falls back to the legacy signature path', () => {
+    const node = new BaseNode('div', {
+      [COMPILED_MARKER]: 2,
+      __meo$c: { padding: '1px' },
+    } as unknown as Partial<NodeProps>)
+
+    expect(typeof node.stableKey).toBe('string')
+    expect(node.stableKey).not.toBe('')
+  })
+})

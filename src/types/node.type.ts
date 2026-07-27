@@ -420,16 +420,24 @@ export type BaseNodeProps<E extends NodeElementType> = Partial<{
  * remain top-level and are never nested inside `c`/`d`.
  */
 export interface CompiledMarkerProps {
-  /** Integer schema version of the compiled marker contract (currently `1`). */
+  /** Integer schema version of the compiled marker contract (`1` legacy, `2` current). */
   [COMPILED_MARKER]?: number
-  /** Props pre-classified as CSS properties. */
+  /** Schema 1: props pre-classified as CSS properties. */
   c?: Record<string, unknown>
-  /** Props pre-classified as DOM props. */
+  /** Schema 1: props pre-classified as DOM props. */
   d?: Record<string, unknown>
-  /** Call-site stable key hash. */
+  /** Schema 1: call-site stable key hash. */
   k?: string
-  /** Names of props whose values are dynamic (non-literal). */
+  /** Schema 1: names of props whose values are dynamic (non-literal). */
   dyn?: string[]
+  /** Schema 2: props pre-classified as CSS properties. */
+  __meo$c?: Record<string, unknown>
+  /** Schema 2: props pre-classified as DOM props. */
+  __meo$d?: Record<string, unknown>
+  /** Schema 2: call-site stable key hash. */
+  __meo$k?: string
+  /** Schema 2: names of props whose values are dynamic (non-literal). */
+  __meo$dyn?: string[]
 }
 
 /**

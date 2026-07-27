@@ -200,3 +200,79 @@ describe('NodeUtil.processProps — compiled marker fast path', () => {
     })
   })
 })
+
+describe('NodeUtil.processProps — schema 2 (namespaced marker keys)', () => {
+  it('schema 2 produces FinalNodeProps deep-equal to the schema 1 equivalent', () => {
+    const onClick = () => {}
+
+    const schema1 = {
+      [COMPILED_MARKER]: 1,
+      c: { padding: '20px', backgroundColor: 'red' },
+      d: { onClick, id: 'x' },
+    } as unknown as Partial<NodeProps>
+
+    const schema2 = {
+      [COMPILED_MARKER]: 2,
+      __meo$c: { padding: '20px', backgroundColor: 'red' },
+      __meo$d: { onClick, id: 'x' },
+    } as unknown as Partial<NodeProps>
+
+    expect(NodeUtil.processProps(schema2)).toEqual(NodeUtil.processProps(schema1))
+  })
+
+  it('schema 2 does not collide with a real prop named `d` (SVG path attribute)', () => {
+    // The motivating bug: under schema 1 a spread carrying `d` was consumed as the
+    // DOM bucket. Under schema 2 the buckets are namespaced, so `d` is just a prop.
+    const props = {
+      [COMPILED_MARKER]: 2,
+      __meo$c: { fill: 'red' },
+      d: 'M0 0 L10 10',
+    } as unknown as Partial<NodeProps>
+
+    const result = NodeUtil.processProps(props) as Record<string, unknown>
+
+    expect(result.d).toBe('M0 0 L10 10')
+    expect(result.css).toEqual({ fill: 'red' })
+  })
+
+  it('schema 2 does not collide with real props named `c`, `k` or `dyn`', () => {
+    const props = {
+      [COMPILED_MARKER]: 2,
+      __meo$c: { padding: '2px' },
+      c: 'user-c',
+      k: 'user-k',
+      dyn: 'user-dyn',
+    } as unknown as Partial<NodeProps>
+
+    const result = NodeUtil.processProps(props) as Record<string, unknown>
+
+    expect(result.c).toBe('user-c')
+    expect(result.k).toBe('user-k')
+    expect(result.dyn).toBe('user-dyn')
+  })
+
+  it('strips schema 2 marker keys from output', () => {
+    const props = {
+      [COMPILED_MARKER]: 2,
+      __meo$c: { padding: '1px' },
+      __meo$d: { id: 'a' },
+      __meo$k: 'msite',
+      __meo$dyn: [],
+    } as unknown as Partial<NodeProps>
+
+    const result = NodeUtil.processProps(props) as Record<string, unknown>
+
+    for (const markerKey of [COMPILED_MARKER, '__meo$c', '__meo$d', '__meo$k', '__meo$dyn']) {
+      expect(markerKey in result).toBe(false)
+    }
+  })
+
+  it('unsupported schema 3 falls through to the legacy path', () => {
+    const props = { [COMPILED_MARKER]: 3, __meo$c: { padding: '1px' } } as unknown as Partial<NodeProps>
+    const result = NodeUtil.processProps(props) as Record<string, unknown>
+
+    // Legacy path treats the marker fields as ordinary unknown props.
+    expect(result[COMPILED_MARKER]).toBe(3)
+    expect(result.css).toEqual({})
+  })
+})

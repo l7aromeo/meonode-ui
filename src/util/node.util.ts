@@ -9,11 +9,10 @@ import type {
   DependencyList,
   FinalNodeProps,
   Children,
-  CompiledMarkerProps,
 } from '@src/types/node.type.js'
 import { isForwardRef, isMemo, isReactClassComponent } from '@src/helper/react-is.helper.js'
 import { getCSSProps, getDOMProps, getElementTypeName, omitUndefined, getGlobalState } from '@src/helper/common.helper.js'
-import { __DEBUG__, COMPILED_MARKER, SUPPORTED_COMPILER_SCHEMAS } from '@src/constant/common.const.js'
+import { __DEBUG__, COMPILED_MARKER, COMPILER_SCHEMA_KEYS, SUPPORTED_COMPILER_SCHEMAS } from '@src/constant/common.const.js'
 import { BaseNode } from '@src/core.node.js'
 
 const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSignatureCache')
@@ -275,10 +274,11 @@ export class NodeUtil {
    * @param name The dyn prop name to resolve.
    * @returns The resolved value for the named prop.
    */
-  private static _resolveDynPropValue(props: Record<string, unknown>, name: string): unknown {
-    const c = props.c as Record<string, unknown> | undefined
+  private static _resolveDynPropValue(props: Record<string, unknown>, name: string, schema: number): unknown {
+    const schemaKeys = COMPILER_SCHEMA_KEYS[schema] ?? COMPILER_SCHEMA_KEYS[1]
+    const c = props[schemaKeys.css] as Record<string, unknown> | undefined
     if (c && name in c) return c[name]
-    const d = props.d as Record<string, unknown> | undefined
+    const d = props[schemaKeys.dom] as Record<string, unknown> | undefined
     if (d && name in d) return d[name]
     if (name in props) return props[name]
 
@@ -301,11 +301,11 @@ export class NodeUtil {
    * @param dyn Names of props whose values are dynamic.
    * @returns A hash string representing the dynamic prop values.
    */
-  public static hashDynamicValues(props: Record<string, unknown>, dyn: string[]): string {
+  public static hashDynamicValues(props: Record<string, unknown>, dyn: string[], schema: number): string {
     const parts: string[] = new Array(dyn.length)
     for (let i = 0; i < dyn.length; i++) {
       const name = dyn[i]
-      parts[i] = NodeUtil._serializePropValue(name, NodeUtil._resolveDynPropValue(props, name))
+      parts[i] = NodeUtil._serializePropValue(name, NodeUtil._resolveDynPropValue(props, name, schema))
     }
     return NodeUtil.hashString(parts.join(','))
   }
@@ -384,15 +384,28 @@ export class NodeUtil {
     // Non-contract top-level keys still go through classification below (see passthrough).
     const compiledSchema = NodeUtil.getCompiledSchema(restRawProps as Record<string, unknown>)
     if (compiledSchema !== undefined) {
-      // `k`/`dyn` are consumed by the upcoming stable-key fast path (compiler contract, Task 3) — stripped here, not forwarded.
-      const {
-        c: markerCssProps,
-        d: markerDomProps,
-        [COMPILED_MARKER]: _schema,
-        k: _k,
-        dyn: _dyn,
-        ...passthrough
-      } = restRawProps as CompiledMarkerProps & Record<string, unknown>
+      // Bucket key names are schema-dependent: schema 1 used bare `c`/`d`/`k`/`dyn`,
+      // which a spread could collide with (`d` is a real SVG `<path>` attribute);
+      // schema 2 namespaces them under the marker prefix. The stable-key fields are
+      // consumed by `_getStableKey`, so they are stripped here, never forwarded.
+      const schemaKeys = COMPILER_SCHEMA_KEYS[compiledSchema]
+      const source = restRawProps as Record<string, unknown>
+      const markerCssProps = source[schemaKeys.css] as Record<string, unknown> | undefined
+      const markerDomProps = source[schemaKeys.dom] as Record<string, unknown> | undefined
+
+      const passthrough: Record<string, unknown> = {}
+      for (const propKey of Object.keys(source)) {
+        if (
+          propKey === COMPILED_MARKER ||
+          propKey === schemaKeys.css ||
+          propKey === schemaKeys.dom ||
+          propKey === schemaKeys.key ||
+          propKey === schemaKeys.dyn
+        ) {
+          continue
+        }
+        passthrough[propKey] = source[propKey]
+      }
 
       // `passthrough` may hold props the compiler never saw — e.g. createNode() merges
       // initialProps with call-site props at runtime, after the compiler already rewrote

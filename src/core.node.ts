@@ -10,7 +10,6 @@ import {
 } from 'react'
 import type {
   Children,
-  CompiledMarkerProps,
   DependencyList,
   ElementCacheEntry,
   FinalNodeProps,
@@ -27,7 +26,7 @@ import type {
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
 import { getComponentType, getElementTypeName, hasNoStyleTag, getGlobalState } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-import { __DEBUG__ } from '@src/constant/common.const.js'
+import { __DEBUG__, COMPILER_SCHEMA_KEYS } from '@src/constant/common.const.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
@@ -192,10 +191,11 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // Skips createPropSignature entirely, so no element.toString() hashing on this path.
     const compiledSchema = NodeUtil.getCompiledSchema(props)
     if (compiledSchema !== undefined) {
-      const k = (props as CompiledMarkerProps).k
+      const schemaKeys = COMPILER_SCHEMA_KEYS[compiledSchema] ?? COMPILER_SCHEMA_KEYS[1]
+      const k = props[schemaKeys.key]
       if (typeof k === 'string' && k.length > 0) {
-        const dyn = (props as CompiledMarkerProps).dyn
-        this.lastSignature = dyn && dyn.length > 0 ? `${k}:${NodeUtil.hashDynamicValues(props, dyn)}` : k
+        const dyn = props[schemaKeys.dyn] as string[] | undefined
+        this.lastSignature = dyn && dyn.length > 0 ? `${k}:${NodeUtil.hashDynamicValues(props, dyn, compiledSchema)}` : k
         return this._withKeyPrefix(key, this.lastSignature)
       }
       // Marker present but `k` missing/invalid — fall through to the legacy path below as a safe fallback.
