@@ -71,6 +71,95 @@ export function buildThemeVariablesCss(theme: Theme): string {
 const conversionCache = new WeakMap<object, unknown>()
 
 /**
+ * Hoisted to module scope rather than rebuilt per call. `replaceThemeTokensWithCssVars`
+ * runs on every node's props on every render, so allocating a fresh `RegExp` and
+ * two closures on entry was pure per-node garbage.
+ *
+ * Sharing one `/g` regex across calls is safe here: `String.prototype.replace`
+ * with a global regex always starts at index 0 and resets `lastIndex` when it
+ * finishes, and nothing between the reset and the `replace` yields (no `await`,
+ * no generator), so no other call can interleave and observe a stale index. The
+ * explicit reset below is belt-and-braces.
+ */
+const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
+
+const replaceString = (input: string): string => {
+  if (!input.includes('theme.')) return input
+  themeRegex.lastIndex = 0
+  let hasChanged = false
+  const next = input.replace(themeRegex, (_, path: string) => {
+    hasChanged = true
+    return `var(${toThemeVarName(path)})`
+  })
+  return hasChanged ? next : input
+}
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> => {
+  if (typeof v !== 'object' || v === null) return false
+  const proto = Object.getPrototypeOf(v)
+  return proto === null || proto === Object.prototype
+}
+
+const SCAN_NO_TOKENS = 0
+const SCAN_FOUND_OR_UNKNOWN = 1
+
+/**
+ * Depth budget for {@link scanForThemeTokens}. Props and `css` objects are
+ * shallow in practice (a media-query or pseudo-selector block nests two or three
+ * levels), so this is generous. Its real job is to bound recursion: exceeding it
+ * means "give up, take the slow path", which is how cyclic structures are
+ * handled without allocating a `Set` to track the traversal path.
+ */
+const SCAN_MAX_DEPTH = 16
+
+/**
+ * Read-only, allocation-free test for whether `value` contains any string that
+ * needs token conversion.
+ *
+ * Returns {@link SCAN_NO_TOKENS} only when it has proven there is nothing to
+ * convert. Anything else — a token found, or a structure too deep to finish
+ * scanning — returns {@link SCAN_FOUND_OR_UNKNOWN}, and the caller falls back to
+ * the full copy-on-write walk. Collapsing "found" and "unknown" into one result
+ * is intentional: both lead to the same place, and distinguishing them would only
+ * invite a caller to treat "unknown" as safe.
+ *
+ * Mirrors the walk's traversal contract exactly, or it would reach a different
+ * conclusion than the walk it is short-circuiting:
+ * - Only plain objects and arrays are descended into. Class instances (refs,
+ *   `Date`, React elements, MUI internals) are passed through untouched by the
+ *   walk, so they cannot hide a convertible string.
+ * - Only string **values** count. Keys holding tokens (e.g.
+ *   `'@media (max-width: theme.breakpoint.md)'`) are deliberately not converted
+ *   by the walk either — they must resolve to concrete values, since CSS
+ *   variables are invalid in media features and selector text.
+ * - Uses `for...in` + `hasOwnProperty` rather than `Object.values()`, because
+ *   `Object.values()` allocates an array per object, which is one of the costs
+ *   this path exists to avoid.
+ */
+function scanForThemeTokens(value: unknown, depth: number): number {
+  if (typeof value === 'string') {
+    return value.includes('theme.') ? SCAN_FOUND_OR_UNKNOWN : SCAN_NO_TOKENS
+  }
+  if (typeof value !== 'object' || value === null) return SCAN_NO_TOKENS
+  if (depth >= SCAN_MAX_DEPTH) return SCAN_FOUND_OR_UNKNOWN
+
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      if (scanForThemeTokens(value[i], depth + 1) !== SCAN_NO_TOKENS) return SCAN_FOUND_OR_UNKNOWN
+    }
+    return SCAN_NO_TOKENS
+  }
+
+  if (!isPlainObject(value)) return SCAN_NO_TOKENS
+
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue
+    if (scanForThemeTokens(value[key], depth + 1) !== SCAN_NO_TOKENS) return SCAN_FOUND_OR_UNKNOWN
+  }
+  return SCAN_NO_TOKENS
+}
+
+/**
  * Replaces `theme.*` token strings with `var(--meonode-theme-*)` references,
  * walking arbitrary structures iteratively with copy-on-write semantics.
  *
@@ -91,31 +180,32 @@ const conversionCache = new WeakMap<object, unknown>()
  *   a `sx` object defined outside a render body) is converted at most once.
  */
 export function replaceThemeTokensWithCssVars<T>(value: T): T {
-  const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
-
-  const replaceString = (input: string): string => {
-    if (!input.includes('theme.')) return input
-    themeRegex.lastIndex = 0
-    let hasChanged = false
-    const next = input.replace(themeRegex, (_, path: string) => {
-      hasChanged = true
-      return `var(${toThemeVarName(path)})`
-    })
-    return hasChanged ? next : input
-  }
-
-  const isPlainObject = (v: unknown): v is Record<string, unknown> => {
-    if (typeof v !== 'object' || v === null) return false
-    const proto = Object.getPrototypeOf(v)
-    return proto === null || proto === Object.prototype
-  }
-
   if (typeof value === 'string') return replaceString(value) as unknown as T
   if (!isPlainObject(value) && !Array.isArray(value)) return value
 
   // WeakMap fast-path: previously-converted inputs (and their outputs) hit O(1).
   const cached = conversionCache.get(value as object)
   if (cached !== undefined) return cached as T
+
+  // Allocation-free fast path. The full walk below allocates a work-stack entry
+  // per container, a Map, a Set, and an `Object.values()` array per object —
+  // before it can discover there was nothing to convert. Since this function
+  // runs on every node's props on every render, and since `@meonode/compiler`
+  // now rewrites `theme.*` tokens at build time (so compiled call sites arrive
+  // already token-free), the overwhelmingly common case is a walk that finds
+  // nothing and returns its input unchanged.
+  //
+  // `scanForThemeTokens` answers "is there anything to do?" with zero
+  // allocations. When the answer is no we return the input as-is, which is
+  // exactly what the walk would have produced: it is copy-on-write, so an
+  // unchanged structure already comes back by reference.
+  //
+  // Deliberately not cached: the fast path's inputs are mostly fresh per-render
+  // objects (compiled `__meo$c`/`__meo$d` buckets, and the spread literal built
+  // at core.node.ts's `elementProps`), so a WeakMap insert here would cost more
+  // than the O(1) hit it could ever earn, and would retain those objects until
+  // the next GC.
+  if (scanForThemeTokens(value, 0) === SCAN_NO_TOKENS) return value
 
   const workStack: { value: unknown; isProcessed: boolean }[] = [{ value, isProcessed: false }]
   const resolvedValues = new Map<unknown, unknown>()
