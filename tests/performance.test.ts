@@ -30,7 +30,7 @@ import {
   Ul,
 } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
-import { COMPILED_MARKER } from '@src/constant/common.const.js'
+import { COMPILED_MARKER, COMPILER_SCHEMA_KEYS } from '@src/constant/common.const.js'
 import Table from 'cli-table3'
 import css from '@tests/constant/css.test.const.js'
 
@@ -1064,7 +1064,7 @@ describe('Performance Testing', () => {
     describe('Compiled Marker vs Legacy Fast Path', () => {
       const group = 'Compiled Marker vs Legacy Fast Path'
       const groupDescription =
-        'Compares the compiled-marker fast path (pre-partitioned c/d props + k/dyn stable-key hash) against the legacy per-key CSS/DOM classification + full createPropSignature path, for an identical component tree'
+        'Compares the compiled-marker fast path (schema 2: pre-partitioned __meo$c/__meo$d props + __meo$k/__meo$dyn stable-key hash) against the legacy per-key CSS/DOM classification + full createPropSignature path, for an identical component tree'
 
       // Tree shape: depth 3, breadth 4 => 1 + 4 + 16 + 64 = 85 nodes/tree, ~9 props/node (6 CSS + 3 DOM/event).
       const TREE_DEPTH = 3
@@ -1099,16 +1099,29 @@ describe('Performance Testing', () => {
         } as any)
       }
 
-      // Equivalent pre-partitioned marker-props tree: same CSS/DOM props split into `c`/`d`
-      // buckets ahead of time, `k` standing in for the compiler's call-site stable-key hash, and
-      // `dyn` naming the one prop whose value is not literal at the call site (the click handler).
+      // Equivalent pre-partitioned marker-props tree: same CSS/DOM props split into the
+      // CSS/DOM buckets ahead of time, the site key standing in for the compiler's
+      // call-site stable-key hash, and the dyn list naming the one prop whose value is
+      // not literal at the call site (the click handler).
+      //
+      // Uses **schema 2**, the shape `@meonode/compiler` actually emits. This bench
+      // previously hand-wrote schema 1 (`__meo$: 1` with bare `c`/`d`/`k`/`dyn`), which
+      // the runtime still supports but no released compiler produces — so it was
+      // measuring a path no user is on. Schema 2 namespaces every bucket under the
+      // marker prefix, which is also what makes it safe against a spread carrying a real
+      // prop named `d` (a valid SVG `<path>` attribute).
+      //
+      // Bucket names come from COMPILER_SCHEMA_KEYS rather than string literals so this
+      // tracks the contract instead of drifting from it silently.
       function buildMarkerTree(depth: number, breadth: number, path: string): BaseNode {
         const children: Array<BaseNode | string> =
           depth > 0 ? Array.from({ length: breadth }, (_, i) => buildMarkerTree(depth - 1, breadth, `${path}-${i}`)) : [`Leaf ${path}`]
 
+        const schemaKeys = COMPILER_SCHEMA_KEYS[2]
+
         return Div({
-          [COMPILED_MARKER]: 1,
-          c: {
+          [COMPILED_MARKER]: 2,
+          [schemaKeys.css]: {
             padding: '20px',
             backgroundColor: path.length % 2 === 0 ? 'red' : 'blue',
             margin: '4px',
@@ -1116,13 +1129,13 @@ describe('Performance Testing', () => {
             display: 'flex',
             color: '#333',
           },
-          d: {
+          [schemaKeys.dom]: {
             id: `node-${path}`,
             'data-testid': `node-${path}`,
             onClick: () => {},
           },
-          k: `bench-${path}`,
-          dyn: ['onClick'],
+          [schemaKeys.key]: `bench-${path}`,
+          [schemaKeys.dyn]: ['onClick'],
           children,
         } as any)
       }
@@ -1155,7 +1168,7 @@ describe('Performance Testing', () => {
 
       it('should process compiled-marker props at least as fast as legacy per-key classification', () => {
         const testName = 'Tree Construction + Props Processing + StableKey'
-        const testDescription = `Builds an identical ${NODES_PER_TREE}-node component tree (depth ${TREE_DEPTH}, breadth ${TREE_BREADTH}, ~9 props/node) ${ITERATIONS} times via the legacy per-key CSS/DOM classification path and via the pre-partitioned compiled-marker (c/d/k/dyn) fast path, forcing both node construction (stableKey) and .props access (processProps) for every node`
+        const testDescription = `Builds an identical ${NODES_PER_TREE}-node component tree (depth ${TREE_DEPTH}, breadth ${TREE_BREADTH}, ~9 props/node) ${ITERATIONS} times via the legacy per-key CSS/DOM classification path and via the pre-partitioned compiled-marker schema 2 (__meo$c/__meo$d/__meo$k/__meo$dyn) fast path, forcing both node construction (stableKey) and .props access (processProps) for every node`
 
         const forceGC = () => {
           if (global.gc) global.gc()
