@@ -50,6 +50,19 @@ export class NodeUtil {
   // Keys that stay top-level and must never be shadowed by a marker's c/d bucket
   private static readonly MARKER_SPECIAL_KEYS = new Set(['css', 'props', 'ref', 'key', 'children', 'as', 'theme', 'disableEmotion'])
 
+  /**
+   * Exactly the keys `processProps` pulls out of `rawProps` by name before its
+   * rest destructure, so `_processCompiledProps` — which skips that destructure
+   * to avoid copying every prop per node — can filter the same set while walking
+   * `rawProps` directly.
+   *
+   * Deliberately *not* {@link MARKER_SPECIAL_KEYS}: that set also contains `as`
+   * and `theme`, which the destructure leaves in place. Those must keep flowing
+   * through classification and out to the element, and silently dropping them
+   * was a real regression once already.
+   */
+  private static readonly DESTRUCTURED_SPECIAL_KEYS = new Set(['ref', 'key', 'children', 'css', 'props', 'disableEmotion'])
+
   // Cache for function prop toString() hashes to avoid repeated expensive serialization
   private static _propFuncCache = new WeakMap<(...args: any[]) => any, string>()
 
@@ -376,68 +389,130 @@ export class NodeUtil {
    * @param stableKey The stable key used for child normalization (optional).
    * @returns The processed props object ready for rendering.
    */
-  public static processProps(rawProps: Partial<NodeProps> = {}, stableKey?: string): FinalNodeProps {
-    const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
-    // --- Compiled Marker Fast Path ---
-    // Trusts the compiler's `c`/`d` contract keys, skipping getCSSProps/getDOMProps for them.
-    // Non-contract top-level keys still go through classification below (see passthrough).
-    const compiledSchema = NodeUtil.getCompiledSchema(restRawProps as Record<string, unknown>)
-    if (compiledSchema !== undefined) {
-      // Bucket key names are schema-dependent: schema 1 used bare `c`/`d`/`k`/`dyn`,
-      // which a spread could collide with (`d` is a real SVG `<path>` attribute);
-      // schema 2 namespaces them under the marker prefix. The stable-key fields are
-      // consumed by `_getStableKey`, so they are stripped here, never forwarded.
-      const schemaKeys = COMPILER_SCHEMA_KEYS[compiledSchema]
-      const source = restRawProps as Record<string, unknown>
-      const markerCssProps = source[schemaKeys.css] as Record<string, unknown> | undefined
-      const markerDomProps = source[schemaKeys.dom] as Record<string, unknown> | undefined
+  /**
+   * The compiled-marker branch of {@link processProps}, kept separate so it can
+   * skip work rather than undo it.
+   *
+   * `processProps` runs once per rendered node, so every allocation here is paid
+   * per node per render. The original version allocated unconditionally: the rest
+   * destructure's copy of all props, an `Object.keys` array, a `passthrough`
+   * object, two classified objects from `getCSSProps`/`getDOMProps`, a merged css
+   * object, and then *two* more for `omitUndefined(objectLiteral)`. For a
+   * fully-compiled call site — where every top-level key is a marker key — all of
+   * the passthrough work produced empty objects that were then spread over
+   * nothing.
+   *
+   * This version keeps identical output but allocates only what it needs:
+   * `passthrough` is created lazily and the classification calls are skipped
+   * entirely when there is nothing to classify, and the result object is built
+   * directly instead of being constructed and then copied to drop `undefined`s.
+   * @param rawProps The node's raw props, known to carry a supported marker.
+   * @param schema The marker schema version from {@link getCompiledSchema}.
+   * @param stableKey The node's stable key, forwarded to child processing.
+   * @returns The processed props, identical to what the legacy path produces.
+   */
+  private static _processCompiledProps(rawProps: Partial<NodeProps>, schema: number, stableKey?: string): FinalNodeProps {
+    // Bucket key names are schema-dependent: schema 1 used bare `c`/`d`/`k`/`dyn`,
+    // which a spread could collide with (`d` is a real SVG `<path>` attribute);
+    // schema 2 namespaces them under the marker prefix. The stable-key fields are
+    // consumed by `_getStableKey`, so they are stripped here, never forwarded.
+    const schemaKeys = COMPILER_SCHEMA_KEYS[schema]
+    const source = rawProps as Record<string, unknown>
+    const markerCssProps = source[schemaKeys.css] as Record<string, unknown> | undefined
+    const markerDomProps = source[schemaKeys.dom] as Record<string, unknown> | undefined
 
-      const passthrough: Record<string, unknown> = {}
-      for (const propKey of Object.keys(source)) {
-        if (
-          propKey === COMPILED_MARKER ||
-          propKey === schemaKeys.css ||
-          propKey === schemaKeys.dom ||
-          propKey === schemaKeys.key ||
-          propKey === schemaKeys.dyn
-        ) {
-          continue
-        }
-        passthrough[propKey] = source[propKey]
+    const { ref, key, children, css, props: nativeProps, disableEmotion } = rawProps
+
+    // Built only if a key survives both filters. `as` and `theme` deliberately do
+    // *not* count as skippable specials here: they are not destructured above, so
+    // they must reach `getDOMProps` and be forwarded, exactly as the legacy path
+    // does. Dropping them was a real regression once already.
+    let passthrough: Record<string, unknown> | undefined
+    for (const propKey in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, propKey)) continue
+      if (
+        propKey === COMPILED_MARKER ||
+        propKey === schemaKeys.css ||
+        propKey === schemaKeys.dom ||
+        propKey === schemaKeys.key ||
+        propKey === schemaKeys.dyn ||
+        NodeUtil.DESTRUCTURED_SPECIAL_KEYS.has(propKey)
+      ) {
+        continue
       }
-
-      // `passthrough` may hold props the compiler never saw — e.g. createNode() merges
-      // initialProps with call-site props at runtime, after the compiler already rewrote
-      // the call site — so these must be classified like legacy, not assumed to be DOM props.
-      const passthroughCssProps = getCSSProps(passthrough)
-      const passthroughDomProps = getDOMProps(passthrough)
-      // Precedence mirrors legacy's "call props override initial props" merge: top-level
-      // passthrough < compiler-classified `c`/`d` < explicit `css` prop.
-      const finalCssProps = { ...passthroughCssProps, ...markerCssProps, ...css }
-
-      if (__DEBUG__) {
-        // A `c`/`d` bucket containing a special key (e.g. `ref`, `children`) would silently
-        // override the real top-level value via the spread below.
-        const reservedInBuckets = [...Object.keys(markerCssProps ?? {}), ...Object.keys(markerDomProps ?? {})].filter(k => NodeUtil.MARKER_SPECIAL_KEYS.has(k))
-        if (reservedInBuckets.length > 0) {
-          console.warn(
-            `MeoNode: Compiled marker c/d buckets contain reserved key(s) that override top-level values via spread: ${reservedInBuckets.join(', ')}.`,
-          )
-        }
-      }
-
-      return omitUndefined({
-        ref,
-        key,
-        css: finalCssProps,
-        ...passthroughDomProps,
-        ...markerDomProps,
-        disableEmotion,
-        nativeProps: omitUndefined(nativeProps),
-        children: NodeUtil._processChildren(children, disableEmotion, stableKey),
-      })
+      passthrough ??= {}
+      passthrough[propKey] = source[propKey]
     }
+
+    // `passthrough` may hold props the compiler never saw — e.g. createNode() merges
+    // initialProps with call-site props at runtime, after the compiler already rewrote
+    // the call site — so these must be classified like legacy, not assumed to be DOM props.
+    const passthroughCssProps = passthrough === undefined ? undefined : getCSSProps(passthrough)
+    const passthroughDomProps = passthrough === undefined ? undefined : getDOMProps(passthrough)
+
+    // Precedence mirrors legacy's "call props override initial props" merge: top-level
+    // passthrough < compiler-classified `c`/`d` < explicit `css` prop. Always a fresh
+    // object, never an alias of the compiler's bucket, so downstream consumers keep
+    // the same ownership guarantees the legacy path gave them.
+    const finalCssProps = { ...passthroughCssProps, ...markerCssProps, ...css }
+
+    if (__DEBUG__) {
+      // A `c`/`d` bucket containing a special key (e.g. `ref`, `children`) would silently
+      // override the real top-level value via the assignment below.
+      const reservedInBuckets = [...Object.keys(markerCssProps ?? {}), ...Object.keys(markerDomProps ?? {})].filter(k => NodeUtil.MARKER_SPECIAL_KEYS.has(k))
+      if (reservedInBuckets.length > 0) {
+        console.warn(`MeoNode: Compiled marker c/d buckets contain reserved key(s) that override top-level values via spread: ${reservedInBuckets.join(', ')}.`)
+      }
+    }
+
+    // Assembled directly rather than via `omitUndefined({ ...literal })`, which
+    // allocated the literal and then a filtered copy of it. Assigning only defined
+    // values reproduces `omitUndefined` exactly, including for the DOM buckets:
+    // spreading them into the literal used to let their `undefined` entries through
+    // to `omitUndefined`, which stripped them, so they are skipped here too.
+    const result: Record<string, unknown> = {}
+    if (ref !== undefined) result.ref = ref
+    if (key !== undefined) result.key = key
+    result.css = finalCssProps
+    if (passthroughDomProps !== undefined) NodeUtil._assignDefined(result, passthroughDomProps)
+    if (markerDomProps !== undefined) NodeUtil._assignDefined(result, markerDomProps)
+    if (disableEmotion !== undefined) result.disableEmotion = disableEmotion
+    result.nativeProps = nativeProps === undefined ? {} : omitUndefined(nativeProps)
+    const processedChildren = NodeUtil._processChildren(children, disableEmotion, stableKey)
+    if (processedChildren !== undefined) result.children = processedChildren
+
+    return result as FinalNodeProps
+  }
+
+  /**
+   * Copies `source`'s own defined values onto `target`, matching what
+   * `omitUndefined` would have dropped after a spread.
+   * @param target The object to assign onto.
+   * @param source The object to copy defined own values from.
+   */
+  private static _assignDefined(target: Record<string, unknown>, source: Record<string, unknown>): void {
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key) && source[key] !== undefined) {
+        target[key] = source[key]
+      }
+    }
+  }
+
+  public static processProps(rawProps: Partial<NodeProps> = {}, stableKey?: string): FinalNodeProps {
+    // --- Compiled Marker Fast Path ---
+    // Checked against `rawProps` *before* the rest destructure below, because that
+    // destructure copies every remaining prop into a fresh object — a per-node
+    // allocation the compiled path does not need and, at ~1 per rendered node,
+    // one of the larger costs in an SSR pass. The marker key is never one of the
+    // destructured specials, so testing `rawProps` is equivalent to testing
+    // `restRawProps`.
+    const compiledSchema = NodeUtil.getCompiledSchema(rawProps as Record<string, unknown>)
+    if (compiledSchema !== undefined) {
+      return NodeUtil._processCompiledProps(rawProps, compiledSchema, stableKey)
+    }
+
+    const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
     // --- Fast Path Optimization ---
     if (Object.keys(restRawProps).length === 0 && !css) {
