@@ -8,6 +8,136 @@ interface FlexComponents {
   basis: string | number
 }
 
+/**
+ * Hoisted to module scope rather than rebuilt per call. `resolveObjWithTheme`
+ * runs once per styled node per render (via `StyledRenderer` and the server
+ * class-name path), so allocating a fresh `RegExp` and two closures on entry
+ * was pure per-node garbage.
+ *
+ * Sharing one `/g` regex across calls is safe: `String.prototype.replace` with
+ * a global regex always starts at index 0 and resets `lastIndex` when it
+ * finishes, and nothing between the reset and the `replace` yields, so no other
+ * call can interleave and observe a stale index. The explicit reset in
+ * {@link processThemeString} is belt-and-braces.
+ */
+const THEME_REGEX = /theme\.([a-zA-Z0-9_.-]+)/g
+
+const toThemeVarName = (p: string) => `--meonode-theme-${p.replace(/[^\w.-]/g, '-').replace(/\./g, '-')}`
+
+/**
+ * Keys (selectors, media queries) must always resolve to concrete values — CSS
+ * vars are invalid inside media features and selector text. Only values obey
+ * `themeStringsMode`, which is why `asVar` is a parameter rather than being
+ * read from the options.
+ * @param value The string to rewrite.
+ * @param asVar Emit `var(--meonode-theme-*)` instead of the resolved value.
+ * @param themeSystem The active theme's `system` object, for path lookups.
+ * @returns The rewritten string, or `value` itself when nothing changed.
+ */
+const processThemeString = (value: string, asVar: boolean, themeSystem: Record<string, unknown>): string => {
+  THEME_REGEX.lastIndex = 0
+  let hasChanged = false
+  const resolved = value.replace(THEME_REGEX, (match, path: string) => {
+    if (asVar) {
+      hasChanged = true
+      return `var(${toThemeVarName(path)})`
+    }
+    const themeValue = getValueByPath(themeSystem, path)
+    if (themeValue !== undefined && themeValue !== null) {
+      hasChanged = true
+      if (typeof themeValue === 'object') {
+        if (!Array.isArray(themeValue) && 'default' in themeValue) {
+          return themeValue.default as string
+        }
+        throw new Error('The provided theme path is invalid!')
+      }
+      return themeValue
+    }
+    return match
+  })
+  return hasChanged ? resolved : value
+}
+
+/**
+ * `Object.keys(x).length === 0` allocates the whole key array just to read its
+ * length. This is on the entry guard of a per-node-per-render function, so it
+ * ran twice per styled node for no reason. `for...in` + `hasOwnProperty` counts
+ * exactly the same keys (own enumerable string keys) and exits on the first one.
+ * @param value The object to test.
+ * @returns `true` when the object has no own enumerable string keys.
+ */
+const isEmptyObject = (value: object): boolean => {
+  for (const key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) return false
+  }
+  return true
+}
+
+const SCAN_NO_WORK = 0
+const SCAN_WORK_OR_UNKNOWN = 1
+
+/**
+ * Depth budget for {@link scanForThemeWork}. `css` objects are shallow in
+ * practice (a media-query or pseudo-selector block nests two or three levels),
+ * so this is generous. Its real job is to bound recursion: exceeding it means
+ * "give up, take the full walk", which is how cyclic structures are handled
+ * without allocating a `Set` to track the traversal path.
+ */
+const SCAN_MAX_DEPTH = 16
+
+/**
+ * Read-only, allocation-free test for whether {@link ThemeUtil.resolveObjWithTheme}
+ * would change anything.
+ *
+ * Returns {@link SCAN_NO_WORK} only when it has proven there is nothing to do.
+ * Anything else — a token found, a callable to invoke, or a structure too deep
+ * to finish scanning — returns {@link SCAN_WORK_OR_UNKNOWN} and the caller falls
+ * back to the full copy-on-write walk. Collapsing "found" and "unknown" into one
+ * result is intentional: both lead to the same place, and distinguishing them
+ * would only invite a caller to treat "unknown" as safe.
+ *
+ * Mirrors the walk's contract exactly, or it would reach a different conclusion
+ * than the walk it short-circuits:
+ * - Only plain objects and arrays are descended into, matching the walk's
+ *   `isPlainObject || Array.isArray` guard. Class instances are passed through
+ *   untouched by the walk, so they cannot hide convertible content.
+ * - **Keys** are checked as well as values: the walk rewrites a key containing
+ *   `theme.` (e.g. `'@media (max-width: theme.breakpoint.md)'`).
+ * - Function values count as work when `processFunctions` is set, because the
+ *   walk calls them and substitutes the result. When it is not set, the walk
+ *   leaves them alone, so they are not work.
+ * @param value The value to scan.
+ * @param processFunctions Whether the caller will invoke callable values.
+ * @param depth Current recursion depth, against {@link SCAN_MAX_DEPTH}.
+ * @returns {@link SCAN_NO_WORK} or {@link SCAN_WORK_OR_UNKNOWN}.
+ */
+function scanForThemeWork(value: unknown, processFunctions: boolean, depth: number): number {
+  if (typeof value === 'string') {
+    return value.includes('theme.') ? SCAN_WORK_OR_UNKNOWN : SCAN_NO_WORK
+  }
+  if (typeof value === 'function') {
+    return processFunctions ? SCAN_WORK_OR_UNKNOWN : SCAN_NO_WORK
+  }
+  if (typeof value !== 'object' || value === null) return SCAN_NO_WORK
+  if (depth >= SCAN_MAX_DEPTH) return SCAN_WORK_OR_UNKNOWN
+
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      if (scanForThemeWork(value[i], processFunctions, depth + 1) !== SCAN_NO_WORK) return SCAN_WORK_OR_UNKNOWN
+    }
+    return SCAN_NO_WORK
+  }
+
+  if (!ThemeUtil.isPlainObject(value)) return SCAN_NO_WORK
+
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue
+    if (key.includes('theme.')) return SCAN_WORK_OR_UNKNOWN
+    if (scanForThemeWork(value[key], processFunctions, depth + 1) !== SCAN_NO_WORK) return SCAN_WORK_OR_UNKNOWN
+  }
+  return SCAN_NO_WORK
+}
+
 export class ThemeUtil {
   private constructor() {}
 
@@ -82,45 +212,26 @@ export class ThemeUtil {
   ): O => {
     const { processFunctions = false, themeStringsMode = 'resolve' } = options
 
-    if (!theme || !theme.system || typeof theme.system !== 'object' || Object.keys(theme.system).length === 0 || !obj || Object.keys(obj).length === 0) {
+    if (!theme || !theme.system || typeof theme.system !== 'object' || isEmptyObject(theme.system) || !obj || isEmptyObject(obj)) {
       return obj
     }
 
     const themeSystem = theme.system
 
+    // Allocation-free fast path. The walk below allocates a work-stack entry per
+    // container, a Map, a Set, and an `Object.values()` array per object before it
+    // can discover there was nothing to resolve. This runs once per styled node per
+    // render, and since `@meonode/compiler` rewrites `theme.*` tokens at build time,
+    // compiled call sites arrive with nothing left to resolve — so the overwhelmingly
+    // common case is a walk that finds nothing and returns its input unchanged.
+    //
+    // Returning `obj` here is exactly what the walk would produce: it is
+    // copy-on-write, so an unchanged structure already comes back by reference.
+    if (scanForThemeWork(obj, processFunctions, 0) === SCAN_NO_WORK) return obj
+
     const workStack: { value: unknown; isProcessed: boolean }[] = [{ value: obj, isProcessed: false }]
     const resolvedValues = new Map<unknown, unknown>()
     const path = new Set<unknown>() // Used for cycle detection within the current traversal path.
-
-    const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
-
-    const toThemeVarName = (p: string) => `--meonode-theme-${p.replace(/[^\w.-]/g, '-').replace(/\./g, '-')}`
-
-    // Keys (selectors, media queries) must always resolve to concrete values — CSS vars
-    // are invalid inside media features / selector text. Only values obey `themeStringsMode`.
-    const processThemeString = (value: string, asVar: boolean) => {
-      themeRegex.lastIndex = 0
-      let hasChanged = false
-      const resolved = value.replace(themeRegex, (match, path: string) => {
-        if (asVar) {
-          hasChanged = true
-          return `var(${toThemeVarName(path)})`
-        }
-        const themeValue = getValueByPath(themeSystem, path)
-        if (themeValue !== undefined && themeValue !== null) {
-          hasChanged = true
-          if (typeof themeValue === 'object') {
-            if (!Array.isArray(themeValue) && 'default' in themeValue) {
-              return themeValue.default as string
-            }
-            throw new Error('The provided theme path is invalid!')
-          }
-          return themeValue
-        }
-        return match
-      })
-      return hasChanged ? resolved : value
-    }
 
     while (workStack.length > 0) {
       const currentWork = workStack[workStack.length - 1]
@@ -177,15 +288,16 @@ export class ThemeUtil {
 
               // Resolve theme variables in the key itself (e.g., media queries)
               if (typeof key === 'string' && key.includes('theme.')) {
-                newKey = processThemeString(key, false)
+                newKey = processThemeString(key, false, themeSystem)
               }
 
               const valueAsVar = themeStringsMode === 'vars'
               if (typeof newValue === 'function' && processFunctions) {
                 const funcResult = (newValue as (theme: Theme) => unknown)(theme)
-                newValue = typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult, valueAsVar) : funcResult
+                newValue =
+                  typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult, valueAsVar, themeSystem) : funcResult
               } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
-                newValue = processThemeString(newValue, valueAsVar)
+                newValue = processThemeString(newValue, valueAsVar, themeSystem)
               }
 
               if (newValue !== value || newKey !== key) {
