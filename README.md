@@ -265,8 +265,8 @@ export default { experimental: { swcPlugins: [['@meonode/compiler', {}]] } }
 
 | Benchmark                                          | Result          |
 |:---------------------------------------------------|:----------------|
-| Node construction + prop processing, in isolation  | **~6x faster**  |
-| Client render — mount plus re-renders              | **~1.8x faster**|
+| Node construction + prop processing, in isolation  | **~4x faster**  |
+| Client render — mount plus re-renders              | **~1.6x faster**|
 | End-to-end SSR render, production build            | **~30% faster** |
 
 The first figure covers only prop classification and stable-key hashing — it excludes React, Emotion and the DOM, so it
@@ -275,7 +275,11 @@ is not how much faster a page renders; it is the ceiling on what compiling can r
 The client figure matters separately, because stable keys are computed **only on the client** — SSR skips them
 entirely. So the compiler's call-site key does nothing on the server and everything in the browser, and an
 SSR-only benchmark misses it. All figures come from production React; a development build's own validation work hides
-the difference (it reports the client gain as 1.03x rather than 1.8x).
+the difference (it reports the client gain as 1.03x rather than 1.6x).
+
+Ratios move with machine load, and not evenly — the compiled path is shorter, so fixed overhead and GC cost it
+proportionally more. Across repeated runs on one machine, construction ranged 4.0–6.1x and client render 1.4–1.8x. The
+figures above are the conservative end.
 
 Measure these yourself with `bun run bench` — see [`bench/README.md`](bench/README.md) for why they are standalone
 scripts rather than vitest tests.
