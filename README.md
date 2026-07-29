@@ -263,16 +263,24 @@ npm install --save-dev @meonode/compiler
 export default { experimental: { swcPlugins: [['@meonode/compiler', {}]] } }
 ```
 
-| Benchmark                                          | Result           |
-|:---------------------------------------------------|:-----------------|
-| Node construction + prop processing, in isolation  | **1.79x faster** |
-| End-to-end SSR render, production build            | **~30% faster**  |
+| Benchmark                                          | Result          |
+|:---------------------------------------------------|:----------------|
+| Node construction + prop processing, in isolation  | **~6x faster**  |
+| Client render — mount plus re-renders              | **~1.8x faster**|
+| End-to-end SSR render, production build            | **~30% faster** |
 
-The 1.79x figure covers only prop classification and stable-key hashing — it excludes React, Emotion and theme
-resolution, so it is not how much faster a page renders. The end-to-end figure is, measured on a 156-node tree under
-`renderToPipeableStream`.
+The first figure covers only prop classification and stable-key hashing — it excludes React, Emotion and the DOM, so it
+is not how much faster a page renders; it is the ceiling on what compiling can remove. The other two are page-level.
 
-It is **purely an optimization**. Requires `@meonode/ui` 1.7.0 or later; on older versions the markers are ignored.
+The client figure matters separately, because stable keys are computed **only on the client** — SSR skips them
+entirely. So the compiler's call-site key does nothing on the server and everything in the browser, and an
+SSR-only benchmark misses it. All figures come from production React; a development build's own validation work hides
+the difference (it reports the client gain as 1.03x rather than 1.8x).
+
+Measure these yourself with `bun run bench` — see [`bench/README.md`](bench/README.md) for why they are standalone
+scripts rather than vitest tests.
+
+It is **safe to add or remove at any time**. Requires `@meonode/ui` 1.7.0 or later; on older versions the markers are ignored.
 Every call site it cannot prove safe is left untouched, and your app behaves identically whether the plugin is
 installed, misconfigured, or absent. Note that newer `@meonode/ui` releases make compiling worth *more*, not less —
 1.7.1 and 1.7.2 each removed per-node work that only pre-partitioned, token-free props can skip, taking the end-to-end
