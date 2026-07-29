@@ -4,9 +4,18 @@ import { URL } from 'node:url'
 // reachable (the webpack equivalent was `experimental.externalDir`).
 const workspaceRoot = new URL('../../..', import.meta.url).pathname
 
+// Opt the fixture into compiled call sites, so the RSC suite can be run a
+// second time against real plugin output. Off by default: the uncompiled run
+// stays the baseline, and enabling it unconditionally would mean the suite no
+// longer covers what most apps ship today.
+const compiled = process.env.MEONODE_COMPILED === '1'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  // Package name, not a resolved path — Turbopack resolves the plugin itself
+  // and fails on an absolute path.
+  ...(compiled ? { experimental: { swcPlugins: [['@meonode/compiler', {}]] } } : {}),
   turbopack: {
     root: workspaceRoot,
     // Point at the built dist so Turbopack never has to rewrite `.js` → `.ts`
