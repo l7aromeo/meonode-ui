@@ -282,7 +282,46 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    *    It then collects the rendered children from a temporary map and creates its own React element.
    * @method render
    */
-  public render(parentBlocked: boolean = false): ReactElement<FinalNodeProps> {
+
+  /**
+   * Namespaces this node's key, and therefore every descendant's, under a
+   * caller-supplied scope.
+   *
+   * `elementCache` is module-global and its keys are *positional*: a child's key
+   * is `${parentKey}_${index}:${ownSignature}`. Positional identity is what lets
+   * `deps` memoization survive re-renders — the key must not move when content
+   * changes — but it also means two structurally identical trees mounted into
+   * two different React roots occupy the same positions and collide.
+   *
+   * A scope on the root is enough to separate them, since every descendant key
+   * is built by prefixing the parent's. Applied here rather than in the
+   * constructor because a root's scope belongs to the mount, not to the node,
+   * and `props` is lazy so descendants have not been keyed yet.
+   * @param scope A namespace that is stable for one mount point across re-renders.
+   */
+  private _applyScope(scope: string): void {
+    if (this.stableKey === undefined) return
+    const prefix = `${scope}@`
+    if (this.stableKey.startsWith(prefix)) return
+    if (__DEBUG__ && this._props !== undefined) {
+      console.warn('MeoNode: render scope applied after props were read; descendants keep their unscoped keys.')
+    }
+    this.stableKey = `${prefix}${this.stableKey}`
+  }
+
+  /**
+   * Renders this node and its subtree to a React element, walking the tree
+   * iteratively and reusing cached elements whose dependencies are unchanged.
+   * @param parentBlocked Whether an ancestor has already decided this subtree need not update.
+   * @param scope Optional cache namespace for this mount point. Supply a value
+   * that is stable across re-renders and distinct per React root — the
+   * `render` helper in `@meonode/ui/client` derives one per container
+   * automatically. Only needed when an app mounts more than one root.
+   * @returns The rendered React element.
+   */
+  public render(parentBlocked: boolean = false, scope?: string): ReactElement<FinalNodeProps> {
+    if (scope !== undefined) this._applyScope(scope)
+
     // If this node is eligible for caching, retrieve the cached entry by stableKey;
     // otherwise treat as if no cache exists.
     const cacheEntry = NodeUtil.shouldCacheElement(this) ? BaseNode.elementCache.get(this.stableKey) : undefined

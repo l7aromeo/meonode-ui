@@ -521,7 +521,11 @@ export class NodeUtil {
         key,
         disableEmotion,
         nativeProps: omitUndefined(nativeProps),
-        children: NodeUtil._processChildren(children, disableEmotion),
+        // `stableKey` must be forwarded here exactly as the slow path below does.
+        // Omitting it namespaced every child of a children-only node as
+        // `undefined_0`, `undefined_1`, ... instead of `<parentKey>_0`, so
+        // children of two unrelated wrappers shared one `elementCache` entry.
+        children: NodeUtil._processChildren(children, disableEmotion, stableKey),
       })
     }
 
