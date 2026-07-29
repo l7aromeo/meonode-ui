@@ -16,11 +16,23 @@
 //
 // Only affects the client and only nodes carrying `deps`, since
 // `shouldCacheElement` is `!isServer && stableKey && dependencies`.
+// `it` is imported rather than taken from globals: the global typing does not
+// expose `skipIf`, which the mode-specific cases below need.
+import { it } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { act } from 'react'
 import { render as clientRender } from '@src/client.js'
 import { Div } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
+
+/**
+ * Compiled call sites key off `__meo$k`, a source-position hash, so two
+ * structurally identical nodes written at different places never share a key.
+ * Uncompiled call sites derive the key from props and do. Assertions about
+ * shared* keys are therefore uncompiled-only — the compiled behaviour is
+ * strictly better, and is what makes the collision documented here impossible.
+ */
+const COMPILED = process.env.MEONODE_COMPILED === '1'
 
 const firstChild = (kids: unknown): { stableKey?: string } => (Array.isArray(kids) ? kids[0] : kids) as { stableKey?: string }
 
@@ -60,7 +72,7 @@ describe('element cache key collision', () => {
     expect(container.textContent).toBe('AAABBB')
   })
 
-  it('does not let a child content change invalidate a memoized sibling', () => {
+  it.skipIf(COMPILED)('does not let a child content change invalidate a memoized sibling', () => {
     // Guards the fix that was attempted first and rejected: folding the
     // children into `stableKey` fixes the collision, but the key is also the
     // prefix every descendant inherits, so a sibling's text changing would
@@ -77,7 +89,7 @@ describe('element cache key collision', () => {
     expect(memoizedAfter.stableKey).toBe(memoizedBefore.stableKey)
   })
 
-  it('still shares a key for two structurally identical subtrees', () => {
+  it.skipIf(COMPILED)('still shares a key for two structurally identical subtrees', () => {
     // The cache has to keep working: identical structures must agree, or the
     // fix has just disabled memoization by making every key unique.
     const one = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
@@ -132,7 +144,7 @@ describe('render scopes', () => {
     expect(node.stableKey).toBe(`scopeA@${unscoped}`)
   })
 
-  it('gives different scopes different keys for identical trees', () => {
+  it.skipIf(COMPILED)('gives different scopes different keys for identical trees', () => {
     const a = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
     const b = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
 

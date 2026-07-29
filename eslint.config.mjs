@@ -10,6 +10,18 @@ const eslintConfig = [
   {
     ignores: ['**/dist/**', '**/build/**', 'tests/rsc-fixtures/**/.next/**', 'tests/rsc-fixtures/**/node_modules/**'],
   },
+  {
+    // Standalone benchmark scripts run as plain node processes, not under
+    // vitest, so they legitimately use node globals. The RSC fixture's Next
+    // config is node-side build configuration for the same reason.
+    files: ['bench/**/*.mjs', 'tests/rsc-fixtures/**/next.config.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      // `document`/`window` come from the jsdom instance these scripts create.
+      globals: { process: 'readonly', console: 'readonly', global: 'readonly', performance: 'readonly', globalThis: 'readonly', document: 'readonly', window: 'readonly' },
+    },
+  },
   jsDoc.configs['flat/stylistic-typescript'],
   js.configs.recommended,
   ...tsEslint.configs.recommended,
