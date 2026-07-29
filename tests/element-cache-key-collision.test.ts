@@ -17,6 +17,8 @@
 // Only affects the client and only nodes carrying `deps`, since
 // `shouldCacheElement` is `!isServer && stableKey && dependencies`.
 import { render, cleanup } from '@testing-library/react'
+import { act } from 'react'
+import { render as clientRender } from '@src/client.js'
 import { Div } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
 
@@ -82,5 +84,64 @@ describe('element cache key collision', () => {
     const two = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
 
     expect(firstChild(one.props.children).stableKey).toBe(firstChild(two.props.children).stableKey)
+  })
+})
+
+describe('render scopes', () => {
+  it('separates two roots that would otherwise share positional keys', () => {
+    // Case B: structurally identical trees mounted into two containers. Keys are
+    // positional and bottom out at the root, so without a per-container scope
+    // both compute the same keys and the second renders 'AAA'.
+    const c1 = document.createElement('div')
+    const c2 = document.createElement('div')
+    document.body.append(c1, c2)
+
+    let root1!: ReturnType<typeof clientRender>
+    let root2!: ReturnType<typeof clientRender>
+    act(() => {
+      root1 = clientRender(Div({ children: [Div({ padding: '8px', children: 'AAA' }, [])] }), c1)
+    })
+    act(() => {
+      root2 = clientRender(Div({ children: [Div({ padding: '8px', children: 'BBB' }, [])] }), c2)
+    })
+
+    expect(c1.textContent).toBe('AAA')
+    expect(c2.textContent).toBe('BBB')
+
+    act(() => {
+      root1.unmount()
+      root2.unmount()
+    })
+    c1.remove()
+    c2.remove()
+  })
+
+  it('applies a scope to descendants and is idempotent', () => {
+    // Scoping only the root is sufficient because a child's key is built as
+    // `${parentKey}_${index}:${ownSignature}`, so the namespace propagates.
+    const node = Div({ children: [Div({ padding: '8px', children: 'x' }, [])] })
+    const unscoped = node.stableKey
+
+    node.render(false, 'scopeA')
+    expect(node.stableKey).toBe(`scopeA@${unscoped}`)
+    expect(firstChild(node.props.children).stableKey).toContain('scopeA@')
+
+    // Re-rendering the same root must not stack prefixes, or the key would move
+    // on every render and memoization would never hit.
+    node.render(false, 'scopeA')
+    expect(node.stableKey).toBe(`scopeA@${unscoped}`)
+  })
+
+  it('gives different scopes different keys for identical trees', () => {
+    const a = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
+    const b = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
+
+    expect(a.stableKey).toBe(b.stableKey)
+
+    a.render(false, 'scope1')
+    b.render(false, 'scope2')
+
+    expect(a.stableKey).not.toBe(b.stableKey)
+    expect(firstChild(a.props.children).stableKey).not.toBe(firstChild(b.props.children).stableKey)
   })
 })
