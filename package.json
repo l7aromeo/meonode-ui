@@ -31,9 +31,7 @@
   "scripts": {
     "watch:build": "bunx nodemon --watch src --ext ts,tsx,js,json --exec \"bun run build\"",
     "lint": "eslint --fix && tsc --noEmit",
-    "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.config.ts --exclude tests/performance.test.ts --exclude tests/react-createelement-comparison.test.ts --exclude tests/rsc-integration.test.ts --exclude tests/build-output.test.ts",
-    "test:perf": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.perf.config.ts tests/performance.test.ts tests/react-createelement-comparison.test.ts",
-    "test:all": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.perf.config.ts --exclude tests/rsc-integration.test.ts --exclude tests/build-output.test.ts",
+    "test": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.config.ts --exclude tests/rsc-integration.test.ts --exclude tests/build-output.test.ts",
     "test:rsc": "NODE_OPTIONS='--experimental-vm-modules' vitest run --config vitest.integration.config.ts",
     "prepare:rsc-fixture": "cd tests/rsc-fixtures/next-app && bun install",
     "verify": "bun run prepare:rsc-fixture && bun run lint && bun run tsc --noEmit && bun run test && bun run test:compiled && bun run test:rsc && bun run test:rsc:compiled",
@@ -43,9 +41,9 @@
     "release:dry": "semantic-release --dry-run",
     "prepare": "husky",
     "export:css-props": "bun scripts/export-css-properties.ts",
-    "test:compiled": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.compiled.config.ts --exclude tests/performance.test.ts --exclude tests/react-createelement-comparison.test.ts --exclude tests/rsc-integration.test.ts --exclude tests/build-output.test.ts",
+    "test:compiled": "NODE_OPTIONS='--expose-gc' node --stack-size=10000 --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --config vitest.compiled.config.ts --exclude tests/rsc-integration.test.ts --exclude tests/build-output.test.ts",
     "test:rsc:compiled": "MEONODE_COMPILED=1 NODE_OPTIONS='--experimental-vm-modules' vitest run --config vitest.integration.config.ts",
-    "bench": "NODE_ENV=production node --expose-gc bench/node-construction.mjs && NODE_ENV=production node --expose-gc bench/client-render.mjs"
+    "bench": "NODE_ENV=production node --expose-gc --stack-size=10000 bench/node-construction.mjs && NODE_ENV=production node --expose-gc --stack-size=10000 bench/client-render.mjs && NODE_ENV=production node --expose-gc --stack-size=10000 bench/large-trees.mjs && NODE_ENV=production node --expose-gc --stack-size=10000 bench/react-comparison.mjs && NODE_ENV=production node --expose-gc --stack-size=10000 bench/memory.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -57,6 +55,7 @@
     "@emotion/jest": "^11.14.2",
     "@emotion/styled": "^11.14.1",
     "@eslint/js": "^10.0.1",
+    "@meonode/compiler": "^0.5.0",
     "@mui/material": "^9.1.2",
     "@playwright/test": "^1.61.1",
     "@rollup/plugin-alias": "^6.0.0",

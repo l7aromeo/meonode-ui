@@ -197,7 +197,7 @@ Button('Click Me', {
 MeoNode is built for high-performance applications, featuring an optimized caching system and iterative rendering
 engine.
 
-> **How to read these numbers.** They come from `bun run test:perf`, which runs in **jsdom on Node**, not a browser.
+> **How to read these numbers.** They come from `bun run bench`, which runs in **jsdom on Node**, not a browser.
 > They are microbenchmarks, and absolute timings move with hardware, Node version, and background load — run-to-run
 > spread of 10–20% on the same machine is normal. Treat them as orders of magnitude and as regression guards, not as
 > precise figures. Reproduced below on an **Apple M4 Pro / 24 GB / Node 26 / React 19.2**, taking the middle of three

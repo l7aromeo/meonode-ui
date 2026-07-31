@@ -53,3 +53,69 @@ export function report(name, payload) {
 export function readJson(p) {
   return JSON.parse(readFileSync(p, 'utf8'))
 }
+
+/**
+ * Boots a jsdom window and installs the globals `@meonode/ui` and React need.
+ *
+ * `history` and `location` matter more than they look: `BaseNode`'s constructor
+ * starts `NavigationCacheManagerUtil`, which patches history methods, and
+ * `_navigationStarted` is only set *after* `start()` returns. Without them every
+ * node construction throws and retries, and a benchmark silently measures
+ * exception handling instead of rendering.
+ * @returns The jsdom instance, in case a caller needs to tear it down.
+ */
+export async function bootDom() {
+  const { JSDOM } = await import('jsdom')
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true })
+  globalThis.window = dom.window
+  globalThis.document = dom.window.document
+  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true })
+  globalThis.history = dom.window.history
+  globalThis.location = dom.window.location
+  globalThis.HTMLElement = dom.window.HTMLElement
+  globalThis.Element = dom.window.Element
+  globalThis.Node = dom.window.Node
+  globalThis.requestAnimationFrame = dom.window.requestAnimationFrame
+  globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame
+
+  // Fail loudly rather than quietly benchmarking an error path.
+  process.on('uncaughtException', e => {
+    console.error('BENCH ABORT:', e)
+    process.exit(1)
+  })
+  return dom
+}
+
+/** Heap in MB after a forced collection, so a pending GC cannot be read as growth. */
+export function heapMB() {
+  if (global.gc) {
+    global.gc()
+    global.gc()
+  }
+  return process.memoryUsage().heapUsed / 1024 / 1024
+}
+
+/**
+ * Records a threshold check. Unlike the vitest versions these do not fail a
+ * build — they report, and the script exits non-zero only if something regressed,
+ * so the numbers stay visible either way.
+ */
+export function makeChecks() {
+  const results = []
+  return {
+    check(label, actual, limit, unit = 'MB') {
+      const ok = actual < limit
+      results.push({ label, actual: +actual.toFixed(2), limit, unit, ok })
+      return ok
+    },
+    report(name) {
+      console.log(JSON.stringify({ benchmark: name, checks: results }, null, 2))
+      const failed = results.filter(r => !r.ok)
+      if (failed.length) {
+        console.error(`\n${failed.length} threshold(s) exceeded:`)
+        for (const f of failed) console.error(`  ${f.label}: ${f.actual}${f.unit} >= ${f.limit}${f.unit}`)
+        process.exit(1)
+      }
+    },
+  }
+}
