@@ -75,7 +75,7 @@ for (let i = 0; i < 3; i++) {
 
 const result = compare({ rounds: 8, a: legacy, b: compiled, labelA: 'uncompiledMs', labelB: 'compiledMs' })
 
-report('node-construction', {
+await report('node-construction', {
   nodesPerTree: 85,
   treesPerRound: ITERATIONS,
   uncompiledMs: result.uncompiledMs,
