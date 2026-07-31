@@ -17,6 +17,15 @@ export class NavigationCacheManagerUtil {
   private static _instance: NavigationCacheManagerUtil | null = null
   private static _originalPushState: typeof history.pushState | null = null
   private static _originalReplaceState: typeof history.replaceState | null = null
+
+  /**
+   * The wrappers this class installed. Kept so `_unpatchHistoryMethods` can tell
+   * "still ours" from "someone patched on top of us" and only restore the former
+   * — blindly assigning the originals back would silently uninstall a router's
+   * own history patch if it wrapped ours afterwards.
+   */
+  private static _patchedPushState: typeof history.pushState | null = null
+  private static _patchedReplaceState: typeof history.replaceState | null = null
   private static _isPatched = false
 
   private _isListening = false
@@ -55,6 +64,7 @@ export class NavigationCacheManagerUtil {
     if (!this._isListening || typeof window === 'undefined') return
 
     window.removeEventListener('popstate', this._handleNavigation)
+    NavigationCacheManagerUtil._unpatchHistoryMethods()
 
     // Clear timers
     if (this._cleanupTimeout) {
@@ -123,17 +133,50 @@ export class NavigationCacheManagerUtil {
     NavigationCacheManagerUtil._originalPushState = historyApi.pushState
     NavigationCacheManagerUtil._originalReplaceState = historyApi.replaceState
 
-    historyApi.pushState = (...args) => {
+    const pushState: typeof historyApi.pushState = (...args) => {
       NavigationCacheManagerUtil._originalPushState!.apply(historyApi, args)
       this._handleNavigation()
     }
 
-    historyApi.replaceState = (...args) => {
+    const replaceState: typeof historyApi.replaceState = (...args) => {
       NavigationCacheManagerUtil._originalReplaceState!.apply(historyApi, args)
       this._handleNavigation()
     }
 
+    historyApi.pushState = pushState
+    historyApi.replaceState = replaceState
+
+    NavigationCacheManagerUtil._patchedPushState = pushState
+    NavigationCacheManagerUtil._patchedReplaceState = replaceState
     NavigationCacheManagerUtil._isPatched = true
+  }
+
+  /**
+   * Undo `_patchHistoryMethods`, putting the native implementations back.
+   *
+   * Restores each method only when the live value is still the wrapper this
+   * class installed. If something patched over ours after the fact, its wrapper
+   * stays and we drop our references instead — losing our own eviction hook is
+   * far cheaper than tearing out an unrelated one.
+   */
+  private static _unpatchHistoryMethods() {
+    if (!this._isPatched) return
+
+    const historyApi = typeof window === 'undefined' ? undefined : window.history
+    if (historyApi) {
+      if (this._originalPushState && historyApi.pushState === this._patchedPushState) {
+        historyApi.pushState = this._originalPushState
+      }
+      if (this._originalReplaceState && historyApi.replaceState === this._patchedReplaceState) {
+        historyApi.replaceState = this._originalReplaceState
+      }
+    }
+
+    this._originalPushState = null
+    this._originalReplaceState = null
+    this._patchedPushState = null
+    this._patchedReplaceState = null
+    this._isPatched = false
   }
 
   /**
