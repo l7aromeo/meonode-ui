@@ -6,6 +6,14 @@ on:
       - main
       - beta
       - alpha
+  # Also run on PRs so the checks exist *before* merge. Without this the jobs
+  # only ran after a push to a release branch, which meant branch protection
+  # could not require them — the checks would never appear on a pull request.
+  pull_request:
+    branches:
+      - main
+      - beta
+      - alpha
 
 permissions:
   contents: read
@@ -143,6 +151,9 @@ jobs:
   release:
     name: Release
     needs: [lint, test, test-compiled, test-rsc, test-rsc-compiled, build]
+    # Publishing must stay push-only. Without this guard the `pull_request`
+    # trigger above would run semantic-release from every PR.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: Production
     concurrency:
