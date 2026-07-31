@@ -57,7 +57,34 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
   private _props?: FinalNodeProps
   private readonly _deps?: DependencyList
+
+  /**
+   * The mutable cache key. Starts as {@link signature} and is then stamped in
+   * place with positional (`${parentKey}_${index}:`) and scope (`${scope}@`)
+   * prefixes as the tree renders.
+   *
+   * Because the stamp is destructive, a stamped instance cannot be reused
+   * without double-stamping — which is exactly why `NodeUtil.processRawNode`
+   * clones every child on every render rather than reusing it.
+   */
   public stableKey?: string
+
+  /**
+   * Immutable identity: element, non-children props, and any React `key`,
+   * computed once at construction and never stamped.
+   *
+   * Deliberately excludes children. `deps` promises that content changes do
+   * not invalidate a memoized node, so anything content-derived is disqualified
+   * from identity.
+   *
+   * `key` *is* folded in — `_getStableKey` returns `_withKeyPrefix(key, ...)` —
+   * because a caller-supplied key is identity, not content.
+   *
+   * Nothing reads this yet; it is the input to the render-time cache key that
+   * replaces positional stamping, at which point the per-child clone becomes
+   * unnecessary. Undefined on the server, mirroring `stableKey`.
+   */
+  public readonly signature?: string
 
   // Cached reference to the previous props object for cheap identity checks.
   lastPropsObj?: Record<string, unknown>
@@ -136,8 +163,10 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // Extract commonly handled props; the remaining `propsForSignature` are used to compute a stable hash.
     const { ref, children, ...props } = rawProps
 
-    // Generate or get cached stable key
-    this.stableKey = this._getStableKey(props)
+    // Generate or get cached stable key. Called exactly once — it also primes
+    // `lastPropsObj`/`lastSignature` for the identity-check fast path.
+    this.signature = this._getStableKey(props)
+    this.stableKey = this.signature
 
     if (!NodeUtil.isServer && !BaseNode._navigationStarted) {
       NavigationCacheManagerUtil.getInstance().start()
