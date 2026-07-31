@@ -102,16 +102,34 @@ export class NavigationCacheManagerUtil {
   private _patchHistoryMethods() {
     if (NavigationCacheManagerUtil._isPatched) return
 
-    NavigationCacheManagerUtil._originalPushState = history.pushState
-    NavigationCacheManagerUtil._originalReplaceState = history.replaceState
+    // Read through `window` rather than the bare global. `start()` only proves
+    // `window` exists, and the two are not always the same thing: a jsdom
+    // instance installed as `globalThis.window` gives a `window.history` while
+    // the bare `history` identifier is undefined, which threw a
+    // `ReferenceError` out of the first node construction in the process.
+    //
+    // Environments without History at all (workers, some webviews) degrade
+    // instead of throwing: `popstate` is still listened for, so the cache is
+    // still cleared on back/forward, only `pushState`/`replaceState` go
+    // undetected.
+    const historyApi = window.history
+    if (typeof historyApi?.pushState !== 'function' || typeof historyApi.replaceState !== 'function') {
+      if (__DEBUG__) {
+        console.warn('[MeoNode] History API unavailable; SPA navigation via pushState will not evict cached elements.')
+      }
+      return
+    }
 
-    history.pushState = (...args) => {
-      NavigationCacheManagerUtil._originalPushState!.apply(history, args)
+    NavigationCacheManagerUtil._originalPushState = historyApi.pushState
+    NavigationCacheManagerUtil._originalReplaceState = historyApi.replaceState
+
+    historyApi.pushState = (...args) => {
+      NavigationCacheManagerUtil._originalPushState!.apply(historyApi, args)
       this._handleNavigation()
     }
 
-    history.replaceState = (...args) => {
-      NavigationCacheManagerUtil._originalReplaceState!.apply(history, args)
+    historyApi.replaceState = (...args) => {
+      NavigationCacheManagerUtil._originalReplaceState!.apply(historyApi, args)
       this._handleNavigation()
     }
 
