@@ -1,0 +1,79 @@
+{
+  "recordedAt": "2026-08-01",
+  "commit": "908046f",
+  "uiVersion": "1.7.6",
+  "note": "Pre-identity-refactor baseline. See docs/superpowers/plans/2026-08-01-node-identity-refactor.md. Re-run after Phase 3 and compare.",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.4.0"
+  },
+  "benchmarks": {
+    "node-construction": {
+      "benchmark": "node-construction",
+      "nodeEnv": "production",
+      "nodesPerTree": 85,
+      "treesPerRound": 150,
+      "uncompiledMs": 68.378,
+      "compiledMs": 15.369,
+      "compiledSpeedup": 4.45
+    },
+    "client-render": {
+      "benchmark": "client-render",
+      "nodeEnv": "production",
+      "nodesPerTree": 85,
+      "rerendersPerCycle": 40,
+      "cycles": 20,
+      "uncompiledMs": 31.437,
+      "compiledMs": 20.453,
+      "compiledSpeedup": 1.54
+    },
+    "large-trees": {
+      "benchmark": "large-trees",
+      "nodeEnv": "production",
+      "singlePageLayoutMs": 4.39,
+      "flatNodes": 10000,
+      "flatMs": 107.49,
+      "nestedNodes": 10000,
+      "nestedMs": 1527.17
+    },
+    "memory": {
+      "benchmark": "memory",
+      "checks": [
+        {
+          "label": "heap growth after 50 state updates",
+          "actual": 2.55,
+          "limit": 150,
+          "unit": "MB",
+          "ok": true
+        },
+        {
+          "label": "heap growth after 20 cycles (200 mounts/unmounts)",
+          "actual": 13.94,
+          "limit": 20,
+          "unit": "MB",
+          "ok": true
+        },
+        {
+          "label": "heap growth after 10 navigations",
+          "actual": 1.67,
+          "limit": 20,
+          "unit": "MB",
+          "ok": true
+        }
+      ]
+    }
+  },
+  "cpuProfile": {
+    "method": "--cpu-prof, self time attributed to frames reachable from processRawNode, denominator = render-only work under the cycle() frame",
+    "cloneReachablePctOfRender": {
+      "compiled": 4.2,
+      "uncompiled": 18.09
+    },
+    "dominantUnderClone": [
+      "createPropSignature",
+      "hashString",
+      "_getStableKey"
+    ]
+  }
+}
