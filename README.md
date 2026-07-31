@@ -197,100 +197,55 @@ Button('Click Me', {
 MeoNode is built for high-performance applications, featuring an optimized caching system and iterative rendering
 engine.
 
-> **How to read these numbers.** They come from `bun run test:perf`, which runs in **jsdom on Node**, not a browser.
-> They are microbenchmarks, and absolute timings move with hardware, Node version, and background load — run-to-run
-> spread of 10–20% on the same machine is normal. Treat them as orders of magnitude and as regression guards, not as
-> precise figures. Reproduced below on an **Apple M4 Pro / 24 GB / Node 26 / React 19.2**, taking the middle of three
-> runs. The compiled-vs-uncompiled ratio further down is the steadiest figure here — it varied by 0.01 across those
-> runs — because it is a ratio of two paths measured in the same process.
+> **How to read these numbers.** They come from `bun run bench`, which runs in **jsdom on Node**, not a browser.
+> They are microbenchmarks against **production** React, and absolute timings move with hardware, Node version and
+> background load — 10–20% run-to-run spread on one machine is normal. Treat them as orders of magnitude and as
+> regression guards, not precise figures. Reproduced on an **Apple M4 Pro / 24 GB / Node 26 / React 19.2**, taking
+> medians of alternating rounds.
+>
+> Production React matters: these previously ran under vitest, which forces `NODE_ENV=test` and so measured React's
+> *development* build. Its validation overhead is large enough to swamp the library — it reported the compiler's
+> client-side gain as 1.03x where the real figure is ~1.6x.
 
 ### Layout Rendering
 
 | Metric                  | Value    | Description                                         |
 |:------------------------|:---------|:----------------------------------------------------|
-| **Single-Page Layout**  | ~5–6 ms  | Full SPA layout with header, hero, features, etc.   |
-| **10,000 Flat Nodes**   | ~190 ms  | Rendering 10k nodes at the same level               |
-| **10,000 Nested Nodes** | ~1350 ms | Deeply nested structure (single parent-child chain) |
+| **Single-Page Layout**  | ~2 ms    | Full page layout with header, sections and footer   |
+| **10,000 Flat Nodes**   | ~65 ms   | Rendering 10k nodes at the same level               |
+| **10,000 Nested Nodes** | ~1200 ms | Deeply nested structure (single parent-child chain) |
+
+The nesting case doubles as a stack-safety check: `render()` walks iteratively with an explicit work stack precisely so
+10,000 levels do not overflow the call stack.
 
 ### Memory Management
 
-| Metric                     | Value        | Description                                      |
-|:---------------------------|:-------------|:-------------------------------------------------|
-| **Navigation Memory Leak** | **−5.7 MB**  | Memory is efficiently reclaimed after navigation |
-| **Mount/Unmount Cycles**   | Stable       | No leaks detected over 200 cycles                |
-| **State Updates**          | Efficient    | Handles heavy state changes without bloating     |
+Heap growth measured after a forced collection, against the ceiling each check asserts:
 
-### Form Input Performance
+| Check                              | Growth      | Ceiling  |
+|:-----------------------------------|:------------|:---------|
+| 50 heavy state updates             | **~2.5 MB** | 150 MB   |
+| 200 mounts/unmounts over 20 cycles | ~14 MB      | 20 MB    |
+| 10 navigation cycles               | **~1.6 MB** | 20 MB    |
 
-| Metric                | Value        | Description                                     |
-|:----------------------|:-------------|:------------------------------------------------|
-| **Avg Response Time** | **~4–6 ms**  | 100 controlled inputs with simulated typing     |
-| **Max Response Time** | ~6–11 ms     | Worst case; the noisiest metric in the suite    |
-| **Optimization**      | `deps`       | Granular updates prevent unnecessary re-renders |
+`bench/memory.mjs` exits non-zero if any ceiling is exceeded, so it works as a leak gate you run deliberately.
 
-### React Comparison (10k Flat Nodes)
+### React Comparison (10k flat nodes, one style property)
 
-| Implementation                | Time (ms) | Initial Mem |
-|:------------------------------|:----------|:------------|
-| React.createElement           | ~52 ms    | ~165 MB     |
-| **React.createElement+Props** | ~77 ms    | ~250 MB     |
-| MeoNode                       | ~135 ms   | ~305 MB     |
-| **MeoNode+Props**             | ~135 ms   | ~330 MB     |
+| Implementation                | Time     |
+|:------------------------------|:---------|
+| React.createElement           | ~44 ms   |
+| **React.createElement+Props** | ~85 ms   |
+| MeoNode                       | ~41 ms   |
+| **MeoNode+Props**             | ~93 ms   |
 
 > **Read the bold rows.** Bare `React.createElement` does no prop work at all, while MeoNode always classifies props
-> into CSS vs DOM attributes and computes a stable key. The `+Props` rows are the like-for-like comparison — roughly
-> **1.75x**, not the ~2.6x the top two rows suggest.
+> into CSS vs DOM attributes and computes a stable key. Against the like-for-like pair MeoNode is **~1.09x** slower —
+> and roughly at parity (~1.0x) on the 5,000-node nested case.
 >
-> Note also that adding props costs MeoNode nothing measurable (~135 ms either way, the two are indistinguishable
-> across runs) while it costs `React.createElement` about 25 ms, because MeoNode is already paying for prop handling in
-> the bare case.
->
-> MeoNode trades raw construction speed for caching, memoization and theme resolution that microbenchmarks like this
-> deliberately defeat by giving every node unique props. The optional compiler below moves most of that construction
-> cost to build time.
-
-## Optional Build-Time Compiler
-
-[`@meonode/compiler`](https://github.com/l7aromeo/meonode-compiler) is an SWC plugin that moves prop classification,
-stable-key hashing and `theme.*` token resolution out of every render and into your build.
-
-```bash
-npm install --save-dev @meonode/compiler
-```
-
-```ts
-// next.config.ts — pass the package NAME, not a resolved path
-export default { experimental: { swcPlugins: [['@meonode/compiler', {}]] } }
-```
-
-| Benchmark                                          | Result          |
-|:---------------------------------------------------|:----------------|
-| Node construction + prop processing, in isolation  | **~4x faster**  |
-| Client render — mount plus re-renders              | **~1.6x faster**|
-| End-to-end SSR render, production build            | **~30% faster** |
-
-The first figure covers only prop classification and stable-key hashing — it excludes React, Emotion and the DOM, so it
-is not how much faster a page renders; it is the ceiling on what compiling can remove. The other two are page-level.
-
-The client figure matters separately, because stable keys are computed **only on the client** — SSR skips them
-entirely. So the compiler's call-site key does nothing on the server and everything in the browser, and an
-SSR-only benchmark misses it. All figures come from production React; a development build's own validation work hides
-the difference (it reports the client gain as 1.03x rather than 1.6x).
-
-Ratios move with machine load, and not evenly — the compiled path is shorter, so fixed overhead and GC cost it
-proportionally more. Across repeated runs on one machine, construction ranged 4.0–6.1x and client render 1.4–1.8x. The
-figures above are the conservative end.
-
-Measure these yourself with `bun run bench` — see [`bench/README.md`](bench/README.md) for why they are standalone
-scripts rather than vitest tests.
-
-It is **safe to add or remove at any time**. Requires `@meonode/ui` 1.7.0 or later; on older versions the markers are ignored.
-Every call site it cannot prove safe is left untouched, and your app behaves identically whether the plugin is
-installed, misconfigured, or absent. Note that newer `@meonode/ui` releases make compiling worth *more*, not less —
-1.7.1 and 1.7.2 each removed per-node work that only pre-partitioned, token-free props can skip, taking the end-to-end
-gain from 15% to roughly 30%.
-
-📚 **[Full compiler documentation](https://ui.meonode.com/docs/getting-started/compiler)**
+> The style object is kept to a single property on purpose. React writes inline style properties onto the DOM node one
+> at a time while MeoNode emits a single Emotion class, so a larger style object inflates React's side — with three
+> properties this table would show MeoNode as 3x *faster*, which would be a measurement artifact rather than a result.
 
 ## Quick Start
 
