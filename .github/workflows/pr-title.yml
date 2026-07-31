@@ -1,0 +1,56 @@
+# Validates that a pull request title follows Conventional Commits.
+#
+# This exists because of how squash merging interacts with semantic-release.
+# The repository is set to `squash_merge_commit_title: PR_TITLE`, per
+# semantic-release's guidance for squash workflows, so the PR title *becomes*
+# the commit on `main` — and therefore decides whether a release happens and
+# what kind. A title like "update stuff" silently produces no release; a stray
+# `feat:` produces one nobody intended.
+#
+# Without PR_TITLE the behaviour was worse than wrong, it was inconsistent:
+# GitHub's default (`COMMIT_OR_PR_TITLE`) uses the *commit* title for
+# single-commit PRs and the *PR* title otherwise, so the release-triggering
+# text depended on how many commits a branch happened to have.
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches:
+      - main
+      - beta
+      - alpha
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Lint PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check title against Conventional Commits
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Mirrors the angular preset semantic-release uses via
+          # @semantic-release/commit-analyzer. `feat` and `fix` release;
+          # `perf` releases a patch; the rest do not.
+          types: |
+            feat
+            fix
+            perf
+            docs
+            style
+            refactor
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          # A single-commit PR can still be squashed under its commit title in
+          # some flows, so do not assume the title is the only thing checked.
+          validateSingleCommit: false
