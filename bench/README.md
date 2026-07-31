@@ -17,10 +17,9 @@ benchmarks under vitest:
 `NODE_ENV=production` cannot simply be forced under vitest either — vite's
 dev-server machinery fails with `Error: No such built-in module: node:`.
 
-So the authoritative numbers come from here. `tests/performance.test.ts` stays
-as a **regression guard** (it asserts the compiled path never falls below the
-legacy one) but its absolute figures are measured against dev React and should
-not be quoted.
+So the benchmarks live here and nowhere else. `tests/performance.test.ts` and
+`tests/react-createelement-comparison.test.ts` have been removed; everything
+they measured is covered by the scripts below.
 
 ## Running
 
@@ -33,6 +32,13 @@ Or via the package scripts, which set `NODE_ENV` and `--expose-gc` for you:
 
 ```bash
 bun run bench
+```
+
+Results print as tables. Pass `--json` for raw output when piping into other
+tooling:
+
+```bash
+NODE_ENV=production node --expose-gc bench/node-construction.mjs --json
 ```
 
 Profiling works normally, because these are ordinary node processes:
@@ -50,6 +56,20 @@ NODE_ENV=production node --cpu-prof --cpu-prof-dir=prof bench/client-render.mjs
   Closest to what a user experiences. Matters specifically because
   `_getStableKey` returns early when `isServer`, so `__meo$k` is only ever
   consumed on the client — SSR benchmarks never exercised it at all.
+- **`large-trees.mjs`** — a realistic page layout, 10k flat nodes, and 10k
+  levels of nesting. The nesting case doubles as a stack-safety check: `render()`
+  walks iteratively with an explicit work stack precisely so this does not blow
+  the call stack.
+- **`react-comparison.mjs`** — against raw `React.createElement`. Read the
+  `withProps` rows: bare `createElement` does no prop work at all, so comparing
+  it to MeoNode overstates the gap. Note also that React writes inline style
+  properties while MeoNode emits an Emotion class — not a like-for-like unit of
+  DOM work, which is why the style object here is kept to a single property.
+- **`memory.mjs`** — heap growth across state churn, mount/unmount cycles and
+  navigation. Threshold checks rather than timings; exits non-zero on a
+  regression, so it is still usable as a gate you run deliberately. Requires
+  `--expose-gc`, and refuses to run without it, since otherwise the readings
+  include uncollected garbage.
 
 For end-to-end SSR, see `e2e/bench-theme-tokens.mjs` in the `@meonode/compiler`
 repo, which drives the real wasm plugin at the docs site's token density.

@@ -109,7 +109,7 @@ if (result.ratio < 0.5 || result.ratio > 5) {
   throw new Error(`implausible ratio ${result.ratio} — harness is measuring something other than render work`)
 }
 
-report('client-render', {
+await report('client-render', {
   nodesPerTree: 85,
   rerendersPerCycle: RERENDERS,
   cycles: CYCLES,
