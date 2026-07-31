@@ -13,3 +13,7 @@ tests/rsc-fixtures/.rsc-server-port
 
 # Ai
 .claude
+
+# SWC compiles the wasm plugin on first use and caches the result here,
+# keyed by platform and swc_core ABI. Machine-specific and multi-megabyte.
+.swc/
