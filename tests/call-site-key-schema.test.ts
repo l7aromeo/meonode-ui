@@ -46,6 +46,31 @@ describe('schema 3 — call-site key only', () => {
     expect(b.signature!.startsWith('site-a:')).toBe(true)
   })
 
+  it('discriminates between evaluations of one call site with different spreads', () => {
+    // The hazard the compiler docs call out for spread-bearing call sites: the
+    // call-site key is a function of source *position*, so it is identical on
+    // every evaluation no matter what the spread carried that time. A key that
+    // *replaced* the signature would therefore let two evaluations with
+    // different props share a cache entry.
+    //
+    // Schema 3 prefixes instead, so the prop-derived signature still varies.
+    // This is why the compiler can stamp a key on a trailing-spread call site
+    // that it refuses to partition.
+    const atSite = (rest: Record<string, unknown>) => Div({ [COMPILED_MARKER]: 3, [SK.key]: 'msite-A', padding: '1px', ...rest } as never)
+
+    const red = atSite({ color: 'red' })
+    const blue = atSite({ color: 'blue' })
+
+    expect(red.signature).not.toBe(blue.signature)
+    // Both still carry the call-site prefix, so they remain distinguishable
+    // from an identically-shaped node written elsewhere.
+    expect(red.signature!.startsWith('msite-A:')).toBe(true)
+    expect(blue.signature!.startsWith('msite-A:')).toBe(true)
+
+    // And equal contents must still agree, or memoization never hits.
+    expect(atSite({ color: 'red' }).signature).toBe(red.signature)
+  })
+
   it('disambiguates identical props written at different call sites', () => {
     // The reason schema 3 exists.
     const a = marked('site-a', { padding: '8px', children: 'hi' })
