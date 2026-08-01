@@ -1,3 +1,4 @@
+import type React from 'react'
 import { BaseNode, Node } from '@src/core.node.js'
 import type { Children, ComponentNode, DependencyList, HasCSSCompatibleStyleProp, ThemedCSSProperties } from '@src/types/node.type.js'
 import type { ReactElement, ReactNode } from 'react'
@@ -19,11 +20,19 @@ import { NodeUtil } from '@src/util/node.util.js'
  */
 export type ComponentNodeProps<TProps> = TProps extends undefined
   ? Partial<{
+      key: React.Key
       children: Children
     }>
   : TProps &
       (HasCSSCompatibleStyleProp<TProps> extends true ? ThemedCSSProperties : object) &
       Partial<{
+        /**
+         * React's key. Never required — children are spread variadically into
+         * `createElement`, so React does not ask for one — but always allowed,
+         * for callers who want to pin identity across a reorder. It is consumed
+         * by the node and never forwarded to the component's own props.
+         */
+        key: React.Key
         props: Partial<TProps> & { children?: never }
         children: Children
       }>
