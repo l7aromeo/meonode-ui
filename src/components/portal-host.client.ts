@@ -3,6 +3,7 @@ import { useContext, createElement, Fragment, type ReactNode } from 'react'
 import { PortalContext } from '@src/components/portal-provider.client.js'
 import { useDataChannel } from '@src/hook/useDataChannel.js'
 import type { PortalStackEntry } from '@src/types/node.type.js'
+import { NodeUtil } from '@src/util/node.util.js'
 
 /**
  * Renders a single portal layer, subscribing to its data channel.
@@ -14,8 +15,27 @@ function PortalLayerRenderer({ layer, index, onClose }: { layer: PortalStackEntr
   const { Component } = layer
   const depth = index + 1
 
-  return createElement(Component, { data, depth, close: onClose } as any)
+  // The layer component may return a node rather than a React element — that is
+  // the shape every sample on the portal-system docs page uses, and what the
+  // `Component` HOC already normalises. Handing a `BaseNode` straight to React
+  // throws "Objects are not valid as a React child", so it is rendered here.
+  //
+  // Wrapped in a stable component rather than rendered inline: calling the
+  // layer here would make it part of this component rather than its own, and
+  // any hooks it uses would belong to `PortalLayerRenderer` instead.
+  return createElement(NodeAwareLayer, { Component, data, depth, close: onClose } as never)
 }
+
+/**
+ * Invokes a portal layer component and normalises a node return into a React
+ * element. Kept as its own component so the layer keeps its own hook scope.
+ * @internal
+ */
+function NodeAwareLayer({ Component, ...layerProps }: { Component: (p: never) => unknown; data: unknown; depth: number; close: () => void }): ReactNode {
+  const result = Component(layerProps as never)
+  return NodeUtil.isNodeInstance(result) ? result.render() : (result as ReactNode)
+}
+NodeAwareLayer.displayName = 'NodeAwareLayer'
 PortalLayerRenderer.displayName = 'PortalLayerRenderer'
 
 /**

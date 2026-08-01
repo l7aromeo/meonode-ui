@@ -1,7 +1,7 @@
 'use client'
 import { useContext, useRef, useCallback, useEffect } from 'react'
 import { PortalContext } from '@src/components/portal-provider.client.js'
-import type { PortalHandle, PortalLayerProps } from '@src/types/node.type.js'
+import type { PortalHandle, PortalLayerComponent } from '@src/types/node.type.js'
 
 /**
  * React hook for imperative portal control.
@@ -46,7 +46,7 @@ export function usePortal<T = any>(data?: T) {
   }, [data])
 
   const open = useCallback(
-    <P = T>(Component: React.ComponentType<PortalLayerProps<P>>, initialData?: P): PortalHandle<P> => {
+    <P = T>(Component: PortalLayerComponent<P>, initialData?: P): PortalHandle<P> => {
       const handle = ctx.showPortal(Component, (initialData ?? data) as P)
       handleRef.current = handle
       return handle

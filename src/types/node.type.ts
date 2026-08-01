@@ -579,9 +579,20 @@ export interface DataChannel<T = any> {
  */
 export interface PortalStackEntry<T = any> {
   id: number
-  Component: React.ComponentType<PortalLayerProps<T>>
+  Component: PortalLayerComponent<T>
   channel: DataChannel<T>
 }
+
+/**
+ * A component that can be opened as a portal layer.
+ *
+ * Accepts either a plain React component or one returning a MeoNode node — the
+ * shape the portal docs use throughout, and which `PortalHost` renders. Kept
+ * wider than `React.ComponentType` so a node return does not need `.render()`
+ * at every call site.
+ * @template T The data type passed via the data channel.
+ */
+export type PortalLayerComponent<T = any> = React.ComponentType<PortalLayerProps<T>> | ((props: PortalLayerProps<T>) => NodeInstance)
 
 /**
  * Props received by components rendered inside a portal layer.
@@ -616,7 +627,7 @@ export interface PortalContextValue {
   /** Current portal stack entries */
   stack: PortalStackEntry[]
   /** Opens a new portal layer with a component and optional initial data */
-  showPortal: <T>(Component: React.ComponentType<PortalLayerProps<T>>, initialData?: T) => PortalHandle<T>
+  showPortal: <T>(Component: PortalLayerComponent<T>, initialData?: T) => PortalHandle<T>
   /** Closes the topmost portal layer */
   hidePortal: () => void
   /** Closes a specific portal layer by its id */
