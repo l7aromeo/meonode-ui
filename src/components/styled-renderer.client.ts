@@ -4,6 +4,7 @@ import { jsx } from '@emotion/react'
 import type { CssProp, NodeElement } from '@src/types/node.type.js'
 import { ThemeContext } from '@src/components/theme-provider.client.js'
 import { ThemeUtil } from '@src/util/theme.util.js'
+import { reportThemeIssues } from '@src/util/theme-diagnostics.util.js'
 import { isValidElementType } from '@src/helper/react-is.helper.js'
 
 export interface StyledRendererProps<E extends NodeElement> {
@@ -47,6 +48,12 @@ export default function StyledRenderer<E extends NodeElement, TProps extends Rec
   // to execute any callable theme refs and to expand string tokens that
   // may have been provided directly via `css` rather than via `elementProps`.
   const finalCss: CssProp = theme ? ThemeUtil.resolveObjWithTheme(css, theme, { processFunctions: true, themeStringsMode: 'vars' }) : css
+
+  // Development only: the last point where the live theme and the fully
+  // resolved declarations are both in hand, so a token that names a variable
+  // the theme never defines can still be reported before it silently
+  // disappears into Emotion. No-ops in production.
+  reportThemeIssues(finalCss, theme)
 
   const cssForEmotion = ThemeUtil.resolveDefaultStyle(finalCss)
 

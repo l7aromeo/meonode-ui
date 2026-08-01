@@ -77,7 +77,7 @@ describe('Theme Key Resolution', () => {
 
     // String theme tokens in values emit as CSS variables; keys (media queries) still
     // resolve to concrete values since CSS variables are invalid inside media conditions.
-    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
+    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))')
 
     // Check media query resolutions
     expect(element).toHaveStyleRule('color', 'blue', {

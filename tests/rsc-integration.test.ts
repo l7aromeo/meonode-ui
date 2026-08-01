@@ -414,7 +414,7 @@ describe('F. Boundary retention and payload stability', () => {
     expect(html).toContain('theme-boundary-content')
     // Validate theme token propagation for container and text styles only.
     expect(html.toLowerCase()).toMatch(/background-color:\s*#f8f8f8|background-color:\s*var\(--meonode-theme-base\)/)
-    expect(html.toLowerCase()).toMatch(/padding:\s*16(?:px)?|padding:\s*var\(--meonode-theme-spacing-md\)/)
+    expect(html.toLowerCase()).toMatch(/padding:\s*16(?:px)?|padding:\s*var\(--meonode-theme-spacing-md(?:--len, var\(--meonode-theme-spacing-md\))?\)/)
     expect(html.toLowerCase()).toMatch(/color:\s*#333333|color:\s*var\(--meonode-theme-base-content\)/)
   })
 
