@@ -26,7 +26,7 @@ import type {
 import { isFragment, isValidElementType } from '@src/helper/react-is.helper.js'
 import { getComponentType, getElementTypeName, hasNoStyleTag, getGlobalState } from '@src/helper/common.helper.js'
 import StyledRenderer from '@src/components/styled-renderer.client.js'
-import { __DEBUG__, COMPILER_SCHEMA_KEYS } from '@src/constant/common.const.js'
+import { __DEBUG__, COMPILER_SCHEMA_KEYS, PREFIX_KEY_SCHEMAS } from '@src/constant/common.const.js'
 import { MountTrackerUtil } from '@src/util/mount-tracker.util.js'
 import MeoNodeUnmounter from '@src/components/meonode-unmounter.client.js'
 import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.util.js'
@@ -225,13 +225,23 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
     // Trusts the compiler's call-site hash `k` instead of recomputing a full signature.
     // Skips createPropSignature entirely, so no element.toString() hashing on this path.
     const compiledSchema = NodeUtil.getCompiledSchema(props)
+    // Schema 3 marks a call site the plugin could not partition: it carries the
+    // source-position key and nothing else. The key is applied as a *prefix* to
+    // the signature computed below rather than replacing it — see the note on
+    // SUPPORTED_COMPILER_SCHEMAS. Captured here, applied at both exits.
+    let callSitePrefix: string | undefined
+
     if (compiledSchema !== undefined) {
       const schemaKeys = COMPILER_SCHEMA_KEYS[compiledSchema] ?? COMPILER_SCHEMA_KEYS[1]
       const k = props[schemaKeys.key]
       if (typeof k === 'string' && k.length > 0) {
-        const dyn = props[schemaKeys.dyn] as string[] | undefined
-        this.lastSignature = dyn && dyn.length > 0 ? `${k}:${NodeUtil.hashDynamicValues(props, dyn, compiledSchema)}` : k
-        return this._withKeyPrefix(key, this.lastSignature)
+        if (PREFIX_KEY_SCHEMAS.has(compiledSchema)) {
+          callSitePrefix = k
+        } else {
+          const dyn = props[schemaKeys.dyn] as string[] | undefined
+          this.lastSignature = dyn && dyn.length > 0 ? `${k}:${NodeUtil.hashDynamicValues(props, dyn, compiledSchema)}` : k
+          return this._withKeyPrefix(key, this.lastSignature)
+        }
       }
       // Marker present but `k` missing/invalid — fall through to the legacy path below as a safe fallback.
     }
@@ -249,6 +259,10 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       }
     } else {
       this.lastSignature = NodeUtil.createPropSignature(this.element, props)
+    }
+
+    if (callSitePrefix !== undefined) {
+      this.lastSignature = `${callSitePrefix}:${this.lastSignature}`
     }
 
     return this._withKeyPrefix(key, this.lastSignature)
