@@ -192,6 +192,29 @@ Button('Click Me', {
 })
 ```
 
+### Debug Mode
+
+Every diagnostic in the library sits behind one runtime flag, off by default.
+
+```typescript
+import { setDebugMode } from '@meonode/ui'
+
+setDebugMode(true)
+```
+
+Set it at module scope in your entry file, not in a `useEffect` — a few messages fire when the first node is
+constructed and an effect runs too late to catch them.
+
+It surfaces cache eviction and memoization activity, SPA navigation cleanup, oversized prop objects, malformed
+`@meonode/compiler` markers, and errors thrown inside function-as-a-child that are otherwise swallowed. Useful when a
+memoized node renders stale content, memory grows across navigations, or a `deps` array is not behaving.
+
+The output ships in production builds — the flag is a runtime binding, not a build-time constant, so bundlers cannot
+strip it. That is deliberate: the bugs worth this much logging are usually the ones that only reproduce in production.
+It costs about 0.5 KB gzipped.
+
+📖 [Full list of what it logs](https://ui.meonode.com/docs/getting-started/faq)
+
 ## Performance Benchmarks
 
 MeoNode is built for high-performance applications, featuring an optimized caching system and iterative rendering
