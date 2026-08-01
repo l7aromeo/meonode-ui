@@ -113,7 +113,7 @@ describe('NodeUtil.processProps — compiled marker fast path', () => {
     expect(result.css).toEqual({ padding: '2px' })
   })
 
-  it('unknown schema ignored: falls through to legacy processing untouched', () => {
+  it('unknown schema falls through to legacy processing, minus the marker', () => {
     const onClick = () => {}
     const rawProps = {
       [COMPILED_MARKER]: 99,
@@ -123,13 +123,16 @@ describe('NodeUtil.processProps — compiled marker fast path', () => {
 
     const result = NodeUtil.processProps(rawProps)
 
-    // Unsupported schema must NOT take the fast path. The legacy pipeline treats
-    // `__meo$`, `c`, and `d` as ordinary (non-CSS) top-level props here, since none
-    // of those key names are valid CSS properties themselves — so they land in the
-    // assembled result exactly as any other unrecognized object prop would.
+    // Unsupported schema must NOT take the fast path: `c`/`d` are schema 1 names
+    // this runtime cannot trust, so they stay ordinary top-level props and are
+    // classified the legacy way.
+    //
+    // The marker itself is dropped, though. It is meaningless to the legacy
+    // pipeline and would otherwise be handed to React, which rejects
+    // `__meo$`-prefixed names as invalid attributes and warns once per node.
+    // Forward compatibility with a newer compiler should be silent.
     expect(result).toEqual({
       css: {},
-      [COMPILED_MARKER]: 99,
       c: { padding: '1px' },
       d: { onClick },
       nativeProps: {},
@@ -267,12 +270,19 @@ describe('NodeUtil.processProps — schema 2 (namespaced marker keys)', () => {
     }
   })
 
-  it('unsupported schema 3 falls through to the legacy path', () => {
-    const props = { [COMPILED_MARKER]: 3, __meo$c: { padding: '1px' } } as unknown as Partial<NodeProps>
+  it('unsupported schema 3 falls through to the legacy path and drops marker fields', () => {
+    // Forward compatibility: an older runtime meeting newer compiled output
+    // must degrade to the legacy path rather than misread the contract — and
+    // must not forward the marker fields it did not understand. React rejects
+    // `__meo$`-prefixed names as invalid attributes so nothing reached the DOM
+    // even before, but it warned once per field per node.
+    const props = { [COMPILED_MARKER]: 3, __meo$c: { padding: '1px' }, id: 'x' } as unknown as Partial<NodeProps>
     const result = NodeUtil.processProps(props) as Record<string, unknown>
 
-    // Legacy path treats the marker fields as ordinary unknown props.
-    expect(result[COMPILED_MARKER]).toBe(3)
+    expect(COMPILED_MARKER in result).toBe(false)
+    expect('__meo$c' in result).toBe(false)
+    // The props the runtime *can* understand still come through.
+    expect(result.id).toBe('x')
     expect(result.css).toEqual({})
   })
 })

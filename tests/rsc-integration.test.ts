@@ -662,6 +662,32 @@ describe('M. Third-party component interop', () => {
     expect(computedStyles['interop-mui-no-wrapper-card']['background-color']).toBe('rgb(255, 107, 107)')
   })
 
+  it('nests MUI ThemeProvider with MeoNode ThemeProvider without leaking either theme', async () => {
+    // MUI's `createTheme()` returns an object with read-only/derived
+    // properties. Both providers must coexist: the MUI component takes its
+    // colour from the MUI palette, the MeoNode node resolves `theme.*` against
+    // the MeoNode theme, and neither theme object reaches the DOM.
+    const { status, html, computedStyles } = await getPage('/interop/mui-theme-provider-nested', {
+      computedStyles: [
+        { testId: 'interop-nested-mui-button', properties: ['background-color'] },
+        { testId: 'interop-nested-meo-box', properties: ['background-color', 'padding-top'] },
+      ],
+    })
+
+    expect(status).toBe(200)
+    expect(html).toContain('interop:mui-theme-provider-nested')
+
+    // Neither theme object stringified into an attribute.
+    expect(html).not.toContain('[object Object]')
+    expect(html).not.toMatch(/\stheme=/)
+
+    // MUI palette reached the MUI component.
+    expect(computedStyles['interop-nested-mui-button']['background-color']).toBe('rgb(28, 126, 214)')
+    // MeoNode tokens resolved on the MeoNode node.
+    expect(computedStyles['interop-nested-meo-box']['background-color']).toBe('rgb(255, 107, 107)')
+    expect(computedStyles['interop-nested-meo-box']['padding-top']).toBe('16px')
+  })
+
   it('reproduces hydration mismatch with MeoThemeProvider-like MUI tree', async () => {
     const { status, html } = await getPage('/interop/mui-meothemeprovider-minimal')
     expect(status).toBe(200)
