@@ -538,6 +538,16 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           // subtrees and skips non-plain objects (refs, class instances), so
           // this is safe to apply unconditionally.
           const elementProps = replaceThemeTokensWithCssVars({ ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps })
+
+          // `theme` is deliberately not destructured off props: components such
+          // as ThemeProvider take it as a real prop and dropping it was a
+          // regression once already. An intrinsic element has no such use for
+          // it, and forwarding it stringifies the object into the DOM as
+          // `theme="[object Object]"`, so it is removed only for string tags.
+          if (typeof renderTarget === 'string' && 'theme' in elementProps) {
+            delete (elementProps as Record<string, unknown>).theme
+          }
+
           let element: ReactElement<FinalNodeProps>
 
           // Handle fragments specially: create fragment element with key and children.

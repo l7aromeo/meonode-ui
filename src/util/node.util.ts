@@ -512,6 +512,24 @@ export class NodeUtil {
 
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
 
+    // A marker whose schema this runtime does not know — output from a newer
+    // compiler against an older `@meonode/ui`. Props are classified the legacy
+    // way, which is correct, but the marker fields themselves are not special
+    // to that path and would be forwarded to the element. React rejects
+    // `__meo$`-prefixed names as invalid attributes, so nothing reaches the
+    // DOM, but it warns once per field per node. Dropping them here keeps
+    // forward compatibility silent instead of noisy.
+    //
+    // Guarded on the marker being present at all, so uncompiled call sites —
+    // the overwhelming majority — pay a single `in` check and no iteration.
+    if (COMPILED_MARKER in restRawProps) {
+      for (const propKey in restRawProps) {
+        if (propKey.startsWith(COMPILED_MARKER)) {
+          delete (restRawProps as Record<string, unknown>)[propKey]
+        }
+      }
+    }
+
     // --- Fast Path Optimization ---
     if (Object.keys(restRawProps).length === 0 && !css) {
       return omitUndefined({
