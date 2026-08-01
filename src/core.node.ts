@@ -649,11 +649,19 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       let rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
       // Wrap the root element with MeoNodeUnmounter if we need to track it.
-      // The key is passed explicitly rather than read from the node: it is a
-      // property of this render's position, not of the instance.
+      // The cache key is passed explicitly rather than read from the node: it is
+      // a property of this render's position, not of the instance.
+      //
+      // The React `key` has to be carried onto the wrapper as well. A factory
+      // child stays a BaseNode and is rendered inside its parent's loop
+      // unwrapped, so its key reaches React directly — but anything that has
+      // already called `render()`, such as a `Component`, hands its parent this
+      // wrapper instead. Leaving the wrapper unkeyed made React see an unkeyed
+      // element and lose identity across a reorder.
       const needsTracking = !NodeUtil.isServer && rootCacheKey !== undefined
       if (needsTracking) {
-        rootElement = createElement(MeoNodeUnmounter, { node: this, cacheKey: rootCacheKey }, rootElement)
+        const rootKey = (this.props as { key?: string | number }).key
+        rootElement = createElement(MeoNodeUnmounter, { key: rootKey, node: this, cacheKey: rootCacheKey }, rootElement)
       }
 
       // Cache the WRAPPED element (not the unwrapped one) so we reuse the same MeoNodeUnmounter instance
