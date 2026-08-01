@@ -586,9 +586,16 @@ export class NodeUtil {
     if (!children) return undefined
     if (typeof children === 'function') return children
 
-    // Fast path for non-array (single child)
+    // Fast path for non-array (single child).
+    //
+    // Keyed `_0` exactly like a single-element array. These used to differ —
+    // the bare form forwarded the parent key untouched — which made
+    // `children: x` and `children: [x]` different cache identities for the same
+    // tree, so code that switched between the two silently lost memoization.
+    // Cache keys are in-memory only, so unifying them costs nothing beyond a
+    // first-render miss.
     if (!Array.isArray(children)) {
-      return NodeUtil.processRawNode(children, disableEmotion, parentStableKey)
+      return NodeUtil.processRawNode(children, disableEmotion, `${parentStableKey}_0`)
     }
 
     // Fast path for single element array

@@ -80,9 +80,9 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * `key` *is* folded in — `_getStableKey` returns `_withKeyPrefix(key, ...)` —
    * because a caller-supplied key is identity, not content.
    *
-   * Nothing reads this yet; it is the input to the render-time cache key that
-   * replaces positional stamping, at which point the per-child clone becomes
-   * unnecessary. Undefined on the server, mirroring `stableKey`.
+   * This is the input to the render-time cache key computed by
+   * {@link BaseNode._cacheKeyFor}, which replaces positional stamping.
+   * Undefined on the server, mirroring `stableKey`.
    */
   public readonly signature?: string
 
@@ -328,6 +328,40 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * and `props` is lazy so descendants have not been keyed yet.
    * @param scope A namespace that is stable for one mount point across re-renders.
    */
+
+  /**
+   * The cache key for a child, derived from its parent's key and its position.
+   *
+   * Reproduces byte-for-byte what `NodeUtil._processChildren` stamps onto
+   * `stableKey`: `${parentKey}_${index}:${signature}`. A bare single child is
+   * position 0, identical to a single-element array — `_processChildren`
+   * collapses `[x]` to `x` anyway, so the two shapes are indistinguishable by
+   * the time they reach here and must key the same.
+   *
+   * Returns undefined when either side is undefined, which is the server case —
+   * `_getStableKey` bails when `isServer`, so nothing downstream caches.
+   * @param parentKey The parent's own cache key.
+   * @param index Position among the parent's children.
+   * @param signature The child's immutable signature.
+   * @returns The child's cache key, or undefined when caching does not apply.
+   */
+  private static _cacheKeyFor(parentKey: string | undefined, index: number, signature: string | undefined): string | undefined {
+    if (parentKey === undefined || signature === undefined) return undefined
+    return `${parentKey}_${index}:${signature}`
+  }
+
+  /**
+   * The cache key for a render root: its signature, namespaced by the mount's
+   * scope when one is supplied. Mirrors what `_applyScope` stamps today.
+   * @param signature The root node's immutable signature.
+   * @param scope Optional per-mount namespace.
+   * @returns The root cache key, or undefined on the server.
+   */
+  private static _rootCacheKey(signature: string | undefined, scope?: string): string | undefined {
+    if (signature === undefined) return undefined
+    return scope === undefined ? signature : `${scope}@${signature}`
+  }
+
   private _applyScope(scope: string): void {
     if (this.stableKey === undefined) return
     const prefix = `${scope}@`
@@ -351,9 +385,14 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   public render(parentBlocked: boolean = false, scope?: string): ReactElement<FinalNodeProps> {
     if (scope !== undefined) this._applyScope(scope)
 
-    // If this node is eligible for caching, retrieve the cached entry by stableKey;
+    // The root's key for this render. Derived rather than read off the instance:
+    // every descendant key is built from it, so position becomes a value flowing
+    // down the traversal instead of a prefix stamped onto each node.
+    const rootCacheKey = BaseNode._rootCacheKey(this.signature, scope)
+
+    // If this node is eligible for caching, retrieve the cached entry;
     // otherwise treat as if no cache exists.
-    const cacheEntry = NodeUtil.shouldCacheElement(this) ? BaseNode.elementCache.get(this.stableKey) : undefined
+    const cacheEntry = rootCacheKey !== undefined && this._deps ? BaseNode.elementCache.get(rootCacheKey) : undefined
 
     // Decide whether this node (and its subtree) should update given dependency arrays.
     const shouldUpdate = NodeUtil.shouldNodeUpdate(cacheEntry?.prevDeps, this._deps, parentBlocked)
@@ -396,6 +435,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
         isProcessed: false,
         blocked: childrenBlocked,
         theme: undefined,
+        cacheKey: rootCacheKey,
       }
 
       // Iterative depth-first traversal with explicit begin/complete phases to avoid recursion.
@@ -405,7 +445,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           stackPointer--
           continue
         }
-        const { node, isProcessed, blocked, theme: inheritedTheme } = currentWork
+        const { node, isProcessed, blocked, theme: inheritedTheme, cacheKey } = currentWork
 
         const getActiveTheme = (props: FinalNodeProps, current?: Theme): Theme | undefined => {
           const candidate = (props as { theme?: unknown }).theme
@@ -437,8 +477,11 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               const child = childArray[i]
               if (!NodeUtil.isNodeInstance(child)) continue
 
+              // Position-derived key, replacing the prefix stamped onto the instance.
+              const childCacheKey = BaseNode._cacheKeyFor(cacheKey, i, child.signature)
+
               // Check if the child is eligible for caching and retrieve its cache entry.
-              const childCacheEntry = !NodeUtil.shouldCacheElement(child) ? undefined : BaseNode.elementCache.get(child.stableKey)
+              const childCacheEntry = childCacheKey !== undefined && child.dependencies ? BaseNode.elementCache.get(childCacheKey) : undefined
 
               // Determine whether the child should update given its deps and the parent's blocked state.
               const childShouldUpdate = NodeUtil.shouldNodeUpdate(childCacheEntry?.prevDeps, child._deps, blocked)
@@ -456,6 +499,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
                 isProcessed: false,
                 blocked: childBlocked,
                 theme: activeTheme,
+                cacheKey: childCacheKey,
               }
             }
           }
@@ -568,8 +612,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
           // Cache child nodes (unwrapped) during the render loop
           // The root node will be cached separately after wrapping
-          if (node !== this && NodeUtil.shouldCacheElement(node)) {
-            const existingEntry = BaseNode.elementCache.get(node.stableKey)
+          if (node !== this && cacheKey !== undefined && node.dependencies) {
+            const existingEntry = BaseNode.elementCache.get(cacheKey)
 
             if (existingEntry) {
               // Update existing cache entry (avoid re-registration)
@@ -588,10 +632,10 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               }
 
               // Set new cache entry
-              BaseNode.elementCache.set(node.stableKey, newCacheEntry)
+              BaseNode.elementCache.set(cacheKey, newCacheEntry)
 
               // Register for automatic cleanup when node is GC'd
-              BaseNode.cacheCleanupRegistry.register(node, { cacheKey: node.stableKey, instanceId: node.instanceId }, node)
+              BaseNode.cacheCleanupRegistry.register(node, { cacheKey, instanceId: node.instanceId }, node)
             }
           }
 
@@ -603,15 +647,17 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
       // Get the final rendered element for the root node of this render cycle.
       let rootElement = renderedElements.get(this) as ReactElement<FinalNodeProps>
 
-      // Wrap the root element with MeoNodeUnmounter if we need to track it
-      const needsTracking = !NodeUtil.isServer && this.stableKey
+      // Wrap the root element with MeoNodeUnmounter if we need to track it.
+      // The key is passed explicitly rather than read from the node: it is a
+      // property of this render's position, not of the instance.
+      const needsTracking = !NodeUtil.isServer && rootCacheKey !== undefined
       if (needsTracking) {
-        rootElement = createElement(MeoNodeUnmounter, { node: this }, rootElement)
+        rootElement = createElement(MeoNodeUnmounter, { node: this, cacheKey: rootCacheKey }, rootElement)
       }
 
       // Cache the WRAPPED element (not the unwrapped one) so we reuse the same MeoNodeUnmounter instance
-      if (NodeUtil.shouldCacheElement(this)) {
-        const existingEntry = BaseNode.elementCache.get(this.stableKey)
+      if (rootCacheKey !== undefined && this._deps) {
+        const existingEntry = BaseNode.elementCache.get(rootCacheKey)
         if (existingEntry) {
           // Update existing cache entry with the wrapped element
           existingEntry.prevDeps = this._deps
@@ -628,8 +674,8 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
             instanceId: this.instanceId,
           }
 
-          BaseNode.elementCache.set(this.stableKey, newCacheEntry)
-          BaseNode.cacheCleanupRegistry.register(this, { cacheKey: this.stableKey, instanceId: this.instanceId }, this)
+          BaseNode.elementCache.set(rootCacheKey, newCacheEntry)
+          BaseNode.cacheCleanupRegistry.register(this, { cacheKey: rootCacheKey, instanceId: this.instanceId }, this)
         }
       }
 

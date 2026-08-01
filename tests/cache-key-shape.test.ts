@@ -56,23 +56,31 @@ describe('cache key shape (characterization)', () => {
     expect(leaf.stableKey!.match(/_0:/g)?.length).toBe(2)
   })
 
-  it('keys a bare child differently from a single-element array', () => {
-    // Asymmetry in `_processChildren`: the non-array branch forwards
-    // `parentStableKey` untouched (node.util.ts:591) while the single-element
-    // array branch appends `_0` (node.util.ts:596). So `children: x` and
-    // `children: [x]` are different cache identities for the same tree.
+  it('keys a bare child and a single-element array identically', () => {
+    // These used to differ: `_processChildren`'s non-array branch forwarded
+    // `parentStableKey` untouched while the single-element array branch
+    // appended `_0`, so `children: x` and `children: [x]` were different cache
+    // identities for the same tree — code switching between the two forms
+    // silently lost memoization.
     //
-    // Harmless today — both are stable and neither collides — but Phase 2 has
-    // to decide deliberately whether the path scheme keeps this asymmetry.
-    const arrayed = Div({ children: [Div({ padding: '8px', children: 'only' })] })
-    const bare = Div({ children: Div({ padding: '8px', children: 'only' }) })
+    // Unified when position moved to a render-time parameter. `_processChildren`
+    // collapses `[x]` to `x` before the render loop sees it, so the two shapes
+    // are indistinguishable at keying time and must agree. Cache keys are
+    // in-memory only, so the change costs one first-render miss.
+    // The two wrappers must be separate literals — one holds an array, the
+    // other a bare node — so under the compiler their own signatures differ by
+    // source position. Absolute keys are therefore not comparable; the claim is
+    // that each child sits at position 0 *under its own parent*. The child comes
+    // from a single call site so its signature is identical on both sides.
+    const makeChild = () => Div({ padding: '8px', children: 'only' })
+    const arrayed = Div({ children: [makeChild()] })
+    const bare = Div({ children: makeChild() })
 
-    const arrayedKey = kids(arrayed)[0].stableKey!
-    const bareKey = kids(bare)[0].stableKey!
+    const childSignature = kids(arrayed)[0].signature
 
-    expect(arrayedKey).not.toBe(bareKey)
-    expect(arrayedKey.startsWith(`${arrayed.stableKey}_0:`)).toBe(true)
-    expect(bareKey.startsWith(`${bare.stableKey}:`)).toBe(true)
+    expect(kids(bare)[0].signature).toBe(childSignature)
+    expect(kids(arrayed)[0].stableKey).toBe(`${arrayed.stableKey}_0:${childSignature}`)
+    expect(kids(bare)[0].stableKey).toBe(`${bare.stableKey}_0:${childSignature}`)
   })
 
   it('prefixes a scoped root and propagates the scope to descendants', () => {
