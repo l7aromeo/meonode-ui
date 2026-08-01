@@ -270,13 +270,26 @@ describe('NodeUtil.processProps — schema 2 (namespaced marker keys)', () => {
     }
   })
 
-  it('unsupported schema 3 falls through to the legacy path and drops marker fields', () => {
+  it('schema 3 strips marker fields and classifies the rest at runtime', () => {
+    // Schema 3 is the call-site-key-only shape emitted for call sites the
+    // plugin cannot partition. It carries no `c`/`d`, so every real prop falls
+    // through to runtime classification — but the marker fields themselves must
+    // still be stripped rather than forwarded to the DOM.
+    const props = { [COMPILED_MARKER]: 3, __meo$k: 'msite', padding: '1px', id: 'a' } as unknown as Partial<NodeProps>
+    const result = NodeUtil.processProps(props) as Record<string, unknown>
+
+    for (const markerKey of [COMPILED_MARKER, '__meo$k']) {
+      expect(markerKey in result).toBe(false)
+    }
+    expect(result.css).toEqual({ padding: '1px' })
+    expect(result.id).toBe('a')
+  })
+
+  it('unsupported schema 4 falls through to the legacy path and drops marker fields', () => {
     // Forward compatibility: an older runtime meeting newer compiled output
     // must degrade to the legacy path rather than misread the contract — and
-    // must not forward the marker fields it did not understand. React rejects
-    // `__meo$`-prefixed names as invalid attributes so nothing reached the DOM
-    // even before, but it warned once per field per node.
-    const props = { [COMPILED_MARKER]: 3, __meo$c: { padding: '1px' }, id: 'x' } as unknown as Partial<NodeProps>
+    // must not forward the marker fields it did not understand.
+    const props = { [COMPILED_MARKER]: 4, __meo$c: { padding: '1px' }, id: 'x' } as unknown as Partial<NodeProps>
     const result = NodeUtil.processProps(props) as Record<string, unknown>
 
     expect(COMPILED_MARKER in result).toBe(false)
