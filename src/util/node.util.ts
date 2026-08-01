@@ -691,16 +691,17 @@ export class NodeUtil {
     // needed.
     //
     // Propagating `disableEmotion` is the one case still requiring a new
-    // instance: it is applied by writing to `rawProps`, and the child may be
-    // shared. Note the copy is shallow by construction — `BaseNode` keeps the
-    // `rawProps` reference it is given — so this assignment is visible on the
-    // original too. Pre-existing behaviour, preserved deliberately rather than
-    // changed inside the riskiest phase of this refactor.
+    // instance, and it must not write through to the source node. `BaseNode`
+    // stores the `rawProps` object it is given by reference, so constructing
+    // from `node.rawProps` and then assigning onto `newNode.rawProps` mutated
+    // the original: a node rendered under two parents, only one of which
+    // disabled Emotion, lost its styling in both places permanently.
+    //
+    // The flag is folded in at construction instead, off a fresh object, so the
+    // source node keeps the props it was built with.
     if (NodeUtil.isNodeInstance(node)) {
       if (disableEmotion && !node.rawProps.disableEmotion) {
-        const newNode = new BaseNode(node.element, node.rawProps, node.dependencies)
-        newNode.rawProps.disableEmotion = true
-        return newNode
+        return new BaseNode(node.element, { ...node.rawProps, disableEmotion: true }, node.dependencies)
       }
       return node
     }
