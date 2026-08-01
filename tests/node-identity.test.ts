@@ -11,6 +11,7 @@
 //
 // See docs/superpowers/plans/2026-08-01-node-identity-refactor.md.
 import { it } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
 import { Div } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
 import type { NodeInstance } from '@src/types/node.type.js'
@@ -20,35 +21,58 @@ const kids = (n: NodeInstance): NodeInstance[] => {
   return (Array.isArray(c) ? c : [c]) as NodeInstance[]
 }
 
-afterEach(() => BaseNode.elementCache.clear())
+afterEach(() => {
+  cleanup()
+  BaseNode.elementCache.clear()
+})
 
 describe('immutable signature', () => {
-  it('starts equal to stableKey', () => {
+  it('equals the deprecated stableKey alias', () => {
     const node = Div({ padding: '8px', children: 'x' })
 
     expect(node.signature).toBeDefined()
     expect(node.stableKey).toBe(node.signature)
   })
 
-  it('survives positional stamping while stableKey moves', () => {
-    // `processRawNode` clones each child and overwrites `stableKey` with
-    // `${parentKey}_${index}:${ownKey}`. The signature must not follow — it is
-    // what lets one node be rendered at more than one position.
+  it('is not disturbed by a child being rendered at a position', () => {
+    // Position used to be stamped onto the child's `stableKey`, which is why
+    // every child had to be cloned per render. Nothing mutates the instance
+    // now — the key is derived during traversal instead.
     const root = Div({ children: [Div({ padding: '8px', children: 'a' })] })
     const child = kids(root)[0]
+    const before = child.signature
 
-    expect(child.stableKey).not.toBe(child.signature)
-    expect(child.stableKey!.endsWith(`:${child.signature}`)).toBe(true)
+    render(root.render())
+
+    expect(child.signature).toBe(before)
+    expect(child.stableKey).toBe(before)
   })
 
-  it('survives scope application while stableKey moves', () => {
+  it('is not disturbed by a render scope', () => {
     const node = Div({ children: [Div({ padding: '8px', children: 'x' })] })
     const signature = node.signature
 
-    node.render(false, 'scopeA')
+    render(node.render(false, 'scopeA'))
 
     expect(node.signature).toBe(signature)
-    expect(node.stableKey).toBe(`scopeA@${signature}`)
+    expect(node.stableKey).toBe(signature)
+  })
+
+  it('lets one node instance render at two different positions', () => {
+    // The property the refactor buys, and the prerequisite for hoisting a
+    // constant node out of a render function: a shared instance must not carry
+    // position, or the second use would inherit the first one's key.
+    const shared = Div({ padding: '8px', children: 'shared' }, [])
+    const root = Div({ children: [Div({ children: [shared] }, []), Div({ children: [shared] }, [])] }, [])
+
+    render(root.render())
+
+    expect(shared.signature).toBeDefined()
+    expect(shared.stableKey).toBe(shared.signature)
+
+    // Two distinct cache entries for the same instance, one per position.
+    const entries = [...BaseNode.elementCache.keys()].filter(k => k.endsWith(`:${shared.signature}`))
+    expect(new Set(entries).size).toBe(2)
   })
 
   it('is identical for two nodes built from one call site with different content', () => {

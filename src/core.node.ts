@@ -59,13 +59,15 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   private readonly _deps?: DependencyList
 
   /**
-   * The mutable cache key. Starts as {@link signature} and is then stamped in
-   * place with positional (`${parentKey}_${index}:`) and scope (`${scope}@`)
-   * prefixes as the tree renders.
+   * @deprecated Use {@link signature}. Retained because `NodeInstance` is a
+   * public type alias for this class, so removing it would be a breaking change
+   * to the shipped `.d.ts`.
    *
-   * Because the stamp is destructive, a stamped instance cannot be reused
-   * without double-stamping — which is exactly why `NodeUtil.processRawNode`
-   * clones every child on every render rather than reusing it.
+   * Was the mutable cache key, stamped in place with positional and scope
+   * prefixes during render. That stamp was destructive — a stamped instance
+   * could not be reused without double-stamping — which is why every child had
+   * to be cloned on every render. Position is now derived during traversal, so
+   * this is simply the node's signature and never changes.
    */
   public stableKey?: string
 
@@ -181,7 +183,7 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    */
   public get props(): FinalNodeProps {
     if (!this._props) {
-      this._props = NodeUtil.processProps(this.rawProps, this.stableKey)
+      this._props = NodeUtil.processProps(this.rawProps)
     }
     return this._props
   }
@@ -313,30 +315,12 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    */
 
   /**
-   * Namespaces this node's key, and therefore every descendant's, under a
-   * caller-supplied scope.
-   *
-   * `elementCache` is module-global and its keys are *positional*: a child's key
-   * is `${parentKey}_${index}:${ownSignature}`. Positional identity is what lets
-   * `deps` memoization survive re-renders — the key must not move when content
-   * changes — but it also means two structurally identical trees mounted into
-   * two different React roots occupy the same positions and collide.
-   *
-   * A scope on the root is enough to separate them, since every descendant key
-   * is built by prefixing the parent's. Applied here rather than in the
-   * constructor because a root's scope belongs to the mount, not to the node,
-   * and `props` is lazy so descendants have not been keyed yet.
-   * @param scope A namespace that is stable for one mount point across re-renders.
-   */
-
-  /**
    * The cache key for a child, derived from its parent's key and its position.
    *
-   * Reproduces byte-for-byte what `NodeUtil._processChildren` stamps onto
-   * `stableKey`: `${parentKey}_${index}:${signature}`. A bare single child is
+   * Shape: `${parentKey}_${index}:${signature}`. A bare single child is
    * position 0, identical to a single-element array — `_processChildren`
-   * collapses `[x]` to `x` anyway, so the two shapes are indistinguishable by
-   * the time they reach here and must key the same.
+   * collapses `[x]` to `x`, so the two shapes are indistinguishable by the time
+   * they reach here and must key the same.
    *
    * Returns undefined when either side is undefined, which is the server case —
    * `_getStableKey` bails when `isServer`, so nothing downstream caches.
@@ -352,7 +336,12 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
 
   /**
    * The cache key for a render root: its signature, namespaced by the mount's
-   * scope when one is supplied. Mirrors what `_applyScope` stamps today.
+   * scope when one is supplied.
+   *
+   * A scope separates two structurally identical trees mounted into different
+   * React roots, which would otherwise occupy the same positions and collide.
+   * Namespacing the root is enough, since every descendant key is built from
+   * it.
    * @param signature The root node's immutable signature.
    * @param scope Optional per-mount namespace.
    * @returns The root cache key, or undefined on the server.
@@ -360,16 +349,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
   private static _rootCacheKey(signature: string | undefined, scope?: string): string | undefined {
     if (signature === undefined) return undefined
     return scope === undefined ? signature : `${scope}@${signature}`
-  }
-
-  private _applyScope(scope: string): void {
-    if (this.stableKey === undefined) return
-    const prefix = `${scope}@`
-    if (this.stableKey.startsWith(prefix)) return
-    if (__DEBUG__ && this._props !== undefined) {
-      console.warn('MeoNode: render scope applied after props were read; descendants keep their unscoped keys.')
-    }
-    this.stableKey = `${prefix}${this.stableKey}`
   }
 
   /**
@@ -383,8 +362,6 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
    * @returns The rendered React element.
    */
   public render(parentBlocked: boolean = false, scope?: string): ReactElement<FinalNodeProps> {
-    if (scope !== undefined) this._applyScope(scope)
-
     // The root's key for this render. Derived rather than read off the instance:
     // every descendant key is built from it, so position becomes a value flowing
     // down the traversal instead of a prefix stamped onto each node.

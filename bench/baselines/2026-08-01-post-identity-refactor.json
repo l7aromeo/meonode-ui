@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-08-01",
+  "note": "Post Phase 3 (clone removed). Medians of 3 runs, baseline and candidate measured back-to-back in one session; absolute ms are not comparable across sessions.",
+  "method": "median of 3, NODE_ENV=production",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.4.0"
+  },
+  "comparison": {
+    "constructionUncompiledMs": {
+      "before": 46.772,
+      "after": 30.326
+    },
+    "constructionCompiledMs": {
+      "before": 11.19,
+      "after": 10.349
+    },
+    "clientRenderUncompiledMs": {
+      "before": 26.912,
+      "after": 22.046
+    },
+    "clientRenderCompiledMs": {
+      "before": 17.004,
+      "after": 15.995
+    }
+  },
+  "compilerSpeedup": {
+    "construction": {
+      "before": 4.16,
+      "after": 3.01
+    },
+    "clientRender": {
+      "before": 1.58,
+      "after": 1.38
+    }
+  },
+  "docsImpact": "Published compiler figures (~4x construction, ~1.6x client) must be restated as ~3x and ~1.4x: the uncompiled path got faster, narrowing the gap. The compiler did not regress."
+}
