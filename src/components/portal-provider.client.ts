@@ -1,6 +1,6 @@
 'use client'
 import { createContext, type ReactNode, useState, useRef, useCallback, useMemo } from 'react'
-import type { Children, PortalContextValue, PortalStackEntry, PortalHandle, PortalLayerProps } from '@src/types/node.type.js'
+import type { Children, PortalContextValue, PortalStackEntry, PortalHandle, PortalLayerComponent } from '@src/types/node.type.js'
 import { Node } from '@src/core.node.js'
 import { createDataChannel } from '@src/helper/data-channel.helper.js'
 
@@ -17,11 +17,11 @@ export default function PortalProvider({ children }: { children?: Children }): R
   const [stack, setStack] = useState<PortalStackEntry[]>([])
   const idCounter = useRef(0)
 
-  const showPortal = useCallback(<T>(Component: React.ComponentType<PortalLayerProps<T>>, initialData?: T): PortalHandle<T> => {
+  const showPortal = useCallback(<T>(Component: PortalLayerComponent<T>, initialData?: T): PortalHandle<T> => {
     const id = ++idCounter.current
     const channel = createDataChannel<T>(initialData)
 
-    setStack(prev => [...prev, { id, Component: Component as React.ComponentType<PortalLayerProps>, channel }])
+    setStack(prev => [...prev, { id, Component: Component as PortalLayerComponent, channel }])
 
     return {
       id,
