@@ -57,7 +57,7 @@
     "@emotion/jest": "^11.14.2",
     "@emotion/styled": "^11.14.1",
     "@eslint/js": "^10.0.1",
-    "@meonode/compiler": "0.6.1-beta.2",
+    "@meonode/compiler": "^0.6.1",
     "@mui/material": "^9.1.2",
     "@playwright/test": "^1.61.1",
     "@rollup/plugin-alias": "^6.0.0",

@@ -15,7 +15,7 @@
         "@emotion/jest": "^11.14.2",
         "@emotion/styled": "^11.14.1",
         "@eslint/js": "^10.0.1",
-        "@meonode/compiler": "0.6.1-beta.2",
+        "@meonode/compiler": "^0.6.1",
         "@mui/material": "^9.1.2",
         "@playwright/test": "^1.61.1",
         "@rollup/plugin-alias": "^6.0.0",
@@ -320,7 +320,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@meonode/compiler": ["@meonode/compiler@0.6.1-beta.2", "https://registry.npmmirror.com/@meonode/compiler/-/compiler-0.6.1-beta.2.tgz", {}, "sha512-O1JIdNVceZnDEcNa45uE6AI7nweyj0uNzftkO1qZNae73X3olwuA3/1rXrLoRxh374YgvFS7O5m9Sq3mYNBEYw=="],
+    "@meonode/compiler": ["@meonode/compiler@0.6.1", "https://registry.npmmirror.com/@meonode/compiler/-/compiler-0.6.1.tgz", {}, "sha512-Dcwey3VSV3xymiwU09F1rCtN3W+vtG6hLYyi/QvWuYL18h2DPuDnENASCZBlNq5iyrgyx9T7bHxJQkh+RZ3bjQ=="],
 
     "@mui/core-downloads-tracker": ["@mui/core-downloads-tracker@9.1.2", "https://registry.npmmirror.com/@mui/core-downloads-tracker/-/core-downloads-tracker-9.1.2.tgz", {}, "sha512-ZMufoA/YFOEVp48lskcAOTlQYwpdBk4Z++4yUgPDEfuLHIpxBx9g+urGmIBKOtr+7M0ZlYfCxSvrJpEE/S32sg=="],
 
