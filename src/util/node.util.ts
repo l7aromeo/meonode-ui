@@ -26,7 +26,7 @@ const FUNCTION_SIGNATURE_CACHE_KEY = Symbol.for('@meonode/ui/NodeUtil/functionSi
 export class NodeUtil {
   private constructor() {}
 
-  private static readBooleanFlag(value: unknown, key: '__meonodeAcceptsServerCss' | '__meonodeProvidesServerTheme'): boolean {
+  private static readBooleanFlag(value: unknown, key: '__meonodeAcceptsServerCss' | '__meonodeProvidesServerTheme' | '__meonodeShieldsOwnProps'): boolean {
     if (typeof value !== 'function') return false
     try {
       return (value as unknown as Record<string, unknown>)[key] === true
@@ -92,6 +92,18 @@ export class NodeUtil {
    */
   public static providesServerTheme(value: unknown): boolean {
     return NodeUtil.readBooleanFlag(value, '__meonodeProvidesServerTheme')
+  }
+
+  /**
+   * Detects targets that re-run `Node()` over the props they are handed — the
+   * `Component` HOC being the one that matters.
+   *
+   * Their props must be passed as `props` rather than spread top-level, or the
+   * second pass classifies them and a component prop whose name matches a CSS
+   * property (the case `props` exists to protect) is turned into a style.
+   */
+  public static shieldsOwnProps(value: unknown): boolean {
+    return NodeUtil.readBooleanFlag(value, '__meonodeShieldsOwnProps')
   }
 
   /**
@@ -747,14 +759,29 @@ export class NodeUtil {
         )
       }
 
-      // For components, pass props as is
+      // For components, the props on an already-created element are final: they
+      // were classified when that element was built. Re-wrapping used to spread
+      // them back in at the top level, which sent them through classification a
+      // second time — so a component prop whose name matches a CSS property was
+      // converted into a style on the way through.
+      //
+      // That silently defeated `props`, the documented escape hatch for exactly
+      // that case ("wrap it in `props` so the styling engine ignores it"). A
+      // shielded `height` survived only while its element stayed the render
+      // root; the moment it became someone's child it came back as a className.
+      //
+      // Handing them over as `props` marks them as already-final, so
+      // classification skips them. `children` is lifted back out, since it is a
+      // node-level concern rather than a component prop.
+      const { children: elementChildren, ...finalComponentProps } = node.props as Record<string, unknown>
       return new BaseNode(
         node.type as ElementType,
         {
-          ...(node.props as any),
+          props: finalComponentProps,
+          ...(elementChildren !== undefined ? { children: elementChildren as Children } : {}),
           ...(node.key !== null && node.key !== undefined ? { key: node.key } : {}),
           disableEmotion,
-        },
+        } as never,
         undefined,
       )
     }

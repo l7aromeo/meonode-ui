@@ -23,7 +23,14 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
       key: React.Key
       children: Children
     }>
-  : TProps &
+  : (
+      | TProps
+      // `props` is the escape hatch for component props whose names collide
+      // with CSS properties ("wrap it in `props` so the styling engine ignores
+      // it"). A caller using it must not also be forced to repeat those props
+      // at the top level, so this branch accepts them there instead.
+      | (Partial<TProps> & { props: Partial<TProps> & { children?: never } })
+    ) &
       (HasCSSCompatibleStyleProp<TProps> extends true ? ThemedCSSProperties : object) &
       Partial<{
         /**
@@ -107,6 +114,11 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
   }
   Func.displayName = `Component(${displayName})`
   ;(Func as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true
+  // Signals that this target runs its own `Node()` over whatever props it is
+  // given, so the caller must not flatten `props` into the top level — doing so
+  // would send shielded values back through classification. See
+  // `NodeUtil.shieldsOwnProps`.
+  ;(Func as { __meonodeShieldsOwnProps?: boolean }).__meonodeShieldsOwnProps = true
 
   return Func
 }

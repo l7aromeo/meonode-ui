@@ -551,7 +551,17 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
           // live DOM. The util preserves reference identity for untouched
           // subtrees and skips non-plain objects (refs, class instances), so
           // this is safe to apply unconditionally.
-          const elementProps = replaceThemeTokensWithCssVars({ ...(otherProps as ComponentProps<ElementType>), key, ...nativeProps })
+          // `nativeProps` (the `props` escape hatch) is normally spread onto the
+          // element, which is right for a DOM target — they are attributes. A
+          // target that re-runs `Node()` over what it receives, such as the
+          // `Component` HOC, would instead classify them a second time and turn
+          // a CSS-named component prop into a style. Those keep the wrapper.
+          const shieldNativeProps = nativeProps !== undefined && NodeUtil.shieldsOwnProps(renderTarget)
+          const elementProps = replaceThemeTokensWithCssVars({
+            ...(otherProps as ComponentProps<ElementType>),
+            key,
+            ...(shieldNativeProps ? { props: nativeProps } : nativeProps),
+          })
 
           // `theme` is deliberately not destructured off props: components such
           // as ThemeProvider take it as a real prop and dropping it was a
