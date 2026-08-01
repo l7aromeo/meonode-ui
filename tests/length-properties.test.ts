@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import unitlessModule from '@emotion/unitless'
 import { isLengthProperty } from '@src/util/css-unit.util.js'
+import CSSPropertySet, { LengthPropertySet } from '@src/constant/css-properties.const.js'
 
 /**
  * The length-property set decides which declarations reference the paired
@@ -41,11 +42,12 @@ const deriveLengthAccepting = (): Set<string> => {
 }
 
 describe('length property set', () => {
-  it('matches the intersection of csstype and @emotion/unitless exactly', () => {
+  it('matches the derived intersection exactly', () => {
     const lengthAccepting = deriveLengthAccepting()
     expect(lengthAccepting.size).toBeGreaterThan(200)
 
-    const expected = [...lengthAccepting].filter(p => unitless[p] !== 1).sort()
+    // csstype(TLength) INTERSECT CSSPropertySet MINUS unitless
+    const expected = [...lengthAccepting].filter(p => CSSPropertySet.has(p) && unitless[p] !== 1).sort()
     const actual = expected.filter(isLengthProperty)
 
     // Nothing derived may be missing from the shipped set.
@@ -84,5 +86,15 @@ describe('length property set', () => {
 
   it('ignores custom properties, which take a raw number legitimately', () => {
     expect(isLengthProperty('--gutter')).toBe(false)
+  })
+
+  /**
+   * The compiler codegens its Rust copy from `export:css-props`, so a length
+   * property that is not also a recognised CSS property would be generated into
+   * one set and missing from the other.
+   */
+  it('is a subset of the recognised CSS property set', () => {
+    const orphans = [...LengthPropertySet].filter(p => !CSSPropertySet.has(p))
+    expect(orphans).toEqual([])
   })
 })
