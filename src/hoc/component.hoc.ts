@@ -23,14 +23,7 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
       key: React.Key
       children: Children
     }>
-  : (
-      | TProps
-      // `props` is the escape hatch for component props whose names collide
-      // with CSS properties ("wrap it in `props` so the styling engine ignores
-      // it"). A caller using it must not also be forced to repeat those props
-      // at the top level, so this branch accepts them there instead.
-      | (Partial<TProps> & { props: Partial<TProps> & { children?: never } })
-    ) &
+  : TProps &
       (HasCSSCompatibleStyleProp<TProps> extends true ? ThemedCSSProperties : object) &
       Partial<{
         /**
@@ -43,6 +36,25 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
         props: Partial<TProps> & { children?: never }
         children: Children
       }>
+
+/**
+ * What a caller may pass when *invoking* a component node.
+ *
+ * Differs from {@link ComponentNodeProps} — the type the component body
+ * receives — in one way: `props` is an alternative channel for the component's
+ * own props, not merely an extra. It is the documented escape hatch for props
+ * whose names collide with CSS property names ("wrap it in `props` so the
+ * styling engine ignores it"), so supplying them there has to satisfy the
+ * requirement instead of forcing the caller to repeat them at the top level.
+ *
+ * The body keeps the strict shape. Widening that too would make every prop
+ * optional inside the component, which is exactly what the author declared it
+ * did not want.
+ */
+export type ComponentCallProps<TProps> = TProps extends undefined
+  ? ComponentNodeProps<TProps>
+  : | ComponentNodeProps<TProps>
+    | (Partial<TProps> & { props: Partial<TProps> & { children?: never } } & Omit<ComponentNodeProps<TProps>, keyof TProps | 'props'>)
 
 /**
  * Creates a component from a function that uses no custom props.
@@ -60,7 +72,7 @@ export type ComponentNodeProps<TProps> = TProps extends undefined
  */
 export function Component<TProps extends undefined>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props?: ComponentNodeProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
+): (props?: ComponentCallProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Creates a component from a function that uses a defined props interface.
@@ -86,7 +98,7 @@ export function Component<TProps extends undefined>(
  */
 export function Component<TProps extends Record<string, any>>(
   component: (props: ComponentNodeProps<TProps>) => ComponentNode,
-): (props: ComponentNodeProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
+): (props: ComponentCallProps<TProps>, deps?: DependencyList) => ReactElement | Promise<Awaited<ReactElement>>
 
 /**
  * Internal implementation of the `Component` HOC.
@@ -109,7 +121,7 @@ export function Component<TProps extends Record<string, any> | undefined>(compon
   Renderer.displayName = `Renderer(${displayName})`
   ;(Renderer as { __meonodeAcceptsServerCss?: boolean }).__meonodeAcceptsServerCss = true
 
-  function Func(props: Partial<ComponentNodeProps<TProps>> = {}, deps?: DependencyList) {
+  function Func(props: Partial<ComponentCallProps<TProps>> = {}, deps?: DependencyList) {
     return Node(Renderer, props as never, deps).render()
   }
   Func.displayName = `Component(${displayName})`

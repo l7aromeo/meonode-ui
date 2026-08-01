@@ -32,6 +32,26 @@ function capture() {
   return { Chart, seen }
 }
 
+// Compile-time contract, enforced by the suite's own `tsc --noEmit`.
+//
+// The body and the call site need different shapes. A caller may satisfy the
+// component's props through `props` instead of the top level — that is the whole
+// point of the shield — but the *body* must still see them as declared. An
+// earlier attempt widened both with one union, which made every prop optional
+// inside the component: `data.length` stopped compiling without a guard.
+interface StrictProps {
+  height: number
+  data: number[]
+}
+
+const BodySeesRequiredProps = Component<StrictProps>(({ height, data }) =>
+  // No optional chaining anywhere: if these were optional this would not compile.
+  Div({ children: `${data.length} points at ${height}px` }),
+)
+
+// And the call site may still route them through `props`.
+const _callSiteAcceptsShield = () => BodySeesRequiredProps({ props: { height: 1, data: [] } })
+
 describe('props shields component props from CSS classification', () => {
   it('survives Node(Component, { props })', () => {
     // The exact form the usage docs demonstrate.
