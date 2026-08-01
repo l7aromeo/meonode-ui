@@ -121,6 +121,13 @@ export interface WorkItem {
   blocked: boolean
   /** Active inherited theme scope while traversing this subtree (server/runtime propagation). */
   theme?: Theme
+
+  /**
+   * This node's `elementCache` key for the current render, derived from the
+   * parent's key plus this node's position rather than read off the instance.
+   * Undefined when caching does not apply (server, or no signature).
+   */
+  cacheKey?: string
 }
 
 // ============================================================================

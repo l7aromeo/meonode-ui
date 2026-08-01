@@ -24,6 +24,7 @@ import { act } from 'react'
 import { render as clientRender } from '@src/client.js'
 import { Div } from '@src/main.js'
 import { BaseNode } from '@src/core.node.js'
+import type { NodeInstance } from '@src/types/node.type.js'
 
 /**
  * Compiled call sites key off `__meo$k`, a source-position hash, so two
@@ -34,7 +35,7 @@ import { BaseNode } from '@src/core.node.js'
  */
 const COMPILED = process.env.MEONODE_COMPILED === '1'
 
-const firstChild = (kids: unknown): { stableKey?: string } => (Array.isArray(kids) ? kids[0] : kids) as { stableKey?: string }
+const firstChild = (kids: unknown): NodeInstance => (Array.isArray(kids) ? kids[0] : kids) as NodeInstance
 
 afterEach(() => {
   cleanup()
@@ -44,13 +45,18 @@ afterEach(() => {
 
 describe('element cache key collision', () => {
   it('namespaces children of a children-only node under that node', () => {
-    const child = Div({ padding: '8px', children: 'x' }, [])
-    const parent = Div({ children: [child] })
+    // The original bug: `processProps`'s fast path dropped the parent key, so
+    // children of every children-only wrapper keyed as `undefined_0`.
+    // Asserted against the cache rather than `stableKey`, which no longer
+    // carries position.
+    const parent = Div({ children: [Div({ padding: '8px', children: 'x' }, [])] }, [])
+    const child = firstChild(parent.props.children)
 
-    const childKey = firstChild(parent.props.children).stableKey ?? ''
+    render(parent.render())
 
-    expect(childKey).not.toMatch(/^undefined_/)
-    expect(childKey.startsWith(`${parent.stableKey}_`)).toBe(true)
+    const keys = [...BaseNode.elementCache.keys()]
+    expect(keys.some(k => k.startsWith('undefined'))).toBe(false)
+    expect(keys).toContain(`${parent.signature}_0:${child.signature}`)
   })
 
   it('keeps memoized children of sibling wrappers distinct', () => {
@@ -62,14 +68,25 @@ describe('element cache key collision', () => {
       children: [Div({ children: [Div({ padding: '8px', children: 'AAA' }, [])] }), Div({ children: [Div({ padding: '8px', children: 'BBB' }, [])] })],
     })
 
-    const wrappers = app.props.children as Array<{ props: { children: unknown }; stableKey?: string }>
-    const keyA = firstChild(wrappers[0].props.children).stableKey
-    const keyB = firstChild(wrappers[1].props.children).stableKey
+    const { container } = render(app.render())
+
+    // The user-visible symptom was the second wrapper rendering the first
+    // one's content.
+    expect(container.textContent).toBe('AAABBB')
+
+    // And the mechanism: the two memoized children must occupy distinct cache
+    // entries. Both sit at index 0 of their own wrapper, so only the wrappers'
+    // differing positions separate them.
+    const wrappers = app.props.children as NodeInstance[]
+    const a = firstChild(wrappers[0].props.children)
+    const b = firstChild(wrappers[1].props.children)
+    const keyA = `${app.signature}_0:${wrappers[0].signature}_0:${a.signature}`
+    const keyB = `${app.signature}_1:${wrappers[1].signature}_0:${b.signature}`
 
     expect(keyA).not.toBe(keyB)
-
-    const { container } = render(app.render())
-    expect(container.textContent).toBe('AAABBB')
+    const keys = [...BaseNode.elementCache.keys()]
+    expect(keys).toContain(keyA)
+    expect(keys).toContain(keyB)
   })
 
   it.skipIf(COMPILED)('does not let a child content change invalidate a memoized sibling', () => {
@@ -131,29 +148,38 @@ describe('render scopes', () => {
   it('applies a scope to descendants and is idempotent', () => {
     // Scoping only the root is sufficient because a child's key is built as
     // `${parentKey}_${index}:${ownSignature}`, so the namespace propagates.
-    const node = Div({ children: [Div({ padding: '8px', children: 'x' }, [])] })
-    const unscoped = node.stableKey
+    const node = Div({ children: [Div({ padding: '8px', children: 'x' }, [])] }, [])
+    const child = firstChild(node.props.children)
 
-    node.render(false, 'scopeA')
-    expect(node.stableKey).toBe(`scopeA@${unscoped}`)
-    expect(firstChild(node.props.children).stableKey).toContain('scopeA@')
+    render(node.render(false, 'scopeA'))
 
-    // Re-rendering the same root must not stack prefixes, or the key would move
-    // on every render and memoization would never hit.
-    node.render(false, 'scopeA')
-    expect(node.stableKey).toBe(`scopeA@${unscoped}`)
+    const expected = new Set([`scopeA@${node.signature}`, `scopeA@${node.signature}_0:${child.signature}`])
+    expect(new Set(BaseNode.elementCache.keys())).toEqual(expected)
+
+    // Re-rendering under the same scope must produce the same keys. Scope used
+    // to be stamped onto the instance, where a second application could stack
+    // prefixes and move the key on every render so memoization never hit; it is
+    // a render parameter now, so stacking is impossible by construction.
+    render(node.render(false, 'scopeA'))
+    expect(new Set(BaseNode.elementCache.keys())).toEqual(expected)
   })
 
   it.skipIf(COMPILED)('gives different scopes different keys for identical trees', () => {
-    const a = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
-    const b = Div({ children: [Div({ padding: '8px', children: 'same' }, [])] })
+    // Built from one call site so the two trees are genuinely identical —
+    // uncompiled signatures derive from props, so they agree.
+    const make = () => Div({ children: [Div({ padding: '8px', children: 'same' }, [])] }, [])
+    const a = make()
+    const b = make()
 
-    expect(a.stableKey).toBe(b.stableKey)
+    expect(a.signature).toBe(b.signature)
 
-    a.render(false, 'scope1')
-    b.render(false, 'scope2')
+    render(a.render(false, 'scope1'))
+    render(b.render(false, 'scope2'))
 
-    expect(a.stableKey).not.toBe(b.stableKey)
-    expect(firstChild(a.props.children).stableKey).not.toBe(firstChild(b.props.children).stableKey)
+    const keys = [...BaseNode.elementCache.keys()]
+    expect(keys).toContain(`scope1@${a.signature}`)
+    expect(keys).toContain(`scope2@${b.signature}`)
+    // Identical trees, distinct entries: the scope is what separates them.
+    expect(new Set(keys).size).toBe(4)
   })
 })

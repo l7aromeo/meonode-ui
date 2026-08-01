@@ -386,7 +386,6 @@ export class NodeUtil {
    * generates a signature for caching, and assembles the final props object.
    * This method applies optimizations like fast-path for simple props and hybrid caching strategy.
    * @param rawProps The original props to process.
-   * @param stableKey The stable key used for child normalization (optional).
    * @returns The processed props object ready for rendering.
    */
 
@@ -409,10 +408,9 @@ export class NodeUtil {
    * directly instead of being constructed and then copied to drop `undefined`s.
    * @param rawProps The node's raw props, known to carry a supported marker.
    * @param schema The marker schema version from {@link getCompiledSchema}.
-   * @param stableKey The node's stable key, forwarded to child processing.
    * @returns The processed props, identical to what the legacy path produces.
    */
-  private static _processCompiledProps(rawProps: Partial<NodeProps>, schema: number, stableKey?: string): FinalNodeProps {
+  private static _processCompiledProps(rawProps: Partial<NodeProps>, schema: number): FinalNodeProps {
     // Bucket key names are schema-dependent: schema 1 used bare `c`/`d`/`k`/`dyn`,
     // which a spread could collide with (`d` is a real SVG `<path>` attribute);
     // schema 2 namespaces them under the marker prefix. The stable-key fields are
@@ -479,7 +477,7 @@ export class NodeUtil {
     if (markerDomProps !== undefined) NodeUtil._assignDefined(result, markerDomProps)
     if (disableEmotion !== undefined) result.disableEmotion = disableEmotion
     result.nativeProps = nativeProps === undefined ? {} : omitUndefined(nativeProps)
-    const processedChildren = NodeUtil._processChildren(children, disableEmotion, stableKey)
+    const processedChildren = NodeUtil._processChildren(children, disableEmotion)
     if (processedChildren !== undefined) result.children = processedChildren
 
     return result as FinalNodeProps
@@ -499,7 +497,7 @@ export class NodeUtil {
     }
   }
 
-  public static processProps(rawProps: Partial<NodeProps> = {}, stableKey?: string): FinalNodeProps {
+  public static processProps(rawProps: Partial<NodeProps> = {}): FinalNodeProps {
     // --- Compiled Marker Fast Path ---
     // Checked against `rawProps` *before* the rest destructure below, because that
     // destructure copies every remaining prop into a fresh object — a per-node
@@ -509,7 +507,7 @@ export class NodeUtil {
     // `restRawProps`.
     const compiledSchema = NodeUtil.getCompiledSchema(rawProps as Record<string, unknown>)
     if (compiledSchema !== undefined) {
-      return NodeUtil._processCompiledProps(rawProps, compiledSchema, stableKey)
+      return NodeUtil._processCompiledProps(rawProps, compiledSchema)
     }
 
     const { ref, key, children, css, props: nativeProps = {}, disableEmotion, ...restRawProps } = rawProps
@@ -521,11 +519,7 @@ export class NodeUtil {
         key,
         disableEmotion,
         nativeProps: omitUndefined(nativeProps),
-        // `stableKey` must be forwarded here exactly as the slow path below does.
-        // Omitting it namespaced every child of a children-only node as
-        // `undefined_0`, `undefined_1`, ... instead of `<parentKey>_0`, so
-        // children of two unrelated wrappers shared one `elementCache` entry.
-        children: NodeUtil._processChildren(children, disableEmotion, stableKey),
+        children: NodeUtil._processChildren(children, disableEmotion),
       })
     }
 
@@ -559,7 +553,7 @@ export class NodeUtil {
     const finalCssProps = { ...cachedCssProps, ...nonCachedCssProps, ...css }
 
     // --- Child Normalization ---
-    const normalizedChildren = NodeUtil._processChildren(children, disableEmotion, stableKey)
+    const normalizedChildren = NodeUtil._processChildren(children, disableEmotion)
 
     // --- Final Assembly ---
     return omitUndefined({
@@ -582,22 +576,24 @@ export class NodeUtil {
    * @param parentStableKey The stable key of the parent node, used for generating unique keys for children.
    * @returns The processed children in normalized format.
    */
-  private static _processChildren(children: Children, disableEmotion?: boolean, parentStableKey?: string): Children {
+  private static _processChildren(children: Children, disableEmotion?: boolean): Children {
     if (!children) return undefined
     if (typeof children === 'function') return children
 
-    // Fast path for non-array (single child)
+    // Fast path for non-array (single child). Collapsing `[x]` to `x` is why a
+    // bare child and a single-element array must key identically: by the time
+    // the render loop derives positions, the two shapes are indistinguishable.
     if (!Array.isArray(children)) {
-      return NodeUtil.processRawNode(children, disableEmotion, parentStableKey)
+      return NodeUtil.processRawNode(children, disableEmotion)
     }
 
     // Fast path for single element array
     if (children.length === 1) {
-      return NodeUtil.processRawNode(children[0], disableEmotion, `${parentStableKey}_0`)
+      return NodeUtil.processRawNode(children[0], disableEmotion)
     }
 
     // General case: multiple children
-    return children.map((child, index) => NodeUtil.processRawNode(child, disableEmotion, `${parentStableKey}_${index}`))
+    return children.map(child => NodeUtil.processRawNode(child, disableEmotion))
   }
 
   /**
@@ -659,27 +655,33 @@ export class NodeUtil {
    * component classes, and component instances.
    * @param node The node element to process and normalize.
    * @param disableEmotion If true, emotion styling will be disabled for this node.
-   * @param stableKey The stable key for positional information in parent-child relationships.
    * @returns The normalized node element in BaseNode format.
    */
-  public static processRawNode(node: NodeElement, disableEmotion?: boolean, stableKey?: string): NodeElement {
+  public static processRawNode(node: NodeElement, disableEmotion?: boolean): NodeElement {
     // Primitives and null/undefined are returned as-is.
     if (node === null || node === undefined || typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return node
 
-    // If it's already a BaseNode, clone it with a positional key if available.
+    // A BaseNode child is passed straight through.
+    //
+    // This used to clone unconditionally, to stamp a positional prefix onto the
+    // clone's `stableKey`. The stamp was destructive, so a stamped instance
+    // could not be reused without double-stamping, and the only way to obtain a
+    // clean key was to rebuild the node — re-running element validation, a
+    // rest-spread, and a full `createPropSignature` whose result was identical
+    // to the one the original already held. Position is now derived during
+    // render from the parent's key and the child's index, so none of that is
+    // needed.
+    //
+    // Propagating `disableEmotion` is the one case still requiring a new
+    // instance: it is applied by writing to `rawProps`, and the child may be
+    // shared. Note the copy is shallow by construction — `BaseNode` keeps the
+    // `rawProps` reference it is given — so this assignment is visible on the
+    // original too. Pre-existing behaviour, preserved deliberately rather than
+    // changed inside the riskiest phase of this refactor.
     if (NodeUtil.isNodeInstance(node)) {
-      const needsCloning = stableKey || (disableEmotion && !node.rawProps.disableEmotion)
-      if (needsCloning) {
-        // Create a new BaseNode instance.
+      if (disableEmotion && !node.rawProps.disableEmotion) {
         const newNode = new BaseNode(node.element, node.rawProps, node.dependencies)
-
-        // Augment the internal stableKey with positional information.
-        // This is purely for BaseNode's internal caching, not for React's 'key' prop.
-        newNode.stableKey = `${stableKey}:${newNode.stableKey}`
-
-        if (disableEmotion && !newNode.rawProps.disableEmotion) {
-          newNode.rawProps.disableEmotion = true
-        }
+        newNode.rawProps.disableEmotion = true
         return newNode
       }
       return node
@@ -745,7 +747,7 @@ export class NodeUtil {
 
     // Handle component instances.
     if (node instanceof React.Component) {
-      return NodeUtil.processRawNode(node.render(), disableEmotion, stableKey)
+      return NodeUtil.processRawNode(node.render(), disableEmotion)
     }
 
     return node
