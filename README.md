@@ -228,7 +228,7 @@ engine.
 >
 > Production React matters: these previously ran under vitest, which forces `NODE_ENV=test` and so measured React's
 > *development* build. Its validation overhead is large enough to swamp the library — it reported the compiler's
-> client-side gain as 1.03x where the real figure is ~1.6x.
+> client-side gain as 1.03x where the real figure is ~1.4x.
 
 ### Layout Rendering
 
