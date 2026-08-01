@@ -33,6 +33,7 @@ import { NavigationCacheManagerUtil } from '@src/util/navigation-cache-manager.u
 import { NodeUtil } from '@src/util/node.util.js'
 import { compileServerEmotionClassName } from '@src/util/server-emotion.util.js'
 import { getActiveServerTheme, replaceThemeTokensWithCssVars, setActiveServerTheme } from '@src/util/server-theme.util.js'
+import { reportThemeIssues } from '@src/util/theme-diagnostics.util.js'
 import { ThemeUtil } from '@src/util/theme.util.js'
 
 const ELEMENT_CACHE_KEY = Symbol.for('@meonode/ui/BaseNode/elementCache')
@@ -606,6 +607,10 @@ export class BaseNode<E extends NodeElementType = NodeElementType> {
               const themedCss = ThemeUtil.resolveObjWithTheme(replaceThemeTokensWithCssVars(css), activeTheme, {
                 processFunctions: true,
               })
+              // Development only; no-ops in production. Mirrors the client-side
+              // report in `StyledRenderer` so a bad token surfaces on whichever
+              // side happened to render it.
+              reportThemeIssues(themedCss, activeTheme)
               const cssWithDefaults = ThemeUtil.resolveDefaultStyle(themedCss)
               const serverCssClassName = compileServerEmotionClassName(cssWithDefaults)
               const mergedClassName = [elementProps.className, serverCssClassName].filter(Boolean).join(' ') || undefined

@@ -18,6 +18,6 @@
       "@meonode/ui/nextjs-registry": ["./src/nextjs-registry/index.ts"]
     }
   },
-  "include": ["src", "tests", "rollup.config.ts"],
+  "include": ["src", "tests", "scripts", "rollup.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

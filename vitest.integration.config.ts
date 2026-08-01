@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['./tests/rsc-integration.test.ts', './tests/build-output.test.ts'],
+    include: ['./tests/rsc-integration.test.ts', './tests/build-output.test.ts', './tests/theme-length-browser.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     globalSetup: ['./tests/globalSetup.rsc.ts'],
     teardownTimeout: 120_000,

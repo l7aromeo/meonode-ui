@@ -29,7 +29,7 @@ describe('replaceThemeTokensWithCssVars', () => {
 
     it('converts tokens in object values', () => {
       expect(replaceThemeTokensWithCssVars({ padding: 'theme.spacing.md', color: '#fff' })).toEqual({
-        padding: 'var(--meonode-theme-spacing-md)',
+        padding: 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))',
         color: '#fff',
       })
     })
@@ -52,7 +52,7 @@ describe('replaceThemeTokensWithCssVars', () => {
       const input = { '@media (max-width: theme.breakpoint.md)': { padding: 'theme.spacing.sm' } }
       const out = replaceThemeTokensWithCssVars(input) as Record<string, unknown>
       expect(Object.keys(out)).toEqual(['@media (max-width: theme.breakpoint.md)'])
-      expect(out['@media (max-width: theme.breakpoint.md)']).toEqual({ padding: 'var(--meonode-theme-spacing-sm)' })
+      expect(out['@media (max-width: theme.breakpoint.md)']).toEqual({ padding: 'var(--meonode-theme-spacing-sm--len, var(--meonode-theme-spacing-sm))' })
     })
   })
 
@@ -69,7 +69,7 @@ describe('replaceThemeTokensWithCssVars', () => {
       // This is the post-@meonode/compiler-v0.4 shape: tokens were already
       // rewritten at build time, so `var(--meonode-theme-*)` contains no
       // `theme.` substring and there is genuinely nothing left to do.
-      const input = { padding: 'var(--meonode-theme-spacing-md)', gap: '8px' }
+      const input = { padding: 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))', gap: '8px' }
       expect(replaceThemeTokensWithCssVars(input)).toBe(input)
     })
 
@@ -79,7 +79,7 @@ describe('replaceThemeTokensWithCssVars', () => {
       const out = replaceThemeTokensWithCssVars(input) as typeof input
       expect(out).not.toBe(input)
       expect(out.clean).toBe(clean)
-      expect(out.dirty).toEqual({ padding: 'var(--meonode-theme-spacing-md)' })
+      expect(out.dirty).toEqual({ padding: 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))' })
     })
 
     it('passes non-plain objects through untouched', () => {
@@ -125,7 +125,7 @@ describe('replaceThemeTokensWithCssVars', () => {
       const cyclic: Record<string, unknown> = { padding: 'theme.spacing.md' }
       cyclic.self = cyclic
       const out = replaceThemeTokensWithCssVars(cyclic) as Record<string, unknown>
-      expect(out.padding).toBe('var(--meonode-theme-spacing-md)')
+      expect(out.padding).toBe('var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))')
     })
   })
 

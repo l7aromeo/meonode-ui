@@ -80,7 +80,7 @@ describe('ThemeUtil.resolveObjWithTheme', () => {
       const input = { '@media (max-width: theme.breakpoint.md)': { padding: 'theme.spacing.sm' } }
       const out = ThemeUtil.resolveObjWithTheme(input, theme, { themeStringsMode: 'vars' }) as Record<string, unknown>
       expect(Object.keys(out)).toEqual(['@media (max-width: 768px)'])
-      expect(out['@media (max-width: 768px)']).toEqual({ padding: 'var(--meonode-theme-spacing-sm)' })
+      expect(out['@media (max-width: 768px)']).toEqual({ padding: 'var(--meonode-theme-spacing-sm--len, var(--meonode-theme-spacing-sm))' })
     })
   })
 
@@ -117,7 +117,7 @@ describe('ThemeUtil.resolveObjWithTheme', () => {
       // The post-@meonode/compiler-v0.4 shape: tokens were rewritten at build
       // time, so `var(--meonode-theme-*)` holds no `theme.` substring and there
       // is genuinely nothing left to do.
-      const input = { padding: 'var(--meonode-theme-spacing-md)', gap: '8px' }
+      const input = { padding: 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))', gap: '8px' }
       expect(ThemeUtil.resolveObjWithTheme(input, theme)).toBe(input)
     })
 

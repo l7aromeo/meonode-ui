@@ -1,6 +1,7 @@
 import type { CSSProperties } from '@emotion/serialize'
 import type { CssProp, Theme } from '@src/types/node.type.js'
 import { getValueByPath } from '@src/helper/common.helper.js'
+import { isLengthProperty, isSelectorOrAtRule, lengthVarRef } from '@src/util/css-unit.util.js'
 
 interface FlexComponents {
   grow: number
@@ -32,15 +33,23 @@ const toThemeVarName = (p: string) => `--meonode-theme-${p.replace(/[^\w.-]/g, '
  * @param value The string to rewrite.
  * @param asVar Emit `var(--meonode-theme-*)` instead of the resolved value.
  * @param themeSystem The active theme's `system` object, for path lookups.
+ * @param property The CSS property this value was written against, when known.
+ * A length property references the paired `--len` variant, so a numeric token
+ * arrives with its unit rather than as a bare number the browser would reject.
+ * Chosen from the property alone, never the token's value, so the server path —
+ * which may have no theme in scope — makes the identical choice and the Emotion
+ * class hash stays the same across SSR and CSR.
  * @returns The rewritten string, or `value` itself when nothing changed.
  */
-const processThemeString = (value: string, asVar: boolean, themeSystem: Record<string, unknown>): string => {
+const processThemeString = (value: string, asVar: boolean, themeSystem: Record<string, unknown>, property?: string): string => {
   THEME_REGEX.lastIndex = 0
+  const wantsLength = property !== undefined && isLengthProperty(property)
   let hasChanged = false
   const resolved = value.replace(THEME_REGEX, (match, path: string) => {
     if (asVar) {
       hasChanged = true
-      return `var(${toThemeVarName(path)})`
+      const varName = toThemeVarName(path)
+      return wantsLength ? lengthVarRef(varName) : `var(${varName})`
     }
     const themeValue = getValueByPath(themeSystem, path)
     if (themeValue !== undefined && themeValue !== null) {
@@ -292,12 +301,17 @@ export class ThemeUtil {
               }
 
               const valueAsVar = themeStringsMode === 'vars'
+              // A selector or at-rule key names no property, so a token
+              // directly under one keeps the plain variable.
+              const valueProperty = isSelectorOrAtRule(newKey) ? undefined : newKey
               if (typeof newValue === 'function' && processFunctions) {
                 const funcResult = (newValue as (theme: Theme) => unknown)(theme)
                 newValue =
-                  typeof funcResult === 'string' && funcResult.includes('theme.') ? processThemeString(funcResult, valueAsVar, themeSystem) : funcResult
+                  typeof funcResult === 'string' && funcResult.includes('theme.')
+                    ? processThemeString(funcResult, valueAsVar, themeSystem, valueProperty)
+                    : funcResult
               } else if (typeof newValue === 'string' && newValue.includes('theme.')) {
-                newValue = processThemeString(newValue, valueAsVar, themeSystem)
+                newValue = processThemeString(newValue, valueAsVar, themeSystem, valueProperty)
               }
 
               if (newValue !== value || newKey !== key) {

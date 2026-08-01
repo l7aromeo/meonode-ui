@@ -1,5 +1,6 @@
 import { getGlobalState } from '@src/helper/common.helper.js'
 import type { Theme } from '@src/types/node.type.js'
+import { isLengthProperty, isSelectorOrAtRule, lengthVarRef, needsLengthVariant, toLengthVarName } from '@src/util/css-unit.util.js'
 
 const SERVER_ACTIVE_THEME_KEY = Symbol.for('@meonode/ui/serverActiveTheme')
 
@@ -17,6 +18,27 @@ export function getActiveServerTheme(): Theme | undefined {
 
 export function setActiveServerTheme(theme: Theme): void {
   getGlobalState<ServerThemeState>(SERVER_ACTIVE_THEME_KEY, () => ({})).activeTheme = theme
+}
+
+/**
+ * Records a token's variable, plus its paired length variant when the value is
+ * a bare number.
+ *
+ * A theme value reaches CSS as the text of a custom property, and Emotion never
+ * inspects a custom property's contents — so `{ md: 16 }` used for `padding`
+ * would emit `padding: 16`, which is not a valid length. Emitting
+ * `--…-md--len: 16px` alongside lets a length property reference
+ * `var(--…-md--len, var(--…-md))` and get the unit, while `zIndex` and friends
+ * keep referencing the plain variable and stay bare.
+ * @param entries The accumulating declaration list.
+ * @param varName The plain variable name.
+ * @param value The raw token value.
+ */
+function pushEntry(entries: Array<[string, string]>, varName: string, value: string | number | boolean): void {
+  entries.push([varName, String(value)])
+  if (needsLengthVariant(value)) {
+    entries.push([toLengthVarName(varName), `${value}px`])
+  }
 }
 
 /**
@@ -39,14 +61,14 @@ export function buildThemeVariablesCss(theme: Theme): string {
       if (rawValue === null || rawValue === undefined) continue
 
       if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
-        entries.push([toThemeVarName(path), String(rawValue)])
+        pushEntry(entries, toThemeVarName(path), rawValue)
         continue
       }
 
       if (typeof rawValue === 'object') {
         const maybeDefault = (rawValue as Record<string, unknown>).default
         if (typeof maybeDefault === 'string' || typeof maybeDefault === 'number' || typeof maybeDefault === 'boolean') {
-          entries.push([toThemeVarName(path), String(maybeDefault)])
+          pushEntry(entries, toThemeVarName(path), maybeDefault)
         }
         stack.push({ path, value: rawValue })
       }
@@ -83,13 +105,25 @@ const conversionCache = new WeakMap<object, unknown>()
  */
 const themeRegex = /theme\.([a-zA-Z0-9_.-]+)/g
 
-const replaceString = (input: string): string => {
+/**
+ * Rewrites `theme.*` tokens in a string to CSS variable references.
+ * @param input The string that may contain `theme.*` tokens.
+ * @param property The CSS property this value was written against, when known.
+ * A length property references the paired `--len` variant so a numeric token
+ * arrives with its unit; everything else keeps the plain variable. Deciding
+ * from the property alone — never from the token's value — is what lets this
+ * run identically on the server, where the theme may not be in scope at all.
+ * @returns The rewritten string, or `input` when it holds no tokens.
+ */
+const replaceString = (input: string, property?: string): string => {
   if (!input.includes('theme.')) return input
   themeRegex.lastIndex = 0
+  const wantsLength = property !== undefined && isLengthProperty(property)
   let hasChanged = false
   const next = input.replace(themeRegex, (_, path: string) => {
     hasChanged = true
-    return `var(${toThemeVarName(path)})`
+    const varName = toThemeVarName(path)
+    return wantsLength ? lengthVarRef(varName) : `var(${varName})`
   })
   return hasChanged ? next : input
 }
@@ -267,7 +301,9 @@ export function replaceThemeTokensWithCssVars<T>(value: T): T {
             let newValue: unknown = v
 
             if (typeof v === 'string') {
-              newValue = replaceString(v)
+              // A selector or at-rule key names no property, so a token
+              // directly under one keeps the plain variable.
+              newValue = replaceString(v, isSelectorOrAtRule(key) ? undefined : key)
             } else if (isPlainObject(v) || Array.isArray(v)) {
               newValue = resolvedValues.get(v) ?? v
             }

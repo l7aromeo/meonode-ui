@@ -98,7 +98,7 @@ describe('Styling and Theming', () => {
     // Function callbacks still return their concrete value directly.
     expect(computedStyles.backgroundColor).toBe('rgb(255, 255, 255)')
     // String theme tokens emit as CSS variables in Emotion rules (jsdom may not resolve padding vars in getComputedStyle).
-    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
+    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))')
   })
 
   it('should propagate multiple theme values to children', () => {
@@ -128,8 +128,8 @@ describe('Styling and Theming', () => {
     const { getByText } = render(App.render())
     const element = getByText('Themed Content')
     // String theme tokens emit as CSS variables in Emotion rules.
-    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
-    expect(element).toHaveStyleRule('margin', 'var(--meonode-theme-spacing-lg)')
+    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))')
+    expect(element).toHaveStyleRule('margin', 'var(--meonode-theme-spacing-lg--len, var(--meonode-theme-spacing-lg))')
     expect(element).toHaveStyleRule('color', 'var(--meonode-theme-colors-primary)')
   })
 
@@ -165,7 +165,7 @@ describe('Styling and Theming', () => {
     const element = getByText('Themed Function Content')
     const computedStyles = window.getComputedStyle(element)
     // String paths emit CSS vars in rules; function callbacks still return concrete values.
-    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md)')
+    expect(element).toHaveStyleRule('padding', 'var(--meonode-theme-spacing-md--len, var(--meonode-theme-spacing-md))')
     expect(computedStyles.color).toBe('rgb(255, 0, 0)')
   })
 
