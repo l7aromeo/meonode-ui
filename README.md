@@ -1,3 +1,17 @@
+> [!IMPORTANT]
+> **This repository has moved.** `@meonode/ui` is now developed in the
+> [l7aromeo/meonode](https://github.com/l7aromeo/meonode) monorepo, alongside its
+> sibling packages, under [`packages/ui`](https://github.com/l7aromeo/meonode/tree/main/packages/ui).
+>
+> This repository is archived and read-only. Its history, tags and releases are
+> kept here for reference — the monorepo carries the same history, with tags
+> renamed to `@meonode/ui@<version>`.
+>
+> Please open issues and pull requests on
+> [l7aromeo/meonode](https://github.com/l7aromeo/meonode/issues).
+
+---
+
 # @meonode/ui
 
 [![NPM version](https://img.shields.io/npm/v/@meonode/ui.svg?style=flat)](https://www.npmjs.com/package/@meonode/ui)
